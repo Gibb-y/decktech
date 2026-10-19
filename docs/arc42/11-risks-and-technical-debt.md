@@ -8,7 +8,7 @@
 | R2 | Resource exhaustion from a hostile or buggy component (CPU loop, memory, audio). | Medium | Medium | Heartbeat watchdog, ability to kill a frame, trust prompt; browsers offer no hard limits, so residual risk is accepted. |
 | R3 | Many iframes make editing slow (thumbnails, multiple components per slide). | Medium | Medium | Lazy frame creation, static snapshots for thumbnails, frame pooling, destroy off-screen frames. Measure early with a stress deck. |
 | R4 | Editor complexity (selection, snapping, rotation, text editing in a scaled DOM) takes longer than expected. | High | Medium | Build vertical slice first (text + shape move/resize), reuse proven libraries for text and geometry where possible, defer tables and advanced alignment. |
-| R5 | IndexedDB data eviction or loss. | Low–Medium | High | Request persistent storage, export reminders, rolling backup of previous version, simple one-click export. |
+| R5 | IndexedDB data eviction or loss. | Low–Medium | High | Request persistent storage, export reminders, rolling backup of previous version (`BackupSink`, written before a migrated deck is returned), simple one-click export. |
 | R6 | Component API churn breaks existing decks. | Medium | High | Versioned handshake, host supports previous major, API frozen once released, deprecation policy. |
 | R7 | Projector/laptop differences (GPU, fonts) change appearance. | Medium | Low | Embed fonts as assets, fixed stage, pre-flight check in presenter. |
 | R8 | Later collaboration requirement conflicts with the local-first model. | Medium | Medium | Patch-based commands and stable ids chosen to ease a move to CRDTs (e.g. Yjs). Not committed. |

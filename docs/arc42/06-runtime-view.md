@@ -85,7 +85,7 @@ The `Preloader` creates the next slide's frames while the current slide is shown
 ```mermaid
 flowchart TD
     A[Import .deck] --> B[Unzip with size / entry limits]
-    B --> C[Run migrations, validate with `validateDeck`]
+    B --> C[`migrate`: run migrations, validate with `validateDeck`;<br/>newer schema opens read-only]
     C --> D{Contains code components<br/>or requests permissions?}
     D -- no --> G[Open normally]
     D -- yes --> E[Trust dialog: components, slides,<br/>permissions, libraries, flags]

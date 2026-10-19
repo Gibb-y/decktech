@@ -41,7 +41,7 @@ flowchart TB
 | `DeckStore` | Signal-based holder of the current deck. Exposes `deck()`, `currentSlide()`, `selection()` and computed views. Mutation only via `execute(command)`. |
 | `Command` | `{ do(deck) → patch, undo }`. Examples: `AddSlide`, `MoveElements`, `SetProps`, `ReorderSlides`. Consecutive similar commands (dragging) are coalesced. |
 | `History` | Undo/redo stacks of inverse patches; bounded size. |
-| `Migrations` | Upgrade functions `vN → vN+1` applied on load/import. |
+| `Migrations` | Registry of pure upgrade functions `vN → vN+1` (`MIGRATIONS`, keyed by the version upgraded from) and `migrate(raw): Result<MigrationOutcome, MigrationError>`, which runs the chain on a private clone and then `validateDeck`. Documents with a newer `schemaVersion` yield a `readOnly` outcome. `migrateStored(raw, sink)` additionally hands the untouched original to a `BackupSink` (implemented by persistence) before returning a migrated deck. Implemented in `src/app/core/migrations/`. See 8.1. |
 | `Validation` | `validateDeck(unknown): Result<Deck, ValidationError[]>`, a hand-written runtime validator (no schema library) applied on import and load; guards against malformed or hostile files. See 8.1. |
 
 ### Document model (simplified)
