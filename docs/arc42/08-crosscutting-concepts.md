@@ -6,6 +6,19 @@ The deck document (section 5.2) is the single source of truth. It is immutable f
 
 Document versions are tracked by `schemaVersion`. Every load or import runs the migration chain; unknown *newer* versions open read-only with a warning.
 
+### Validation
+
+`validateDeck(unknown)` is the single entry point for untrusted documents (import, storage). It returns `Result<Deck, ValidationError[]>`; every error carries a path (e.g. `slides[2].elements[0].w`) and all problems are collected rather than stopping at the first. It enforces:
+
+- **Types and enums:** every field has the expected type; element, fill, transition, permission and prop types are closed sets, so unknown element types are rejected.
+- **Numbers:** finite only (no `NaN` / `Infinity`), with range limits on geometry, rotation and `step`.
+- **Limits** (`ValidationLimits`, overridable per call): string length, array length, slides, elements per slide, components, assets, table cells, and nesting depth of `CodeEl.props`. Defaults live in `DEFAULT_VALIDATION_LIMITS`.
+- **Identity:** ids match `^[A-Za-z0-9_-]{1,128}$`; slide, layout and component ids are unique, and element ids are unique across the whole deck.
+- **Referential integrity:** `Slide.layoutId`, `CodeEl.componentId`, every asset reference (image, video, fills, `ComponentDef.files` / `libs`) must resolve; an empty reference is dangling.
+- **Hostile keys:** `__proto__`, `constructor` and `prototype` are rejected as keys in props, theme maps and prop specs. `CodeEl.props` must be plain JSON.
+
+Only the current `schemaVersion` is accepted; the migration chain runs before validation. Validation checks structure, not code: the content of `ComponentDef.html/css/js` is opaque here and handled by the sandbox (8.2) and trust prompt (6.4).
+
 ### Stage and units
 
 - Logical stage: **1920 x 1080** (16:9; other ratios configurable per deck, keeping a 1080 height or 1920 width).
