@@ -4,7 +4,7 @@
 
 The deck document (section 5.2) is the single source of truth. It is immutable from the outside: the store replaces it with a new value on each command, and unchanged slides and elements keep their object identity, so signals and `computed` selectors only recompute what changed.
 
-Document versions are tracked by `schemaVersion`. Every load or import runs the migration chain; unknown *newer* versions open read-only with a warning.
+Document versions are tracked by `schemaVersion`. Every load or import runs the migration chain; unknown *newer* versions are reported as read-only with a reason (no editable deck is produced).
 
 ### Migrations
 
