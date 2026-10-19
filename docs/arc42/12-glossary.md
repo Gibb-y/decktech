@@ -20,6 +20,7 @@
 | Step engine | Logic that orders steps from elements and components and decides when to change slides. |
 | Presenter view | Second-window view with current/next slide, notes and timer. |
 | Command | A reversible editing operation producing forward and inverse patches. |
+| Coalescing | Merging consecutive commands with the same key issued within a short window (500 ms) into one undo step, e.g. a drag. |
 | Trust | The user's decision to allow code components in an imported deck to run; bound to the deck's content hash. |
 | Vendored library | A third-party JS/CSS library stored inside the deck so it works offline. |
 | arc42 | Template for architecture documentation (https://docs.arc42.org). |
