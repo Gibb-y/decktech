@@ -1,8 +1,9 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { PersistenceBanner } from './core/persistence';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, PersistenceBanner],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',

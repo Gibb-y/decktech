@@ -1,10 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
+import { DeckRepository, InMemoryDeckRepository, STORAGE_MANAGER } from './core/persistence';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      providers: [
+        { provide: DeckRepository, useClass: InMemoryDeckRepository },
+        { provide: STORAGE_MANAGER, useValue: null },
+      ],
     })
       .compileComponents();
   });
