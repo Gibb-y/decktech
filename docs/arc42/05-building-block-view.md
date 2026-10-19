@@ -27,7 +27,7 @@ flowchart TB
 |----------------|----------------|
 | **Core** | The deck document model (TypeScript types + JSON schema), the command/undo system, the signal store, schema migrations. No UI. |
 | **Persistence** | `DeckRepository` with an IndexedDB and an in-memory implementation; content-addressed asset store; rolling backup store; debounced autosave with a failure banner; `.deck` archive reader/writer (DT-16, not built yet). Implemented in `src/app/core/persistence/` (see 5.6). |
-| **Renderer** | Turns a slide + theme into DOM. One component per element type. Handles stage scaling and step visibility. Used read-only by presenter, thumbnails and (with an overlay) by the editor. |
+| **Renderer** | Turns a slide + theme into DOM. One component per element type. Handles stage scaling and step visibility. Used read-only by presenter, thumbnails and (with an overlay) by the editor. Implemented in `src/app/renderer/` (see 5.7). |
 | **Component Host** | Creates and supervises sandboxed iframes, builds their document, implements the host side of the Component API, enforces the security policy. |
 | **Editor** | Interactive layer over the renderer: selection, transform handles, snapping, slide sorter, toolbar, properties panel, shortcuts, code editor dialog. |
 | **Presenter** | Fullscreen presentation, step engine, presenter view, notes, timer, cross-window sync. |
@@ -180,3 +180,18 @@ All in `src/app/core/persistence/`; the dependency rule of 4.4 holds (it uses on
 | `PersistenceBanner` | `app-persistence-banner`: `role="alert"` notice inside a labelled `section` landmark, shown while `status() === 'error'`, with "Try again" and (when an export handler is provided) "Download .deck". Lives in `core` because the issue scoped it there; move it to `shared/` if a second consumer needs it. |
 | `DECK_EXPORT_HANDLER` | Typed hook (`(deck) => void \| Promise<void>`, default `null`) through which the `.deck` writer of DT-16 plugs into the banner. |
 | `provideDeckPersistence()` | Environment providers for the app: the IndexedDB repository and an initializer that requests persistent storage. |
+
+## 5.7 Level 2: Renderer
+
+All in `src/app/renderer/`; it uses only `core` (4.4).
+
+| Block | Responsibility |
+|-------|----------------|
+| `SlideRenderer` | `app-slide-renderer`. Inputs `slide`, `theme`, `mode` (`edit` / `present` / `thumbnail`, default `present`), `step` (default: all revealed) and `stage` (default 1920x1080; pass `deck.stage`). Draws the slide on a stage of the logical size and scales it with `transform: scale(k)`, `k = containerWidth / stageWidth`, where the width comes from a `ResizeObserver` on the host (exposed as `scale()`; 0 until the host has a width). The host takes the width of its container and keeps the stage aspect ratio, so the caller sizes it. Theme tokens are set as custom properties on the stage; the slide background (or the theme `background` colour) is drawn by the stage. |
+| `ElementView` and `TextElement`, `ImageElement`, `ShapeElement`, `LineElement` | One component per element type. The abstract base takes the slide's element map, the element id and the theme, selects its element in a `computed` and sets position, size and rotation on its host. The map changes with every slide change but an untouched element keeps its identity, so only the element whose props changed re-renders (the `RENDER_PROBE` token lets tests count this). Table, video and code elements are not rendered yet. |
+| `isElementShown` | Visibility rule. `present` and `thumbnail` leave hidden elements and elements with `step` above the current step out of the DOM, so they are also out of the accessibility tree. `edit` keeps every element so it can be selected; hidden ones get a `ghost` class (dimmed) and `aria-hidden`. |
+| `theme.ts` | `themeVars` (`--deck-color-*`, `--deck-font-*`, `--deck-type-*`, `--deck-space-*`), `resolveColor`, `resolveFont`, `fillStyle`. Commands do not check structured values (8.4), so everything that reaches a style declaration is re-checked here: colours must match the validator's literal pattern or be an existing token, unsafe keys and font values are skipped, and anything else is dropped. |
+| `AssetUrls` | `@Service` turning an asset id into an object URL signal through `DeckRepository.getAsset` (ids are content hashes, 8.5; other ids are never looked up). URLs are revoked when the service is destroyed. Without a repository the image shows a labelled placeholder. |
+| `parseText` | Splits plain element text into paragraphs and bullet lists; text with the theme `heading` font becomes `h2`. To be replaced by the ProseMirror JSON renderer (ADR-004). |
+
+Decisions where the model left room: images are plain `img` elements, not `NgOptimizedImage`, because their sources are object URLs; the triangle shape is clipped and so has no stroke; there is no rounded rectangle (not in the model). Thumbnails are `aria-hidden` and `inert`.
