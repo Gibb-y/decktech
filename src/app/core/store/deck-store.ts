@@ -58,7 +58,10 @@ export class DeckStore {
   readonly canUndo = this.history.canUndo;
   readonly canRedo = this.history.canRedo;
 
-  /** Replaces the whole document (open, import) and starts a fresh history. */
+  /**
+   * Replaces the whole document (open, import) and starts a fresh history. The deck is not
+   * validated here: callers run `validateDeck` (or build it with the factories) first.
+   */
   load(deck: Deck): void {
     if (deck.slides.length === 0) throw new RangeError('A deck needs at least one slide');
     this.history.clear();
@@ -72,24 +75,36 @@ export class DeckStore {
     const before = this.deckState();
     const result = command.do(before);
     if (result.deck === before) return;
-    this.history.record({
-      name: command.name,
-      forward: result.patch,
-      inverse: result.inverse,
-      coalesceKey: command.coalesceKey,
-      time: this.clock(),
-    });
+    this.history.record(
+      {
+        name: command.name,
+        forward: result.patch,
+        inverse: result.inverse,
+        coalesceKey: command.coalesceKey,
+        time: this.clock(),
+      },
+      { before, after: result.deck },
+    );
     this.commit(result.deck, before);
   }
 
+  /** Applies the patch first, so a failing patch leaves deck and history as they were. */
   undo(): void {
-    const entry = this.history.undo();
-    if (entry) this.commit(applyPatch(this.deckState(), entry.inverse), this.deckState());
+    const entry = this.history.peekUndo();
+    if (!entry) return;
+    const current = this.deckState();
+    const next = applyPatch(current, entry.inverse);
+    this.history.undo();
+    this.commit(next, current);
   }
 
   redo(): void {
-    const entry = this.history.redo();
-    if (entry) this.commit(applyPatch(this.deckState(), entry.forward), this.deckState());
+    const entry = this.history.peekRedo();
+    if (!entry) return;
+    const current = this.deckState();
+    const next = applyPatch(current, entry.forward);
+    this.history.redo();
+    this.commit(next, current);
   }
 
   selectSlide(slideId: string): void {

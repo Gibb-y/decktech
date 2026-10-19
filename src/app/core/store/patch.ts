@@ -26,7 +26,7 @@ const unescapeKey = (key: string): string => key.replaceAll('~1', '/').replaceAl
 
 /**
  * Computes the patch that turns `before` into `after`. Subtrees that are referentially equal are
- * skipped, so the cost is proportional to what changed. Arrays are compared index by index.
+ * skipped, so the cost is proportional to what changed. Arrays of `{ id }` objects are matched by id.
  * A property whose value is `undefined` counts as absent.
  */
 export function diff(before: unknown, after: unknown): PatchOp[] {
@@ -38,26 +38,82 @@ export function diff(before: unknown, after: unknown): PatchOp[] {
 function diffInto(before: unknown, after: unknown, path: string, ops: PatchOp[]): void {
   if (before === after) return;
   if (Array.isArray(before) && Array.isArray(after)) {
-    const common = Math.min(before.length, after.length);
-    for (let i = 0; i < common; i++) diffInto(before[i], after[i], `${path}/${i}`, ops);
-    for (let i = common; i < after.length; i++) ops.push({ op: 'add', path: `${path}/${i}`, value: after[i] });
-    for (let i = before.length - 1; i >= common; i--) ops.push({ op: 'remove', path: `${path}/${i}` });
+    diffArray(before, after, path, ops);
     return;
   }
-  if (isRecord(before) && isRecord(after)) {
+  if (isRecord(before) && isRecord(after) && !hasForbiddenKey(before) && !hasForbiddenKey(after)) {
     for (const key of Object.keys(before)) {
-      if (before[key] !== undefined && after[key] === undefined) ops.push({ op: 'remove', path: `${path}/${escapeKey(key)}` });
+      if (before[key] !== undefined && own(after, key) === undefined) ops.push({ op: 'remove', path: `${path}/${escapeKey(key)}` });
     }
     for (const key of Object.keys(after)) {
       const next = after[key];
       if (next === undefined) continue;
       const child = `${path}/${escapeKey(key)}`;
-      if (before[key] === undefined) ops.push({ op: 'add', path: child, value: next });
-      else diffInto(before[key], next, child, ops);
+      const previous = own(before, key);
+      if (previous === undefined) ops.push({ op: 'add', path: child, value: next });
+      else diffInto(previous, next, child, ops);
     }
     return;
   }
+  // Objects with keys that must not be traversed (see FORBIDDEN_KEYS) are replaced as a whole.
   ops.push({ op: 'replace', path, value: after });
+}
+
+/** Own property value; inherited names such as `toString` count as absent. */
+const own = (record: Record<string, unknown>, key: string): unknown => (Object.hasOwn(record, key) ? record[key] : undefined);
+
+const hasForbiddenKey = (record: Record<string, unknown>): boolean => Object.keys(record).some((k) => FORBIDDEN_KEYS.has(k));
+
+/** The ids of an array of `{ id: string }` objects, or `undefined` if it is not such an array or ids repeat. */
+function idsOf(items: readonly unknown[]): string[] | undefined {
+  const ids = new Set<string>();
+  for (const item of items) {
+    if (!isRecord(item) || typeof item['id'] !== 'string' || ids.has(item['id'])) return undefined;
+    ids.add(item['id']);
+  }
+  return [...ids];
+}
+
+/**
+ * Arrays of identified objects (slides, elements) are matched by id, so inserting or removing
+ * one item yields one operation instead of a rewrite of everything after it. A reorder of the
+ * items that exist on both sides, and arrays without ids, are compared by index; an index whose
+ * item changed identity is replaced as a whole.
+ */
+function diffArray(before: readonly unknown[], after: readonly unknown[], path: string, ops: PatchOp[]): void {
+  const beforeIds = idsOf(before);
+  const afterIds = idsOf(after);
+  if (beforeIds && afterIds) {
+    const inBefore = new Set(beforeIds);
+    const inAfter = new Set(afterIds);
+    const keptIds = beforeIds.filter((id) => inAfter.has(id));
+    const commonAfter = afterIds.filter((id) => inBefore.has(id));
+    if (keptIds.every((id, i) => id === commonAfter[i])) {
+      for (let i = before.length - 1; i >= 0; i--) {
+        if (!inAfter.has(beforeIds[i])) ops.push({ op: 'remove', path: `${path}/${i}` });
+      }
+      const kept = before.filter((_, i) => inAfter.has(beforeIds[i]));
+      let k = 0;
+      for (let i = 0; i < after.length; i++) {
+        if (inBefore.has(afterIds[i])) diffInto(kept[k++], after[i], `${path}/${i}`, ops);
+        else ops.push({ op: 'add', path: `${path}/${i}`, value: after[i] });
+      }
+      return;
+    }
+  }
+
+  const common = Math.min(before.length, after.length);
+  for (let i = 0; i < common; i++) {
+    const a = before[i];
+    const b = after[i];
+    if (a !== b && isRecord(a) && isRecord(b) && typeof a['id'] === 'string' && a['id'] !== b['id']) {
+      ops.push({ op: 'replace', path: `${path}/${i}`, value: b });
+    } else {
+      diffInto(a, b, `${path}/${i}`, ops);
+    }
+  }
+  for (let i = common; i < after.length; i++) ops.push({ op: 'add', path: `${path}/${i}`, value: after[i] });
+  for (let i = before.length - 1; i >= common; i--) ops.push({ op: 'remove', path: `${path}/${i}` });
 }
 
 /**

@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { createDeck, createElement, createSlide, type Deck } from '../model';
+import type { Command } from './command';
 import { AddElement, AddSlide, DeleteSlide, MoveElements, SetNotes } from './commands';
 import { CLOCK, DeckStore, HISTORY_OPTIONS } from './deck-store';
+import { PatchError } from './patch';
 import { History, type HistoryOptions } from './history';
 
 function setup(options: HistoryOptions = {}) {
@@ -263,5 +265,23 @@ describe('DeckStore', () => {
     store.execute(new AddElement(deck.slides[0].id, createElement('text')));
     store.undo();
     expect(store.deck()).toEqual(deck);
+  });
+
+  it('a failing undo leaves deck and history untouched', () => {
+    const { store } = setup();
+    const broken: Command = {
+      name: 'Broken',
+      do: (deck) => ({
+        deck: { ...deck, title: 'changed' },
+        patch: [{ op: 'replace', path: '/title', value: 'changed' }],
+        inverse: [{ op: 'replace', path: '/nope/x', value: 1 }],
+      }),
+    };
+    store.execute(broken);
+    const changed = store.deck();
+    expect(() => store.undo()).toThrow(PatchError);
+    expect(store.deck()).toBe(changed);
+    expect(store.canUndo()).toBe(true);
+    expect(store.canRedo()).toBe(false);
   });
 });

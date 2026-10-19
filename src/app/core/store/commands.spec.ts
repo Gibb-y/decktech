@@ -231,4 +231,64 @@ describe('commands: do / undo / redo', () => {
     expect(store.canUndo()).toBe(false);
     expect(store.deck()).toBe(f.deck);
   });
+
+  describe('review fixes', () => {
+    it('AddSlide rejects element ids already used in the deck or repeated within the slide', () => {
+      store.load(f.deck);
+      const clash = { ...createSlide(f.layoutId), elements: [f.a] };
+      expect(() => store.execute(new AddSlide(clash))).toThrow(/Element ".*" already exists/);
+      const twin = createElement('shape');
+      const dup = { ...createSlide(f.layoutId), elements: [twin, twin] };
+      expect(() => store.execute(new AddSlide(dup))).toThrow(/already exists/);
+      expect(store.canUndo()).toBe(false);
+    });
+
+    it('MoveElements by zero still rejects unknown ids', () => {
+      store.load(f.deck);
+      expect(() => store.execute(new MoveElements(['el_nope'], 0, 0))).toThrow(/does not exist/);
+    });
+
+    it.each([
+      ['negative width', { w: -5 }, /"w" must be at least 0/],
+      ['NaN x', { x: NaN }, /"x" must be a finite number/],
+      ['string rotation', { rotation: 'abc' }, /"rotation" must be a finite number/],
+      ['non-boolean hidden', { hidden: 'yes' }, /"hidden" must be a boolean/],
+      ['fractional step', { step: 1.5 }, /"step" must be a non-negative integer/],
+      ['string font size', { fontSize: 'big' }, /"fontSize" must be a finite number/],
+      ['negative font size', { fontSize: -1 }, /"fontSize" must be at least 0/],
+      ['unknown alignment', { align: 'justify' }, /"align" must be one of left, center, right/],
+      ['non-string text', { text: 5 }, /"text" must be a string/],
+      ['removing a required field', { x: undefined }, /"x" cannot be removed/],
+    ])('SetProps rejects %s', (_, changes, message) => {
+      store.load(f.deck);
+      expect(() => store.execute(new SetProps([f.b.id], changes))).toThrow(message);
+      expect(store.canUndo()).toBe(false);
+    });
+
+    it('SetProps on code props with awkward keys can be undone and redone', () => {
+      store.load(f.deck);
+      const props = JSON.parse('{"constructor": 1, "toString": 2, "__proto__": 3}') as Record<string, unknown>;
+      store.execute(new SetProps([f.code.id], { props }));
+      const done = store.deck();
+      store.undo();
+      expect(store.deck()).toEqual(f.deck);
+      store.redo();
+      expect(store.deck()).toEqual(done);
+    });
+
+    it('AddCodeElement rejects a different definition under an existing id, accepts an identical one', () => {
+      store.load(f.deck);
+      expect(() => store.execute(new AddCodeElement(f.s3.id, { ...component, js: 'changed()' }))).toThrow(
+        /already exists with a different definition/,
+      );
+      store.execute(new AddCodeElement(f.s3.id, structuredClone(component)));
+      expect(store.deck().components).toHaveLength(1);
+    });
+
+    it('deleting a slide from the middle yields a one-operation patch pair', () => {
+      const result = new DeleteSlide(f.s2.id).do(f.deck);
+      expect(result.patch).toEqual([{ op: 'remove', path: '/slides/1' }]);
+      expect(result.inverse).toHaveLength(1);
+    });
+  });
 });

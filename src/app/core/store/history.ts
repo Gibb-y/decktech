@@ -1,5 +1,5 @@
 import { computed, signal } from '@angular/core';
-import type { Patch } from './patch';
+import { diff, type Patch } from './patch';
 
 export const DEFAULT_HISTORY_LIMIT = 200;
 export const DEFAULT_COALESCE_WINDOW_MS = 500;
@@ -20,6 +20,12 @@ export interface HistoryOptions {
   coalesceWindowMs?: number;
 }
 
+/** The document before and after the recorded command; used to merge a burst into a single diff. */
+export interface Snapshots {
+  readonly before: unknown;
+  readonly after: unknown;
+}
+
 /**
  * Bounded undo/redo stacks of patches. It does not touch the deck: the store applies the
  * `inverse` of an undone entry and the `forward` of a redone one.
@@ -31,6 +37,8 @@ export class History {
   private readonly redoStack = signal<readonly HistoryEntry[]>([]);
   /** The entry that may still absorb further commands; cleared by undo, redo and clear. */
   private open: HistoryEntry | undefined;
+  /** The document before the first command of the open entry. */
+  private openBefore: unknown;
 
   readonly canUndo = computed(() => this.undoStack().length > 0);
   readonly canRedo = computed(() => this.redoStack().length > 0);
@@ -41,8 +49,12 @@ export class History {
     if (!Number.isInteger(this.limit) || this.limit < 1) throw new RangeError('History limit must be a positive integer');
   }
 
-  /** Records a new edit. Clears the redo stack; merges into the previous entry when it coalesces. */
-  record(entry: HistoryEntry): void {
+  /**
+   * Records a new edit. Clears the redo stack; merges into the previous entry when it coalesces.
+   * A merged entry gets one fresh diff from the start of the burst, so its size follows what
+   * changed overall, not how many commands the gesture issued.
+   */
+  record(entry: HistoryEntry, snapshots: Snapshots): void {
     this.redoStack.set([]);
     const stack = this.undoStack();
     const top = stack[stack.length - 1];
@@ -53,18 +65,28 @@ export class History {
       top.coalesceKey === entry.coalesceKey &&
       entry.time - top.time <= this.windowMs
     ) {
-      // Undoing the merged step must run the newest inverse first.
       this.open = {
         ...top,
-        forward: [...top.forward, ...entry.forward],
-        inverse: [...entry.inverse, ...top.inverse],
+        forward: diff(this.openBefore, snapshots.after),
+        inverse: diff(snapshots.after, this.openBefore),
         time: entry.time,
       };
       this.undoStack.set([...stack.slice(0, -1), this.open]);
       return;
     }
     this.open = entry;
+    this.openBefore = snapshots.before;
     this.undoStack.set([...stack, entry].slice(-this.limit));
+  }
+
+  /** The entry `undo()` would move, without moving it. */
+  peekUndo(): HistoryEntry | undefined {
+    return this.undoStack().at(-1);
+  }
+
+  /** The entry `redo()` would move, without moving it. */
+  peekRedo(): HistoryEntry | undefined {
+    return this.redoStack().at(-1);
   }
 
   /** Moves the newest entry to the redo stack and returns it, or `undefined` if there is none. */
@@ -73,6 +95,7 @@ export class History {
     const entry = stack[stack.length - 1];
     if (!entry) return undefined;
     this.open = undefined;
+    this.openBefore = undefined;
     this.undoStack.set(stack.slice(0, -1));
     this.redoStack.update((r) => [...r, entry]);
     return entry;
@@ -83,6 +106,7 @@ export class History {
     const entry = stack[stack.length - 1];
     if (!entry) return undefined;
     this.open = undefined;
+    this.openBefore = undefined;
     this.redoStack.set(stack.slice(0, -1));
     this.undoStack.update((u) => [...u, entry]);
     return entry;
@@ -90,6 +114,7 @@ export class History {
 
   clear(): void {
     this.open = undefined;
+    this.openBefore = undefined;
     this.undoStack.set([]);
     this.redoStack.set([]);
   }

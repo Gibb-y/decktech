@@ -53,4 +53,75 @@ describe('patch', () => {
     expect(() => applyPatch({}, [{ op: 'add', path: `/${key}`, value: 1 }])).toThrow(/Forbidden key/);
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
   });
+
+  describe('arrays of identified objects', () => {
+    const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `i${i}`, v: i }));
+
+    it('removing from the middle is one operation, not a rewrite of the tail', () => {
+      const a = items(50);
+      const b = a.filter((_, i) => i !== 10);
+      expect(diff(a, b)).toEqual([{ op: 'remove', path: '/10' }]);
+      expect(diff(b, a)).toEqual([{ op: 'add', path: '/10', value: a[10] }]);
+    });
+
+    it('inserting, removing and editing at once round-trips', () => {
+      const a = items(6);
+      const b = [a[0], { id: 'new', v: 99 }, { ...a[2], v: -2 }, a[4], a[5], { id: 'tail', v: 1 }];
+      expect(applyPatch(a, diff(a, b))).toEqual(b);
+      expect(applyPatch(b, diff(b, a))).toEqual(a);
+    });
+
+    it('reorders round-trip and keep the identity of the target items', () => {
+      const a = items(5);
+      const b = [a[3], a[1], a[0], a[4], a[2]];
+      const next = applyPatch(a, diff(a, b));
+      expect(next).toEqual(b);
+      next.forEach((item, i) => expect(item).toBe(b[i]));
+    });
+
+    it('random edits round-trip in both directions', () => {
+      let seed = 12345;
+      const rnd = (n: number) => (seed = (seed * 1103515245 + 12345) % 2147483648) % n;
+      for (let round = 0; round < 200; round++) {
+        const a = items(1 + rnd(8));
+        const b = a.map((x) => ({ ...x }));
+        for (let k = rnd(5); k > 0; k--) {
+          const op = rnd(4);
+          if (op === 0 && b.length) b.splice(rnd(b.length), 1);
+          else if (op === 1) b.splice(rnd(b.length + 1), 0, { id: `n${round}_${k}`, v: rnd(9) });
+          else if (op === 2 && b.length > 1) b.splice(rnd(b.length), 0, ...b.splice(rnd(b.length), 1));
+          else if (b.length) {
+            const at = rnd(b.length);
+            b[at] = { ...b[at], v: rnd(100) };
+          }
+        }
+        expect(applyPatch(a, diff(a, b))).toEqual(b);
+        expect(applyPatch(b, diff(b, a))).toEqual(a);
+      }
+    });
+
+    it('falls back to index comparison when ids repeat', () => {
+      const a = [{ id: 'x', v: 1 }, { id: 'x', v: 2 }];
+      const b = [{ id: 'x', v: 1 }, { id: 'x', v: 3 }];
+      expect(applyPatch(a, diff(a, b))).toEqual(b);
+    });
+  });
+
+  describe('awkward keys', () => {
+    it('treats inherited names such as toString as absent', () => {
+      const a = { props: {} as Record<string, unknown> };
+      const b = { props: { toString: 1, valueOf: 2, hasOwnProperty: 3 } };
+      expect(applyPatch(a, diff(a, b))).toEqual(b);
+      expect(applyPatch(b, diff(b, a))).toEqual(a);
+    });
+
+    it.each(['constructor', 'prototype', '__proto__'])('replaces objects holding "%s" as a whole instead of traversing it', (key) => {
+      const a = { props: JSON.parse(`{"${key}": 1, "n": 1}`) as Record<string, unknown> };
+      const b = { props: JSON.parse(`{"${key}": 2, "n": 1}`) as Record<string, unknown> };
+      expect(diff(a, b)).toEqual([{ op: 'replace', path: '/props', value: b.props }]);
+      expect(applyPatch(a, diff(a, b))).toEqual(b);
+      expect(applyPatch(b, diff(b, a))).toEqual(a);
+      expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+    });
+  });
 });

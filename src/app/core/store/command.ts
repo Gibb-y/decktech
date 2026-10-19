@@ -77,6 +77,18 @@ export function updateElements(deck: Deck, ids: readonly string[], fn: (element:
   return slides.every((s, i) => s === deck.slides[i]) ? deck : { ...deck, slides };
 }
 
+/** Structural equality for JSON-like values (key order does not matter). */
+export function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keysA = Object.keys(a);
+  if (keysA.length !== Object.keys(b).length) return false;
+  return keysA.every(
+    (k) => Object.hasOwn(b, k) && deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+  );
+}
+
 export function findElement(deck: Deck, id: string): Element | undefined {
   for (const slide of deck.slides) {
     const element = slide.elements.find((e) => e.id === id);

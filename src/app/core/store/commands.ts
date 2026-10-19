@@ -11,6 +11,7 @@ import {
 } from '../model';
 import {
   CommandError,
+  deepEqual,
   findElement,
   replaceSlide,
   resultOf,
@@ -51,6 +52,12 @@ export class AddSlide implements Command {
     if (!deck.layouts.some((l) => l.id === this.slide.layoutId)) {
       throw new CommandError(`Layout "${this.slide.layoutId}" does not exist`);
     }
+    // Element ids are looked up deck-wide, so a slide must not bring ids that are taken.
+    const taken = new Set(deck.slides.flatMap((s) => s.elements.map((e) => e.id)));
+    for (const element of this.slide.elements) {
+      if (taken.has(element.id)) throw new CommandError(`Element "${element.id}" already exists`);
+      taken.add(element.id);
+    }
     const slides = [...deck.slides.slice(0, index), this.slide, ...deck.slides.slice(index)];
     return resultOf(deck, { ...deck, slides });
   }
@@ -82,10 +89,11 @@ export class DuplicateSlide implements Command {
     const index = slideIndex(deck, this.slideId);
     if (deck.slides.some((s) => s.id === this.newSlideId)) throw new CommandError(`Slide "${this.newSlideId}" already exists`);
     const original = deck.slides[index];
+    const clone = structuredClone(original);
     const copy: Slide = {
-      ...structuredClone(original),
+      ...clone,
       id: this.newSlideId,
-      elements: structuredClone(original.elements).map((e) => ({ ...e, id: generateId('element') })),
+      elements: clone.elements.map((e) => ({ ...e, id: generateId('element') })),
     };
     const slides = [...deck.slides.slice(0, index + 1), copy, ...deck.slides.slice(index + 1)];
     return resultOf(deck, { ...deck, slides });
@@ -195,7 +203,10 @@ export class MoveElements implements Command {
   do(deck: Deck): CommandResult {
     assertFinite(this.dx, 'dx');
     assertFinite(this.dy, 'dy');
-    if (this.dx === 0 && this.dy === 0) return resultOf(deck, deck);
+    if (this.dx === 0 && this.dy === 0) {
+      updateElements(deck, this.ids, (e) => e); // still reports unknown ids
+      return resultOf(deck, deck);
+    }
     return resultOf(deck, updateElements(deck, this.ids, (e) => ({ ...e, x: e.x + this.dx, y: e.y + this.dy })));
   }
 }
@@ -243,8 +254,9 @@ export class ResizeElements implements Command {
 /**
  * Sets fields on elements. Only fields that exist for the element's type are accepted (the shared
  * geometry/visibility fields plus its entries in `ELEMENT_SCHEMAS`); `id` and `type` can never
- * change. A value of `undefined` removes an optional field. Value types are not checked here:
- * the editor produces them from the schema, and `validateDeck` guards anything loaded from outside.
+ * change. A value of `undefined` removes an optional field. Scalar values are checked against the
+ * field's kind (finite numbers within bounds, strings, booleans, enum members); structured values
+ * (colours, fills, tables, code props) are left to the editor and to `validateDeck` on load.
  */
 export class SetProps implements Command {
   readonly name = 'SetProps';
@@ -267,6 +279,7 @@ export class SetProps implements Command {
         let next: Record<string, unknown> | undefined;
         for (const [key, value] of entries) {
           if (!allowed.has(key)) throw new CommandError(`"${key}" is not a settable property of a ${e.type} element`);
+          checkValue(e, key, value);
           if ((e as unknown as Record<string, unknown>)[key] === value) continue;
           next ??= { ...e };
           if (value === undefined) delete next[key];
@@ -276,6 +289,41 @@ export class SetProps implements Command {
       }),
     );
   }
+}
+
+const BASE_RULES: Record<string, { optional?: boolean; check: (v: unknown) => string | undefined }> = {
+  x: { check: (v) => finite(v) },
+  y: { check: (v) => finite(v) },
+  w: { check: (v) => finite(v, 0) },
+  h: { check: (v) => finite(v, 0) },
+  rotation: { check: (v) => finite(v) },
+  locked: { optional: true, check: (v) => (typeof v === 'boolean' ? undefined : 'a boolean') },
+  hidden: { optional: true, check: (v) => (typeof v === 'boolean' ? undefined : 'a boolean') },
+  step: { optional: true, check: (v) => (Number.isInteger(v) && (v as number) >= 0 ? undefined : 'a non-negative integer') },
+};
+
+function finite(v: unknown, min?: number, max?: number): string | undefined {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return 'a finite number';
+  if (min !== undefined && v < min) return `at least ${min}`;
+  if (max !== undefined && v > max) return `at most ${max}`;
+  return undefined;
+}
+
+function checkValue(element: Element, key: string, value: unknown): void {
+  const base = BASE_RULES[key];
+  const spec = base ? undefined : ELEMENT_SCHEMAS[element.type].fields[key];
+  const optional = base ? base.optional === true : spec?.optional === true;
+  if (value === undefined) {
+    if (!optional) throw new CommandError(`"${key}" cannot be removed from a ${element.type} element`);
+    return;
+  }
+  let problem: string | undefined;
+  if (base) problem = base.check(value);
+  else if (spec?.kind === 'number') problem = finite(value, spec.min, spec.max);
+  else if (spec?.kind === 'string') problem = typeof value === 'string' ? undefined : 'a string';
+  else if (spec?.kind === 'boolean') problem = typeof value === 'boolean' ? undefined : 'a boolean';
+  else if (spec?.kind === 'enum') problem = spec.values.includes(value as string) ? undefined : `one of ${spec.values.join(', ')}`;
+  if (problem) throw new CommandError(`"${key}" must be ${problem}`);
 }
 
 function allowedKeys(element: Element): Set<string> {
@@ -380,8 +428,9 @@ export class SetComponentSource implements Command {
 }
 
 /**
- * Inserts a code element backed by `component`. The definition is added to the deck unless one
- * with that id exists already (then the element simply references it).
+ * Inserts a code element backed by `component`. The definition is added to the deck unless an
+ * identical one exists already (then the element simply references it); a different definition
+ * under the same id is an error, use `SetComponentSource` to edit a shared definition.
  */
 export class AddCodeElement implements Command {
   readonly name = 'AddCodeElement';
@@ -399,9 +448,11 @@ export class AddCodeElement implements Command {
 
   do(deck: Deck): CommandResult {
     const index = slideIndex(deck, this.slideId);
-    const withComponent = deck.components.some((c) => c.id === this.component.id)
-      ? deck
-      : { ...deck, components: [...deck.components, this.component] };
+    const existing = deck.components.find((c) => c.id === this.component.id);
+    if (existing && !deepEqual(existing, this.component)) {
+      throw new CommandError(`Component "${this.component.id}" already exists with a different definition`);
+    }
+    const withComponent = existing ? deck : { ...deck, components: [...deck.components, this.component] };
     const slide = withComponent.slides[index];
     return resultOf(deck, replaceSlide(withComponent, index, { ...slide, elements: [...slide.elements, this.element] }));
   }
