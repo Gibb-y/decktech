@@ -36,7 +36,7 @@ Document versions are tracked by `schemaVersion`. Every load or import runs the 
 ### Stage and units
 
 - Logical stage: **1920 x 1080** (16:9; other ratios configurable per deck, keeping a 1080 height or 1920 width).
-- Elements use stage units. The renderer wraps the stage in an element with `transform: scale(k)` where `k = containerWidth / stageWidth`.
+- Elements use stage units. The renderer wraps the stage in an element with `transform: scale(k)` where `k = containerWidth / stageWidth` (5.7).
 - Text is sized in stage units too, so it scales proportionally.
 
 ## 8.2 Security model for code components
@@ -140,7 +140,7 @@ Theme tokens (colors, font families, type scale, spacing) are defined once per d
 ## 8.8 Accessibility
 
 - The editor UI is keyboard-operable: every canvas action (select next element, nudge, resize, reorder) has a shortcut; focus order and visible focus rings are maintained; panels use proper roles and labels; colors meet AA contrast.
-- Slides render as semantic HTML (headings, lists, `alt` text for images). A "reading order" panel lets authors fix tab order.
+- Slides render as semantic HTML (headings, lists, `alt` text for images); elements that are hidden or not yet reached by the step are not in the DOM when presenting, and thumbnails are `aria-hidden` and `inert` (5.7). A "reading order" panel lets authors fix tab order.
 - Presentation mode honours `prefers-reduced-motion` (transitions off) and exposes an ARIA live region announcing slide changes.
 - Code components receive `prefers-reduced-motion` and contrast information through the runtime; the app cannot guarantee their content is accessible and shows a checklist in the code editor.
 - Automated AXE checks run in CI against the editor and presentation views.

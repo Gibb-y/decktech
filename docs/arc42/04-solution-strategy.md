@@ -39,7 +39,7 @@ Feature-sliced, lazy-loaded Angular routes:
 ```
 src/app/
   core/          document model, commands, store, persistence, schema migrations
-  renderer/      SlideRenderer, element renderers, scaling, thumbnails
+  renderer/      SlideRenderer, element renderers, scaling, asset URLs (thumbnails are its `thumbnail` mode)
   editor/        canvas, selection, slide sorter, properties panel, toolbar, shortcuts
   components/    code component host (sandbox, bridge), library, code editor (lazy)
   presenter/     presentation view, presenter view, step engine, timer

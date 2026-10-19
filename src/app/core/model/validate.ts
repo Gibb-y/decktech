@@ -60,7 +60,7 @@ const MAX_STEP = 1_000;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 /** Hex, a plain keyword, or an rgb()/hsl() function: nothing that can smuggle other CSS. */
-const LITERAL_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{1,30}|(rgb|hsl)a?\([0-9.,%\s/-]{1,60}\))$/;
+export const LITERAL_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{1,30}|(rgb|hsl)a?\([0-9.,%\s/-]{1,60}\))$/;
 
 const FITS = ['cover', 'contain', 'stretch'] as const;
 const PERMISSIONS = ['network', 'storage'] as const;
