@@ -1,4 +1,5 @@
 export * from './constants';
+export * from './element-schema';
 export * from './factory';
 export * from './ids';
 export * from './result';

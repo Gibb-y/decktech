@@ -1,12 +1,12 @@
 import { createDeck, createElement, createSlide } from './factory';
 import type { CodeEl, Deck } from './types';
-import { validateDeck, type ValidationLimits } from './validate';
+import { validateDeck, type ValidationOptions } from './validate';
 
 /** A deck exercising every element type and every kind of reference. */
 function richDeck(): Deck {
   const deck = createDeck('Rich');
-  deck.assets['img1'] = { blobKey: 'k1', mime: 'image/png', hash: 'abc', size: 10 };
-  deck.assets['vid1'] = { blobKey: 'k2', mime: 'video/mp4', hash: 'def', size: 20 };
+  deck.assets['img1'] = { blobKey: 'k1', mime: 'image/png', hash: 'a'.repeat(64), size: 10 };
+  deck.assets['vid1'] = { blobKey: 'k2', mime: 'video/mp4', hash: 'b'.repeat(64), size: 20 };
   deck.components.push({
     id: 'cmp1',
     name: 'Counter',
@@ -46,12 +46,12 @@ function tamper(mutate: (d: any) => void): unknown { // eslint-disable-line @typ
   return d;
 }
 
-function errorsOf(input: unknown, limits?: Partial<ValidationLimits>) {
+function errorsOf(input: unknown, limits?: Partial<ValidationOptions>) {
   const r = validateDeck(input, limits);
   return r.ok ? [] : r.error;
 }
 
-function expectErrorAt(input: unknown, path: string, limits?: Partial<ValidationLimits>) {
+function expectErrorAt(input: unknown, path: string, limits?: Partial<ValidationOptions>) {
   const errors = errorsOf(input, limits);
   expect(errors.map((e) => e.path)).toContain(path);
 }
@@ -237,6 +237,113 @@ describe('validateDeck', () => {
         'slides[0].elements[0].componentId',
       );
     });
+  });
+
+  describe('unknown fields', () => {
+    it('rejects extra code on a CodeEl', () => {
+      expectErrorAt(tamper((d) => (d.slides[1].elements[6].js = 'alert(1)')), 'slides[1].elements[6].js');
+    });
+
+    it('rejects a field belonging to another element type', () => {
+      expectErrorAt(tamper((d) => (d.slides[1].elements[0].componentId = 'cmp1')), 'slides[1].elements[0].componentId');
+    });
+
+    it('rejects extra fields on the deck, slides, components and assets', () => {
+      expectErrorAt(tamper((d) => (d.extra = 1)), 'extra');
+      expectErrorAt(tamper((d) => (d.slides[1].extra = 1)), 'slides[1].extra');
+      expectErrorAt(tamper((d) => (d.components[0].extra = 1)), 'components[0].extra');
+      expectErrorAt(tamper((d) => (d.assets['img1'].extra = 1)), 'assets.img1.extra');
+    });
+  });
+
+  describe('theme tokens and colours', () => {
+    it('accepts token references and literal colours', () => {
+      const r = validateDeck(
+        tamper((d) => {
+          d.slides[1].elements[0].color = { token: 'accent' };
+          d.slides[1].elements[0].font = 'heading';
+          d.slides[1].elements[2].stroke = 'rgb(0, 0, 0)';
+        }),
+      );
+      expect(r.ok).toBe(true);
+    });
+
+    it('rejects an unknown colour token', () => {
+      expectErrorAt(tamper((d) => (d.slides[1].elements[0].color = { token: 'nope' })), 'slides[1].elements[0].color.token');
+    });
+
+    it('rejects an unknown font token', () => {
+      expectErrorAt(tamper((d) => (d.slides[1].elements[0].font = 'nope')), 'slides[1].elements[0].font');
+    });
+
+    it('rejects colours that could smuggle other CSS', () => {
+      expectErrorAt(
+        tamper((d) => (d.slides[1].elements[0].color = 'red; background: url(//evil)')),
+        'slides[1].elements[0].color',
+      );
+      expectErrorAt(tamper((d) => (d.theme.colors.accent = 'url(x)')), 'theme.colors.accent');
+    });
+  });
+
+  describe('stage', () => {
+    it('accepts other ratios that keep a 1920 width or a 1080 height', () => {
+      expect(validateDeck(tamper((d) => (d.stage = { width: 1440, height: 1080 }))).ok).toBe(true);
+      expect(validateDeck(tamper((d) => (d.stage = { width: 1920, height: 1200 }))).ok).toBe(true);
+    });
+
+    it('rejects a stage keeping neither side', () => {
+      expectErrorAt(tamper((d) => (d.stage = { width: 1000, height: 500 })), 'stage');
+    });
+
+    it('rejects non-integer or missing stage values', () => {
+      expectErrorAt(tamper((d) => (d.stage = { width: 1920.5, height: 1080 })), 'stage.width');
+      expectErrorAt(tamper((d) => delete d.stage), 'stage');
+    });
+  });
+
+  describe('assets', () => {
+    it('rejects a mime type outside the allow-list', () => {
+      expectErrorAt(tamper((d) => (d.assets['img1'].mime = 'text/html')), 'assets.img1.mime');
+    });
+
+    it('honours a custom allow-list', () => {
+      expectErrorAt(richDeck(), 'assets.img1.mime', { allowedMimeTypes: ['video/mp4'] });
+    });
+
+    it('rejects a hash that is not a SHA-256 digest', () => {
+      expectErrorAt(tamper((d) => (d.assets['img1'].hash = 'abc')), 'assets.img1.hash');
+    });
+  });
+
+  describe('component prop specs', () => {
+    it('rejects a default that does not match the type', () => {
+      expectErrorAt(tamper((d) => (d.components[0].propSchema[0].default = 'x')), 'components[0].propSchema[0].default');
+    });
+
+    it('rejects a number default outside min/max', () => {
+      expectErrorAt(tamper((d) => (d.components[0].propSchema[0].default = 99)), 'components[0].propSchema[0].default');
+    });
+
+    it('rejects a select default that is not an option', () => {
+      expectErrorAt(tamper((d) => (d.components[0].propSchema[1].default = 'zzz')), 'components[0].propSchema[1].default');
+    });
+
+    it('rejects min greater than max', () => {
+      expectErrorAt(
+        tamper((d) => {
+          d.components[0].propSchema[0].min = 10;
+          d.components[0].propSchema[0].max = 1;
+        }),
+        'components[0].propSchema[0].min',
+      );
+    });
+  });
+
+  it('rejects duplicate placeholder ids within a layout', () => {
+    expectErrorAt(
+      tamper((d) => d.layouts[0].placeholders.push({ ...d.layouts[0].placeholders[0] })),
+      'layouts[0].placeholders[1].id',
+    );
   });
 
   describe('hostile input', () => {

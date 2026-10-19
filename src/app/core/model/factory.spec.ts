@@ -1,4 +1,5 @@
 import { STAGE_HEIGHT, STAGE_WIDTH, SCHEMA_VERSION } from './constants';
+import { ELEMENT_SCHEMAS } from './element-schema';
 import { createDeck, createElement, createSlide } from './factory';
 import { generateId, ID_PATTERN } from './ids';
 import type { ElementType } from './types';
@@ -35,6 +36,13 @@ describe('factories', () => {
     const a = createElement(type);
     expect(a.type).toBe(type);
     expect(createElement(type).id).not.toBe(a.id);
+  });
+
+  it.each(types)('createElement(%s) supplies every required schema field', (type) => {
+    const el = createElement(type) as unknown as Record<string, unknown>;
+    for (const [name, spec] of Object.entries(ELEMENT_SCHEMAS[type].fields)) {
+      if (!spec.optional) expect(el, name).toHaveProperty(name);
+    }
   });
 
   it('applies overrides but never overrides type', () => {

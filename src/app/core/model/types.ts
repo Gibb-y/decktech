@@ -1,14 +1,28 @@
 // Deck document model. See docs/arc42/05-building-block-view.md §5.2 and ADR-009 / ADR-010.
 // All geometry is in logical stage units (1920x1080 by default).
 
+/** Reference to a named colour in `Theme.colors` (arc42 §8.7). */
+export interface ColorToken {
+  token: string;
+}
+
+/** A literal CSS colour (hex, rgb[a], hsl[a] or a keyword) or a theme token. */
+export type Color = string | ColorToken;
+
 export type Fill =
-  | { kind: 'solid'; color: string }
-  | { kind: 'gradient'; angle: number; stops: { offset: number; color: string }[] }
+  | { kind: 'solid'; color: Color }
+  | { kind: 'gradient'; angle: number; stops: { offset: number; color: Color }[] }
   | { kind: 'image'; assetId: string; fit: 'cover' | 'contain' | 'stretch' };
 
 export interface Transition {
   type: 'none' | 'fade' | 'slide' | 'zoom';
   durationMs: number;
+}
+
+/** Logical stage size; either width 1920 or height 1080 (arc42 §8.1). */
+export interface Stage {
+  width: number;
+  height: number;
 }
 
 /** Design tokens, referenced by name from elements and injected into code components as CSS variables. */
@@ -94,8 +108,10 @@ export interface ElementBase {
 export interface TextEl extends ElementBase {
   type: 'text';
   text: string;
+  /** Key into `Theme.fonts`; the theme body font when omitted. */
+  font?: string;
   fontSize: number;
-  color: string;
+  color: Color;
   align: 'left' | 'center' | 'right';
 }
 
@@ -110,13 +126,13 @@ export interface ShapeEl extends ElementBase {
   type: 'shape';
   shape: 'rect' | 'ellipse' | 'triangle';
   fill?: Fill;
-  stroke?: string;
+  stroke?: Color;
   strokeWidth: number;
 }
 
 export interface LineEl extends ElementBase {
   type: 'line';
-  stroke: string;
+  stroke: Color;
   strokeWidth: number;
 }
 
@@ -156,6 +172,7 @@ export interface Deck {
   schemaVersion: number;
   id: string;
   title: string;
+  stage: Stage;
   theme: Theme;
   layouts: Layout[];
   slides: Slide[];

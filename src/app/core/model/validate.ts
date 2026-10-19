@@ -1,4 +1,5 @@
-import { SCHEMA_VERSION } from './constants';
+import { MAX_STAGE_SIZE, SCHEMA_VERSION, STAGE_HEIGHT, STAGE_WIDTH } from './constants';
+import { ELEMENT_BASE_KEYS, ELEMENT_SCHEMAS, ELEMENT_TYPES, type FieldSpec } from './element-schema';
 import { ID_PATTERN } from './ids';
 import { err, ok, type Result } from './result';
 import type { Deck } from './types';
@@ -9,7 +10,7 @@ export interface ValidationError {
   message: string;
 }
 
-export interface ValidationLimits {
+export interface ValidationOptions {
   maxStringLength: number;
   maxArrayLength: number;
   maxSlides: number;
@@ -18,9 +19,11 @@ export interface ValidationLimits {
   maxAssets: number;
   maxTableCells: number;
   maxPropsDepth: number;
+  /** Mime types an asset may declare (arc42 §8.2, import hardening). */
+  allowedMimeTypes: readonly string[];
 }
 
-export const DEFAULT_VALIDATION_LIMITS: ValidationLimits = {
+export const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
   maxStringLength: 1_000_000,
   maxArrayLength: 10_000,
   maxSlides: 2_000,
@@ -29,33 +32,54 @@ export const DEFAULT_VALIDATION_LIMITS: ValidationLimits = {
   maxAssets: 5_000,
   maxTableCells: 10_000,
   maxPropsDepth: 16,
+  allowedMimeTypes: [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/avif',
+    'image/svg+xml',
+    'video/mp4',
+    'video/webm',
+    'audio/mpeg',
+    'audio/ogg',
+    'audio/wav',
+    'font/woff',
+    'font/woff2',
+    'font/ttf',
+    'font/otf',
+    'text/javascript',
+    'text/css',
+    'application/json',
+  ],
 };
 
 const MAX_SHORT_STRING = 1_000;
 const MAX_COORDINATE = 1_000_000;
 const MAX_STEP = 1_000;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+/** Hex, a plain keyword, or an rgb()/hsl() function: nothing that can smuggle other CSS. */
+const LITERAL_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{1,30}|(rgb|hsl)a?\([0-9.,%\s/-]{1,60}\))$/;
 
-const ELEMENT_TYPES = ['text', 'image', 'shape', 'line', 'table', 'video', 'code'] as const;
 const FITS = ['cover', 'contain', 'stretch'] as const;
 const PERMISSIONS = ['network', 'storage'] as const;
 const PLACEHOLDER_KINDS = ['title', 'body', 'image', 'footer'] as const;
 const TRANSITIONS = ['none', 'fade', 'slide', 'zoom'] as const;
 const PROP_TYPES = ['string', 'number', 'boolean', 'color', 'asset', 'select'] as const;
-const SHAPES = ['rect', 'ellipse', 'triangle'] as const;
-const ALIGNS = ['left', 'center', 'right'] as const;
 
 type Ref = { path: string; id: string };
 
 /**
  * Validates untrusted input (import, storage) as a `Deck`. Collects every problem instead of
- * stopping at the first. On success the input object itself is returned, typed.
+ * stopping at the first, and rejects unknown fields so nothing unmodelled (such as code on a
+ * `CodeEl`) can ride along. On success the input object itself is returned, typed.
  */
 export function validateDeck(
   input: unknown,
-  limits: Partial<ValidationLimits> = {},
+  options: Partial<ValidationOptions> = {},
 ): Result<Deck, ValidationError[]> {
-  const v = new Validator({ ...DEFAULT_VALIDATION_LIMITS, ...limits });
+  const v = new Validator({ ...DEFAULT_VALIDATION_OPTIONS, ...options });
   v.deck(input);
   return v.errors.length === 0 ? ok(input as Deck) : err(v.errors);
 }
@@ -67,14 +91,18 @@ class Validator {
   private readonly componentIds = new Set<string>();
   private readonly assetIds = new Set<string>();
   private readonly elementIds = new Set<string>();
+  private readonly themeColors = new Set<string>();
+  private readonly themeFonts = new Set<string>();
   private readonly layoutRefs: Ref[] = [];
   private readonly componentRefs: Ref[] = [];
   private readonly assetRefs: Ref[] = [];
 
-  constructor(private readonly limits: ValidationLimits) {}
+  constructor(private readonly limits: ValidationOptions) {}
 
   deck(input: unknown): void {
-    const d = this.record('', input);
+    const d = this.record('', input, [
+      'schemaVersion', 'id', 'title', 'stage', 'theme', 'layouts', 'slides', 'assets', 'components',
+    ]);
     if (!d) return;
 
     if (d['schemaVersion'] !== SCHEMA_VERSION) {
@@ -82,6 +110,7 @@ class Validator {
     }
     this.id('id', d['id']);
     this.string('title', d['title'], MAX_SHORT_STRING);
+    this.stage('stage', d['stage']);
     this.theme('theme', d['theme']);
 
     this.assets('assets', d['assets']);
@@ -100,12 +129,26 @@ class Validator {
 
   // --- structures -------------------------------------------------------------------------
 
-  private theme(path: string, value: unknown): void {
-    const t = this.record(path, value);
-    if (!t) return;
-    for (const key of ['colors', 'fonts'] as const) {
-      this.map(`${path}.${key}`, t[key], (p, x) => this.string(p, x, MAX_SHORT_STRING));
+  /** Either side of the default stage must be kept so 16:9-based layouts stay meaningful (§8.1). */
+  private stage(path: string, value: unknown): void {
+    const s = this.record(path, value, ['width', 'height']);
+    if (!s) return;
+    const w = this.number(`${path}.width`, s['width'], { min: 1, max: MAX_STAGE_SIZE, int: true });
+    const h = this.number(`${path}.height`, s['height'], { min: 1, max: MAX_STAGE_SIZE, int: true });
+    if (w && h && s['width'] !== STAGE_WIDTH && s['height'] !== STAGE_HEIGHT) {
+      this.fail(path, `must keep a width of ${STAGE_WIDTH} or a height of ${STAGE_HEIGHT}`);
     }
+  }
+
+  private theme(path: string, value: unknown): void {
+    const t = this.record(path, value, ['colors', 'fonts', 'typeScale', 'spacing']);
+    if (!t) return;
+    this.map(`${path}.colors`, t['colors'], (p, x, key) => {
+      if (this.literalColor(p, x)) this.themeColors.add(key);
+    });
+    this.map(`${path}.fonts`, t['fonts'], (p, x, key) => {
+      if (this.string(p, x, MAX_SHORT_STRING)) this.themeFonts.add(key);
+    });
     for (const key of ['typeScale', 'spacing'] as const) {
       this.map(`${path}.${key}`, t[key], (p, x) => this.number(p, x, { min: 0, max: MAX_COORDINATE }));
     }
@@ -115,34 +158,46 @@ class Validator {
     this.map(path, value, (p, a, key) => {
       if (ID_PATTERN.test(key)) this.assetIds.add(key);
       else this.fail(p, 'asset key is not a valid id');
-      const r = this.record(p, a);
+      const r = this.record(p, a, ['blobKey', 'mime', 'hash', 'size']);
       if (!r) return;
       this.string(`${p}.blobKey`, r['blobKey'], MAX_SHORT_STRING, 1);
-      this.string(`${p}.mime`, r['mime'], MAX_SHORT_STRING, 1);
-      this.string(`${p}.hash`, r['hash'], MAX_SHORT_STRING, 1);
+      this.mime(`${p}.mime`, r['mime']);
+      if (typeof r['hash'] !== 'string' || !SHA256_HEX.test(r['hash'])) {
+        this.fail(`${p}.hash`, 'must be a lowercase hex SHA-256 digest');
+      }
       this.number(`${p}.size`, r['size'], { min: 0, int: true });
     });
   }
 
+  private mime(path: string, value: unknown): void {
+    if (!this.string(path, value, MAX_SHORT_STRING, 1)) return;
+    if (!this.limits.allowedMimeTypes.includes((value as string).toLowerCase())) {
+      this.fail(path, `mime type "${value as string}" is not allowed`);
+    }
+  }
+
   private layout(path: string, value: unknown): void {
-    const l = this.record(path, value);
+    const l = this.record(path, value, ['id', 'name', 'background', 'placeholders']);
     if (!l) return;
     this.unique(`${path}.id`, l['id'], this.layoutIds, 'layout');
     this.string(`${path}.name`, l['name'], MAX_SHORT_STRING);
     if (l['background'] !== undefined) this.fill(`${path}.background`, l['background']);
     const placeholders = this.array(`${path}.placeholders`, l['placeholders'], this.limits.maxArrayLength);
+    const placeholderIds = new Set<string>();
     placeholders?.forEach((ph, i) => {
       const p = `${path}.placeholders[${i}]`;
-      const r = this.record(p, ph);
+      const r = this.record(p, ph, ['id', 'kind', 'x', 'y', 'w', 'h']);
       if (!r) return;
-      this.id(`${p}.id`, r['id']);
+      this.unique(`${p}.id`, r['id'], placeholderIds, 'placeholder');
       this.oneOf(`${p}.kind`, r['kind'], PLACEHOLDER_KINDS);
       this.geometry(p, r);
     });
   }
 
   private component(path: string, value: unknown): void {
-    const c = this.record(path, value);
+    const c = this.record(path, value, [
+      'id', 'name', 'html', 'css', 'js', 'propSchema', 'permissions', 'files', 'libs',
+    ]);
     if (!c) return;
     this.unique(`${path}.id`, c['id'], this.componentIds, 'component');
     this.string(`${path}.name`, c['name'], MAX_SHORT_STRING);
@@ -156,35 +211,55 @@ class Validator {
       this.oneOf(`${path}.permissions[${i}]`, perm, PERMISSIONS),
     );
     for (const key of ['files', 'libs'] as const) {
-      this.array(`${path}.${key}`, c[key], this.limits.maxArrayLength)?.forEach((a, i) => {
-        if (this.id(`${path}.${key}[${i}]`, a)) {
-          this.assetRefs.push({ path: `${path}.${key}[${i}]`, id: a as string });
-        }
-      });
+      this.array(`${path}.${key}`, c[key], this.limits.maxArrayLength)?.forEach((a, i) =>
+        this.assetRef(`${path}.${key}[${i}]`, a),
+      );
     }
   }
 
   private propSpec(path: string, value: unknown, keys: Set<string>): void {
     const s = this.record(path, value);
     if (!s) return;
-    if (this.string(`${path}.key`, s['key'], MAX_SHORT_STRING, 1) && !this.safeKey(`${path}.key`, s['key'] as string)) {
-      return;
+    const isSelect = s['type'] === 'select';
+    this.checkKeys(path, s, ['key', 'type', 'label', 'default', ...(isSelect ? ['options'] : ['min', 'max'])]);
+
+    if (this.string(`${path}.key`, s['key'], MAX_SHORT_STRING, 1) && this.safeKey(`${path}.key`, s['key'] as string)) {
+      if (keys.has(s['key'] as string)) this.fail(`${path}.key`, 'duplicate prop key');
+      keys.add(s['key'] as string);
     }
-    if (keys.has(s['key'] as string)) this.fail(`${path}.key`, 'duplicate prop key');
-    else if (typeof s['key'] === 'string') keys.add(s['key']);
     this.string(`${path}.label`, s['label'], MAX_SHORT_STRING);
     if (!this.oneOf(`${path}.type`, s['type'], PROP_TYPES)) return;
-    if (s['type'] === 'select') {
-      const options = this.array(`${path}.options`, s['options'], this.limits.maxArrayLength);
-      options?.forEach((o, i) => {
-        const r = this.record(`${path}.options[${i}]`, o);
-        if (!r) return;
-        this.string(`${path}.options[${i}].value`, r['value'], MAX_SHORT_STRING);
-        this.string(`${path}.options[${i}].label`, r['label'], MAX_SHORT_STRING);
-      });
-      this.string(`${path}.default`, s['default'], MAX_SHORT_STRING);
-    } else {
-      this.jsonValue(`${path}.default`, s['default'], 0);
+
+    const def = `${path}.default`;
+    switch (s['type']) {
+      case 'select': {
+        const values: string[] = [];
+        this.array(`${path}.options`, s['options'], this.limits.maxArrayLength)?.forEach((o, i) => {
+          const r = this.record(`${path}.options[${i}]`, o, ['value', 'label']);
+          if (!r) return;
+          if (this.string(`${path}.options[${i}].value`, r['value'], MAX_SHORT_STRING)) values.push(r['value'] as string);
+          this.string(`${path}.options[${i}].label`, r['label'], MAX_SHORT_STRING);
+        });
+        if (!values.includes(s['default'] as string)) this.fail(def, 'must be one of the option values');
+        break;
+      }
+      case 'number': {
+        const min = s['min'] === undefined ? undefined : this.number(`${path}.min`, s['min']) ? (s['min'] as number) : undefined;
+        const max = s['max'] === undefined ? undefined : this.number(`${path}.max`, s['max']) ? (s['max'] as number) : undefined;
+        if (min !== undefined && max !== undefined && min > max) this.fail(`${path}.min`, 'must be <= max');
+        this.number(def, s['default'], { min, max });
+        break;
+      }
+      case 'boolean':
+        this.boolean(def, s['default']);
+        break;
+      case 'color':
+        this.literalColor(def, s['default']);
+        break;
+      default: // string, asset
+        this.string(def, s['default'], MAX_SHORT_STRING);
+    }
+    if (s['type'] !== 'number' && s['type'] !== 'select') {
       for (const bound of ['min', 'max'] as const) {
         if (s[bound] !== undefined) this.number(`${path}.${bound}`, s[bound]);
       }
@@ -192,7 +267,7 @@ class Validator {
   }
 
   private slide(path: string, value: unknown, slideIds: Set<string>): void {
-    const s = this.record(path, value);
+    const s = this.record(path, value, ['id', 'layoutId', 'background', 'elements', 'notes', 'transition']);
     if (!s) return;
     this.unique(`${path}.id`, s['id'], slideIds, 'slide');
     if (this.id(`${path}.layoutId`, s['layoutId'])) {
@@ -206,7 +281,7 @@ class Validator {
   }
 
   private transition(path: string, value: unknown): void {
-    const t = this.record(path, value);
+    const t = this.record(path, value, ['type', 'durationMs']);
     if (!t) return;
     this.oneOf(`${path}.type`, t['type'], TRANSITIONS);
     this.number(`${path}.durationMs`, t['durationMs'], { min: 0, max: 60_000 });
@@ -217,18 +292,21 @@ class Validator {
     if (!f) return;
     switch (f['kind']) {
       case 'solid':
-        this.string(`${path}.color`, f['color'], MAX_SHORT_STRING);
+        this.checkKeys(path, f, ['kind', 'color']);
+        this.color(`${path}.color`, f['color']);
         break;
       case 'gradient':
+        this.checkKeys(path, f, ['kind', 'angle', 'stops']);
         this.number(`${path}.angle`, f['angle']);
         this.array(`${path}.stops`, f['stops'], 64)?.forEach((st, i) => {
-          const r = this.record(`${path}.stops[${i}]`, st);
+          const r = this.record(`${path}.stops[${i}]`, st, ['offset', 'color']);
           if (!r) return;
           this.number(`${path}.stops[${i}].offset`, r['offset'], { min: 0, max: 1 });
-          this.string(`${path}.stops[${i}].color`, r['color'], MAX_SHORT_STRING);
+          this.color(`${path}.stops[${i}].color`, r['color']);
         });
         break;
       case 'image':
+        this.checkKeys(path, f, ['kind', 'assetId', 'fit']);
         this.assetRef(`${path}.assetId`, f['assetId']);
         this.oneOf(`${path}.fit`, f['fit'], FITS);
         break;
@@ -249,42 +327,53 @@ class Validator {
     if (e['step'] !== undefined) this.number(`${path}.step`, e['step'], { min: 0, max: MAX_STEP, int: true });
 
     if (!this.oneOf(`${path}.type`, e['type'], ELEMENT_TYPES)) return;
-    switch (e['type']) {
-      case 'text':
-        this.string(`${path}.text`, e['text'], this.limits.maxStringLength, 0);
-        this.number(`${path}.fontSize`, e['fontSize'], { min: 0, max: MAX_COORDINATE });
-        this.string(`${path}.color`, e['color'], MAX_SHORT_STRING);
-        this.oneOf(`${path}.align`, e['align'], ALIGNS);
+    const schema = ELEMENT_SCHEMAS[e['type'] as keyof typeof ELEMENT_SCHEMAS];
+    this.checkKeys(path, e, [...ELEMENT_BASE_KEYS, ...Object.keys(schema.fields)]);
+    for (const [name, spec] of Object.entries(schema.fields)) {
+      if (e[name] === undefined && spec.optional) continue;
+      this.field(`${path}.${name}`, spec, e[name]);
+    }
+  }
+
+  private field(path: string, spec: FieldSpec, value: unknown): void {
+    switch (spec.kind) {
+      case 'string':
+        this.string(path, value, spec.long ? this.limits.maxStringLength : MAX_SHORT_STRING, spec.min ?? 0);
         break;
-      case 'image':
-        this.assetRef(`${path}.assetId`, e['assetId']);
-        this.string(`${path}.alt`, e['alt'], MAX_SHORT_STRING, 0);
-        this.oneOf(`${path}.fit`, e['fit'], FITS);
+      case 'number':
+        this.number(path, value, { min: spec.min, max: spec.max ?? MAX_COORDINATE });
         break;
-      case 'shape':
-        this.oneOf(`${path}.shape`, e['shape'], SHAPES);
-        if (e['fill'] !== undefined) this.fill(`${path}.fill`, e['fill']);
-        if (e['stroke'] !== undefined) this.string(`${path}.stroke`, e['stroke'], MAX_SHORT_STRING);
-        this.number(`${path}.strokeWidth`, e['strokeWidth'], { min: 0, max: MAX_COORDINATE });
+      case 'boolean':
+        this.boolean(path, value);
         break;
-      case 'line':
-        this.string(`${path}.stroke`, e['stroke'], MAX_SHORT_STRING);
-        this.number(`${path}.strokeWidth`, e['strokeWidth'], { min: 0, max: MAX_COORDINATE });
+      case 'enum':
+        this.oneOf(path, value, spec.values);
+        break;
+      case 'color':
+        this.color(path, value);
+        break;
+      case 'fill':
+        this.fill(path, value);
+        break;
+      case 'font':
+        if (this.string(path, value, MAX_SHORT_STRING, 1) && !this.themeFonts.has(value as string)) {
+          this.fail(path, `references unknown theme font "${value as string}"`);
+        }
+        break;
+      case 'asset':
+        this.assetRef(path, value);
+        break;
+      case 'component':
+        if (this.id(path, value)) this.componentRefs.push({ path, id: value as string });
         break;
       case 'table':
-        this.table(`${path}.rows`, e['rows']);
+        this.table(path, value);
         break;
-      case 'video':
-        this.assetRef(`${path}.assetId`, e['assetId']);
-        this.boolean(`${path}.autoplay`, e['autoplay']);
-        this.boolean(`${path}.loop`, e['loop']);
+      case 'props': {
+        const p = this.record(path, value);
+        if (p) this.jsonValue(path, p, 0);
         break;
-      case 'code':
-        if (this.id(`${path}.componentId`, e['componentId'])) {
-          this.componentRefs.push({ path: `${path}.componentId`, id: e['componentId'] as string });
-        }
-        this.props(`${path}.props`, e['props']);
-        break;
+      }
     }
   }
 
@@ -301,12 +390,6 @@ class Validator {
     }
   }
 
-  private props(path: string, value: unknown): void {
-    const p = this.record(path, value);
-    if (!p) return;
-    this.jsonValue(path, p, 0);
-  }
-
   // --- primitives -------------------------------------------------------------------------
 
   private fail(path: string, message: string): false {
@@ -314,12 +397,21 @@ class Validator {
     return false;
   }
 
-  private record(path: string, value: unknown): Record<string, unknown> | undefined {
+  /** Requires an object; with `keys`, also rejects any field not in the list. */
+  private record(path: string, value: unknown, keys?: readonly string[]): Record<string, unknown> | undefined {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       this.fail(path, 'must be an object');
       return undefined;
     }
-    return value as Record<string, unknown>;
+    const r = value as Record<string, unknown>;
+    if (keys) this.checkKeys(path, r, keys);
+    return r;
+  }
+
+  private checkKeys(path: string, r: Record<string, unknown>, allowed: readonly string[]): void {
+    for (const key of Object.keys(r)) {
+      if (!allowed.includes(key)) this.fail(path ? `${path}.${key}` : key, 'unknown field');
+    }
   }
 
   private array(path: string, value: unknown, max: number): unknown[] | undefined {
@@ -373,6 +465,24 @@ class Validator {
 
   private safeKey(path: string, key: string): boolean {
     return !FORBIDDEN_KEYS.has(key) || this.fail(path, `key "${key}" is not allowed`);
+  }
+
+  private literalColor(path: string, value: unknown): boolean {
+    if (typeof value === 'string' && LITERAL_COLOR.test(value)) return true;
+    return this.fail(path, 'must be a hex, rgb(), hsl() or keyword colour');
+  }
+
+  /** A literal colour or a `{ token }` reference that resolves in `Theme.colors`. */
+  private color(path: string, value: unknown): void {
+    if (typeof value === 'string') {
+      this.literalColor(path, value);
+      return;
+    }
+    const c = this.record(path, value, ['token']);
+    if (!c) return;
+    if (this.string(`${path}.token`, c['token'], MAX_SHORT_STRING, 1) && !this.themeColors.has(c['token'] as string)) {
+      this.fail(`${path}.token`, `references unknown theme color "${c['token'] as string}"`);
+    }
   }
 
   /** Validates a string-keyed object, applying `check` to each value. */
