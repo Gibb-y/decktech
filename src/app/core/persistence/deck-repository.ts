@@ -72,7 +72,11 @@ export abstract class DeckRepository {
 
   /** Decks with saved changes that were not exported since, oldest first. */
   abstract listUnexported(): Promise<Result<UnexportedDeck[], PersistenceError>>;
-  abstract markExported(id: string): Promise<Result<void, PersistenceError>>;
+  /**
+   * Clears the un-exported mark. With `revision`, only if that is still the stored revision, so
+   * a save that happened after the exported snapshot keeps the deck marked.
+   */
+  abstract markExported(id: string, revision?: number): Promise<Result<void, PersistenceError>>;
 
   /** Pre-migration backups of a deck, oldest first. */
   abstract listBackups(deckId: string): Promise<Result<StoredBackup[], PersistenceError>>;

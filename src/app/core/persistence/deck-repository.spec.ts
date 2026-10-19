@@ -348,5 +348,16 @@ describe.each(factories)('DeckRepository: %s', (_name, make) => {
       expectOk(await h.repo.save({ ...deck, title: 'changed' }, 1));
       expect(expectOk(await h.repo.listUnexported())).toEqual([{ id: deck.id, since: 7_000 }]);
     });
+
+    it('keeps the mark when a newer revision was saved after the exported one', async () => {
+      const deck = createDeck();
+      expectOk(await h.repo.save(deck, null)); // rev 1 is exported ...
+      expectOk(await h.repo.save({ ...deck, title: 'later' }, 1)); // ... then rev 2 is saved
+      expectOk(await h.repo.markExported(deck.id, 1));
+      expect(expectOk(await h.repo.listUnexported()).map((u) => u.id)).toEqual([deck.id]);
+
+      expectOk(await h.repo.markExported(deck.id, 2));
+      expect(expectOk(await h.repo.listUnexported())).toEqual([]);
+    });
   });
 });

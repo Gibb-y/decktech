@@ -269,10 +269,17 @@ export class IndexedDbDeckRepository extends DeckRepository implements BackupSin
     });
   }
 
-  markExported(id: string): Promise<Result<void, PersistenceError>> {
+  markExported(id: string, revision?: number): Promise<Result<void, PersistenceError>> {
     return this.guard(async (db) => {
-      await db.delete('meta', UNEXPORTED + id);
-      return ok(undefined);
+      const tx = db.transaction('meta', 'readwrite');
+      return abortOnError(tx, async () => {
+        const summary = revision === undefined ? undefined : await tx.store.get(SUMMARY + id);
+        if (revision === undefined || (summary?.kind === 'summary' && summary.summary.revision === revision)) {
+          await tx.store.delete(UNEXPORTED + id);
+        }
+        await tx.done;
+        return ok(undefined);
+      });
     });
   }
 

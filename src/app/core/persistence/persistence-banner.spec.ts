@@ -20,7 +20,7 @@ async function setup(exporter: DeckExportHandler | null = null) {
   });
   const autosave = TestBed.inject(AutosaveService);
   const fixture = TestBed.createComponent(PersistenceBanner);
-  autosave.create(createDeck());
+  await autosave.create(createDeck());
   await fixture.whenStable();
   return { repo, autosave, fixture };
 }

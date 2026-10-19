@@ -43,7 +43,7 @@ describe('AutosaveService', () => {
     it('writes a new deck once, 500 ms after create', async () => {
       const { store, autosave, save, repo } = setup();
       const deck = createDeck();
-      autosave.create(deck);
+      await autosave.create(deck);
       TestBed.tick();
       expect(autosave.status()).toBe('saving');
 
@@ -58,7 +58,7 @@ describe('AutosaveService', () => {
 
     it('turns a burst of edits into one write after the last one', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -83,7 +83,7 @@ describe('AutosaveService', () => {
 
     it('still writes during a gesture that never pauses (max wait)', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -96,7 +96,7 @@ describe('AutosaveService', () => {
 
     it('does not write when nothing changed', async () => {
       const { autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -108,7 +108,7 @@ describe('AutosaveService', () => {
 
     it('chains revisions across writes', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       edit(store, 'one');
       await vi.advanceTimersByTimeAsync(500);
@@ -126,7 +126,7 @@ describe('AutosaveService', () => {
 
     it('ignores a different deck swapped into the store behind its back', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -138,10 +138,82 @@ describe('AutosaveService', () => {
     });
   });
 
+  describe('pending changes', () => {
+    it('writes nothing when the deck returns to the value that is stored', async () => {
+      const { store, autosave, save } = setup();
+      await autosave.create(createDeck());
+      await vi.advanceTimersByTimeAsync(500);
+      const stored = store.deck();
+      save.mockClear();
+
+      edit(store, 'typed');
+      expect(autosave.status()).toBe('saving');
+      store.load(stored); // same object as stored
+      TestBed.tick();
+      expect(autosave.status()).toBe('saved');
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('create saves the current deck first and refuses to replace it while that fails, unless forced', async () => {
+      const { store, autosave, save } = setup();
+      const mine = createDeck('Mine');
+      await autosave.create(mine);
+      await vi.advanceTimersByTimeAsync(500);
+      save.mockResolvedValue(err(quota));
+      edit(store, 'unsaved');
+
+      const next = createDeck('Next');
+      expect(await autosave.create(next)).toEqual({ ok: false, error: quota });
+      expect(store.deck().id).toBe(mine.id);
+
+      expect((await autosave.create(next, { force: true })).ok).toBe(true);
+      expect(store.deck().id).toBe(next.id);
+    });
+
+    it('create writes pending edits of the old deck before switching', async () => {
+      const { store, autosave, repo } = setup();
+      const mine = createDeck('Mine');
+      await autosave.create(mine);
+      await vi.advanceTimersByTimeAsync(500);
+      edit(store, 'unsaved');
+      await autosave.create(createDeck('Next'));
+      const saved = await repo.load(mine.id);
+      expect(saved.ok && !saved.value.outcome.readOnly && saved.value.outcome.deck.slides[0].notes).toBe('unsaved');
+    });
+
+    it('open does not drop edits made while the stored deck was loading', async () => {
+      const { repo, store, autosave } = setup();
+      const other = createDeck('Other');
+      await repo.save(other, null);
+      const mine = createDeck('Mine');
+      await autosave.create(mine);
+      await vi.advanceTimersByTimeAsync(500);
+
+      const realLoad = repo.load.bind(repo);
+      vi.spyOn(repo, 'load').mockImplementation(async (id) => {
+        edit(store, 'typed during load');
+        return realLoad(id);
+      });
+      expect((await autosave.open(other.id)).ok).toBe(true);
+      const saved = await repo.load(mine.id);
+      expect(saved.ok && !saved.value.outcome.readOnly && saved.value.outcome.deck.slides[0].notes).toBe('typed during load');
+    });
+
+    it('reports a deck the store cannot hold instead of throwing', async () => {
+      const { store, autosave } = setup();
+      const mine = createDeck();
+      await autosave.create(mine);
+      const result = await autosave.create({ ...createDeck(), slides: [] });
+      expect(result).toMatchObject({ ok: false, error: { kind: 'invalid' } });
+      expect(store.deck().id).toBe(mine.id);
+    });
+  });
+
   describe('flush', () => {
     it('writes pending changes immediately and cancels the timer', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -157,7 +229,7 @@ describe('AutosaveService', () => {
     it('is a no-op without a tracked deck or changes', async () => {
       const { autosave, save } = setup();
       expect(await autosave.flush()).toBe(true);
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
       expect(await autosave.flush()).toBe(true);
@@ -166,7 +238,7 @@ describe('AutosaveService', () => {
 
     it('serialises writes: an edit during a slow write is saved after it, with the new revision', async () => {
       const { store, autosave, save, repo } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -194,7 +266,7 @@ describe('AutosaveService', () => {
   describe('failures', () => {
     it('reports a failed write as error and keeps the deck pending', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -215,7 +287,7 @@ describe('AutosaveService', () => {
 
     it('retries on the next edit', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
 
       save.mockResolvedValueOnce(err(quota));
@@ -231,7 +303,7 @@ describe('AutosaveService', () => {
 
     it('treats a repository that rejects as a failed write and keeps working afterwards', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
 
       save.mockRejectedValueOnce(new Error('IDB closed'));
@@ -246,7 +318,7 @@ describe('AutosaveService', () => {
 
     it('flush resolves false while the write keeps failing', async () => {
       const { store, autosave, save } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockResolvedValue(err(quota));
       edit(store, 'a');
@@ -256,7 +328,7 @@ describe('AutosaveService', () => {
 
     it('detects a write by another tab as a conflict and does not overwrite it', async () => {
       const { store, autosave, repo } = setup();
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
 
       // the other tab saves revision 2
@@ -313,7 +385,7 @@ describe('AutosaveService', () => {
       const { repo, store, autosave, save } = setup();
       repo.seedRaw({ id: 'dk_future', schemaVersion: SCHEMA_VERSION + 1 });
       const mine = createDeck('Mine');
-      autosave.create(mine);
+      await autosave.create(mine);
       await vi.advanceTimersByTimeAsync(500);
       save.mockClear();
 
@@ -330,7 +402,7 @@ describe('AutosaveService', () => {
     it('passes load errors through and keeps the open deck', async () => {
       const { store, autosave } = setup();
       const mine = createDeck();
-      autosave.create(mine);
+      await autosave.create(mine);
       await vi.advanceTimersByTimeAsync(500);
       const result = await autosave.open('dk_missing');
       expect(result).toMatchObject({ ok: false, error: { kind: 'not-found' } });
@@ -342,7 +414,7 @@ describe('AutosaveService', () => {
       const other = createDeck('Other');
       await repo.save(other, null);
       const mine = createDeck('Mine');
-      autosave.create(mine);
+      await autosave.create(mine);
       await vi.advanceTimersByTimeAsync(500);
       edit(store, 'unsaved note');
 
@@ -357,7 +429,7 @@ describe('AutosaveService', () => {
       const other = createDeck('Other');
       await repo.save(other, null);
       const mine = createDeck('Mine');
-      autosave.create(mine);
+      await autosave.create(mine);
       await vi.advanceTimersByTimeAsync(500);
       save.mockResolvedValue(err(quota));
       edit(store, 'unsaved note');
@@ -375,7 +447,7 @@ describe('AutosaveService', () => {
       const { repo, store, autosave, save } = setup();
       const other = createDeck('Other');
       await repo.save(other, null);
-      autosave.create(createDeck());
+      await autosave.create(createDeck());
       await vi.advanceTimersByTimeAsync(500);
       save.mockResolvedValue(err(quota));
       edit(store, 'x');
@@ -431,7 +503,7 @@ describe('AutosaveService', () => {
   it('uses the configured delays', async () => {
     TestBed.configureTestingModule({ providers: [{ provide: AUTOSAVE_OPTIONS, useValue: { debounceMs: 50, maxWaitMs: 100 } }] });
     const { autosave, save } = setup();
-    autosave.create(createDeck());
+    await autosave.create(createDeck());
     await vi.advanceTimersByTimeAsync(50);
     expect(save).toHaveBeenCalledTimes(1);
   });

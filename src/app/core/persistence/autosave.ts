@@ -69,10 +69,17 @@ export class AutosaveService {
     }
   }
 
-  /** Makes `deck` the open document and schedules its first save. */
-  create(deck: Deck): void {
-    this.store.load(deck);
+  /**
+   * Makes `deck` the open document and schedules its first save. Like `open`, it first saves the
+   * current deck and refuses to replace it while that fails (unless `force`).
+   */
+  async create(deck: Deck, options: { force?: boolean } = {}): Promise<Result<void, PersistenceError>> {
+    const ready = await this.settle(options.force === true);
+    if (!ready.ok) return ready;
+    const loaded = this.loadIntoStore(deck);
+    if (!loaded.ok) return loaded;
     this.track(null, false);
+    return ok(undefined);
   }
 
   /**
@@ -81,14 +88,18 @@ export class AutosaveService {
    * deck stays (unless `force`), so edits are never dropped silently.
    */
   async open(id: string, options: { force?: boolean } = {}): Promise<Result<MigrationOutcome, LoadError | PersistenceError>> {
-    if (!(await this.flush()) && !options.force) {
-      return err(this.errorState() ?? { kind: 'storage', message: 'pending changes could not be saved' });
-    }
+    const force = options.force === true;
+    const ready = await this.settle(force);
+    if (!ready.ok) return ready;
     const loaded = await this.repository.load(id);
     if (!loaded.ok) return loaded;
     const { outcome, revision } = loaded.value;
     if (outcome.readOnly) return ok(outcome);
-    this.store.load(outcome.deck);
+    // Edits made while the load was running must not be dropped by the swap either.
+    const again = await this.settle(force);
+    if (!again.ok) return again;
+    const stored = this.loadIntoStore(outcome.deck);
+    if (!stored.ok) return stored;
     // A migrated deck is saved right away so the upgrade (already backed up) is not repeated.
     this.track(revision, outcome.migrated);
     return ok(outcome);
@@ -110,6 +121,21 @@ export class AutosaveService {
     await this.exportHandler?.(this.store.deck());
   }
 
+  /** Saves pending changes; fails (unless `force`) while they cannot be saved. */
+  private async settle(force: boolean): Promise<Result<void, PersistenceError>> {
+    if ((await this.flush()) || force) return ok(undefined);
+    return err(this.errorState() ?? { kind: 'storage', message: 'pending changes could not be saved' });
+  }
+
+  private loadIntoStore(deck: Deck): Result<void, PersistenceError> {
+    try {
+      this.store.load(deck);
+      return ok(undefined);
+    } catch (e) {
+      return err({ kind: 'invalid', message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   private track(revision: number | null, dirty: boolean): void {
     const deck = this.store.deck();
     this.clearTimers();
@@ -122,8 +148,15 @@ export class AutosaveService {
 
   private onDeckChanged(deck: Deck): void {
     const tracked = this.tracked;
-    if (!tracked || deck.id !== tracked.id || deck === tracked.saved) return;
+    if (!tracked || deck.id !== tracked.id) return;
     tracked.pending = deck;
+    if (deck === tracked.saved) {
+      // Undone back to what is stored: nothing left to write.
+      this.clearTimers();
+      this.errorState.set(null);
+      this.statusState.set('saved');
+      return;
+    }
     this.schedule();
   }
 

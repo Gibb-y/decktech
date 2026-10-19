@@ -124,8 +124,8 @@ export class InMemoryDeckRepository extends DeckRepository implements BackupSink
     return ok(all.sort((a, b) => a.since - b.since));
   }
 
-  async markExported(id: string): Promise<Result<void, PersistenceError>> {
-    this.unexported.delete(id);
+  async markExported(id: string, revision?: number): Promise<Result<void, PersistenceError>> {
+    if (revision === undefined || this.decks.get(id)?.summary.revision === revision) this.unexported.delete(id);
     return ok(undefined);
   }
 

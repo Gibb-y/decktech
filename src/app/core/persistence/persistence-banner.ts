@@ -12,7 +12,8 @@ const DETAIL: Record<string, string> = {
   selector: 'app-persistence-banner',
   template: `
     @if (autosave.status() === 'error') {
-      <div class="banner" role="alert">
+      <section class="banner" aria-label="Save status">
+        <div class="content" role="alert">
         <p class="message">
           <strong>Your changes are not saved.</strong>
           {{ detail() }}
@@ -26,7 +27,8 @@ const DETAIL: Record<string, string> = {
             <button type="button" (click)="download()">Download .deck</button>
           }
         </div>
-      </div>
+        </div>
+      </section>
     }
   `,
   styles: `
@@ -34,6 +36,8 @@ const DETAIL: Record<string, string> = {
       position: sticky;
       top: 0;
       z-index: 1000;
+    }
+    .content {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
