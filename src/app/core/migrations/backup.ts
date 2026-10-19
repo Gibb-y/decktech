@@ -1,6 +1,6 @@
 /** The stored deck as it was before a migration touched it. */
 export interface BackupEntry {
-  /** The untouched pre-migration document. The sink must copy it if it keeps it asynchronously. */
+  /** A copy of the untouched pre-migration document; the sink owns it. */
   raw: unknown;
   fromVersion: number;
   toVersion: number;

@@ -21,7 +21,7 @@
 | Presenter view | Second-window view with current/next slide, notes and timer. |
 | Command | A reversible editing operation producing forward and inverse patches. |
 | Migration | A pure function upgrading a deck document from schema version N to N+1; chained by `migrate` before validation. |
-| Read-only deck | A deck with a newer `schemaVersion` than the app supports; shown but never edited or saved back. |
+| Read-only deck | A deck with a newer `schemaVersion` than the app supports; reported with a reason, never edited or saved back. |
 | Backup sink | Interface through which the pre-migration version of a stored deck is handed to persistence for the rolling backup. |
 | Trust | The user's decision to allow code components in an imported deck to run; bound to the deck's content hash. |
 | Vendored library | A third-party JS/CSS library stored inside the deck so it works offline. |

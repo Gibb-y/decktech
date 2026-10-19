@@ -78,7 +78,7 @@ describe('runMigrations', () => {
     const result = runMigrations({}, 1, 3, registry);
     expect(result).toEqual({
       ok: false,
-      error: { kind: 'no-path', fromVersion: 1, message: 'no migration from schema version 1 to 2' },
+      error: { kind: 'no-path', fromVersion: 1, step: 1, message: 'no migration from schema version 1 to 2' },
     });
     expect(second).not.toHaveBeenCalled();
   });
@@ -89,7 +89,7 @@ describe('runMigrations', () => {
     ]);
     expect(runMigrations({}, 0, 1, registry)).toEqual({
       ok: false,
-      error: { kind: 'migration-failed', fromVersion: 0, message: 'migration 0 → 1 failed: boom' },
+      error: { kind: 'migration-failed', fromVersion: 0, step: 0, message: 'migration 0 → 1 failed: boom' },
     });
   });
 
@@ -97,7 +97,7 @@ describe('runMigrations', () => {
     const registry = new Map<number, Migration>([[0, () => bad as unknown as RawDeck]]);
     expect(runMigrations({}, 0, 1, registry)).toEqual({
       ok: false,
-      error: { kind: 'migration-failed', fromVersion: 0, message: 'migration 0 → 1 did not return an object' },
+      error: { kind: 'migration-failed', fromVersion: 0, step: 0, message: 'migration 0 → 1 did not return an object' },
     });
   });
 });
@@ -145,14 +145,14 @@ describe('migrate', () => {
       expect(result.value.reason).toContain(`schema version ${SCHEMA_VERSION + 1}`);
       expect(result.value.fromVersion).toBe(SCHEMA_VERSION + 1);
       expect(result.value.supportedVersion).toBe(SCHEMA_VERSION);
-      expect(result.value.deck?.title).toBe('Fixture deck');
-      expect(result.value.deck?.schemaVersion).toBe(SCHEMA_VERSION + 1);
+      expect(result.value).not.toHaveProperty('deck');
       expect(raw['schemaVersion']).toBe(SCHEMA_VERSION + 1);
     });
 
-    it('gives no deck when the content no longer fits the current schema', () => {
-      const result = migrate(newer({ somethingNew: true }));
-      expect(result.ok && result.value).toMatchObject({ readOnly: true, deck: null });
+    it('does not validate or copy the newer document', () => {
+      const raw = newer({ somethingNew: true });
+      const result = migrate(raw);
+      expect(result.ok && result.value).toMatchObject({ readOnly: true });
     });
 
     it('handles absurdly high versions', () => {
@@ -179,7 +179,7 @@ describe('migrate', () => {
 
     it('reports a version with no registered path', () => {
       const error = errorOf(migrate(DECK_V0, { migrations: new Map() }));
-      expect(error).toEqual({ kind: 'no-path', fromVersion: 0, message: 'no migration from schema version 0 to 1' });
+      expect(error).toEqual({ kind: 'no-path', fromVersion: 0, step: 0, message: 'no migration from schema version 0 to 1' });
     });
 
     it('returns an error and leaves the original untouched when a step throws midway', () => {
@@ -190,7 +190,7 @@ describe('migrate', () => {
         throw new Error('half done');
       };
       const error = errorOf(migrate(raw, { migrations: new Map([[0, bad]]) }));
-      expect(error).toMatchObject({ kind: 'migration-failed', message: 'migration 0 → 1 failed: half done' });
+      expect(error).toMatchObject({ kind: 'migration-failed', step: 0, message: 'migration 0 → 1 failed: half done' });
       expect(raw).toEqual(before);
     });
 
@@ -214,9 +214,23 @@ describe('migrate', () => {
       expect(errorOf(migrate({ ...structuredClone(DECK_V1), title: 5 })).kind).toBe('invalid-deck');
     });
 
+    it('returns an error instead of throwing on absurdly nested input', () => {
+      let nested: unknown = {};
+      for (let i = 0; i < 100_000; i++) nested = { next: nested };
+      expect(['unexpected', 'migration-failed', 'invalid-deck']).toContain(
+        errorOf(migrate({ ...structuredClone(DECK_V1), title: nested })).kind,
+      );
+      expect(errorOf(migrate({ ...structuredClone(DECK_V0), title: nested })).kind).toMatch(/migration-failed|unexpected/);
+    });
+
+    it('returns an error instead of throwing when reading the document throws', () => {
+      const hostile = { get schemaVersion(): number { throw new Error('getter'); } };
+      expect(errorOf(migrate(hostile))).toEqual({ kind: 'unexpected', message: 'unexpected failure: getter' });
+    });
+
     it('survives a document that cannot be cloned', () => {
       const raw = { ...structuredClone(DECK_V0), title: () => 'fn' };
-      expect(errorOf(migrate(raw))).toMatchObject({ kind: 'migration-failed', fromVersion: 0 });
+      expect(errorOf(migrate(raw))).toMatchObject({ kind: 'migration-failed', fromVersion: 0, step: 0 });
     });
 
     it('treats hostile keys as plain data', () => {
@@ -240,8 +254,17 @@ describe('migrateStored', () => {
     expect(s.backup).toHaveBeenCalledTimes(1);
     const entry: BackupEntry = s.backup.mock.calls[0][0];
     expect(entry).toEqual({ raw: DECK_V0, fromVersion: 0, toVersion: SCHEMA_VERSION });
-    expect(entry.raw).toBe(DECK_V0);
     expect(deckOf(result)).toEqual(DECK_V1);
+  });
+
+  it('gives the sink its own copy, unaffected by later changes to the original', async () => {
+    const raw = structuredClone(DECK_V0) as RawDeck;
+    const s = sink();
+    await migrateStored(raw, s);
+    const entry: BackupEntry = s.backup.mock.calls[0][0];
+    expect(entry.raw).not.toBe(raw);
+    raw['title'] = 'changed afterwards';
+    expect((entry.raw as RawDeck)['title']).toBe('Fixture deck');
   });
 
   it('does not back up current decks', async () => {
