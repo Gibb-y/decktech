@@ -23,6 +23,10 @@
 | Migration | A pure function upgrading a deck document from schema version N to N+1; chained by `migrate` before validation. |
 | Read-only deck | A deck with a newer `schemaVersion` than the app supports; reported with a reason, never edited or saved back. |
 | Backup sink | Interface through which the pre-migration version of a stored deck is handed to persistence for the rolling backup. |
+| `DeckRepository` | Storage abstraction for decks and assets; implemented on IndexedDB and in memory. |
+| Revision | Counter stored with each deck and incremented on every save; `save` must present the revision it loaded, so concurrent writers are detected. |
+| Autosave | Debounced writing of the open deck to the repository by `AutosaveService`; reports `saved`, `saving` or `error`. |
+| Asset id | Lower-case hex SHA-256 of an asset's bytes; also its `blobKey`. Identical content is stored once. |
 | Coalescing | Merging consecutive commands with the same key issued within a short window (500 ms) into one undo step, e.g. a drag. |
 | Trust | The user's decision to allow code components in an imported deck to run; bound to the deck's content hash. |
 | Vendored library | A third-party JS/CSS library stored inside the deck so it works offline. |

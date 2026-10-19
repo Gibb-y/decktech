@@ -24,6 +24,8 @@ sequenceDiagram
 
 Only changed elements re-render because each element renderer reads a `computed` that selects its own element by id.
 
+`AutosaveService` watches `DeckStore.deck()` but only for the deck handed to it by `create(deck)` or `open(id)`: opening a deck never rewrites it (except right after a migration, so the upgrade is stored), and a deck swapped into the store behind its back is ignored. Each change restarts a 500 ms timer; a continuous gesture is written at the latest after 5 s (`maxWaitMs`). Writes are serialised and each one passes the revision of the last stored copy, so a second tab that saved in between turns the write into a `conflict` instead of an overwrite (8.5). `flush()` writes immediately and is awaited before opening another deck, import and other risky operations.
+
 ## 6.2 Creating and editing a code component
 
 ```mermaid
@@ -106,4 +108,4 @@ The inspector shows source as text only. No frame is created for an untrusted co
 
 - A component that throws or hangs shows an error overlay (in edit mode) or is replaced by a neutral placeholder (in presentation mode) so one broken component never stops the talk.
 - Frame heartbeat missing for 5 s → the supervisor marks it unresponsive; the author can reload or skip it.
-- Autosave failure (quota, IndexedDB error) shows a persistent banner and offers immediate `.deck` download.
+- Autosave failure (quota, IndexedDB error, conflict with another tab) sets `AutosaveService.status` to `error` and shows the persistent `PersistenceBanner` (`role="alert"`) with "Try again" and, once DT-16 provides `DECK_EXPORT_HANDLER`, an immediate `.deck` download. The failed deck stays pending: nothing is marked saved, the next edit or "Try again" retries, and `open(id)` refuses to leave a deck whose changes could not be saved unless forced.

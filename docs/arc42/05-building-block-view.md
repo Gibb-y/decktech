@@ -26,7 +26,7 @@ flowchart TB
 | Building block | Responsibility |
 |----------------|----------------|
 | **Core** | The deck document model (TypeScript types + JSON schema), the command/undo system, the signal store, schema migrations. No UI. |
-| **Persistence** | `DeckRepository` interface with an IndexedDB implementation; asset store; `.deck` archive reader/writer; autosave. |
+| **Persistence** | `DeckRepository` with an IndexedDB and an in-memory implementation; content-addressed asset store; rolling backup store; debounced autosave with a failure banner; `.deck` archive reader/writer (DT-16, not built yet). Implemented in `src/app/core/persistence/` (see 5.6). |
 | **Renderer** | Turns a slide + theme into DOM. One component per element type. Handles stage scaling and step visibility. Used read-only by presenter, thumbnails and (with an overlay) by the editor. |
 | **Component Host** | Creates and supervises sandboxed iframes, builds their document, implements the host side of the Component API, enforces the security policy. |
 | **Editor** | Interactive layer over the renderer: selection, transform handles, snapping, slide sorter, toolbar, properties panel, shortcuts, code editor dialog. |
@@ -166,3 +166,17 @@ flowchart LR
 | `StepEngine` | Computes steps per slide from element `step` values and from steps requested by code components (e.g. "this component has 4 internal steps"); next/prev consume component steps before changing slide. |
 | `PresenterView` | Second window: current slide, next slide preview, notes, timer, step indicator. Synchronised using `BroadcastChannel`. |
 | `Preloader` | Instantiates the next slide's code components ahead of time. |
+
+## 5.6 Level 2: Persistence
+
+All in `src/app/core/persistence/`; the dependency rule of 4.4 holds (it uses only `model`, `migrations` and `store`).
+
+| Block | Responsibility |
+|-------|----------------|
+| `DeckRepository` | Abstract class (also the DI token): `list()`, `load(id)`, `save(deck, expectedRevision)`, `delete(id)`, `putAsset(blob)`, `getAsset(id)`, plus `listUnexported()` / `markExported(id)` (export reminders, 7.4) and `listBackups(deckId)`. No method rejects: every one returns `Result<T, PersistenceError>` (`not-found`, `conflict`, `read-only`, `invalid`, `quota`, `storage`); `load` additionally carries the `MigrationError`s of `migrateStored`. |
+| `IndexedDbDeckRepository` | The production implementation on `idb`; also the `BackupSink`. Object stores: `decks` (`{ id, deck }`), `assets` (`{ hash, mime, data }`), `components` (reserved for the component library, a later issue; created now so it needs no schema upgrade), `meta` (small per-deck records `summary:<id>` and `unexported:<id>`) and `backups` (pre-migration copies, index `byDeck`). |
+| `InMemoryDeckRepository` | Same contract on `Map`s (structured clones, like IndexedDB), for tests and as the reference for the contract suite that runs against both implementations. |
+| `AutosaveService` | `@Service` that keeps the open deck in sync with the repository: `create(deck)`, `open(id)`, `flush()`, `status` (`saved` / `saving` / `error`), `error`, `persisted`, `requestPersistence()`, `exportDeck()`. See 8.5. |
+| `PersistenceBanner` | `app-persistence-banner`: `role="alert"` notice shown while `status() === 'error'`, with "Try again" and (when an export handler is provided) "Download .deck". Lives in `core` because the issue scoped it there; move it to `shared/` if a second consumer needs it. |
+| `DECK_EXPORT_HANDLER` | Typed hook (`(deck) => void \| Promise<void>`, default `null`) through which the `.deck` writer of DT-16 plugs into the banner. |
+| `provideDeckPersistence()` | Environment providers for the app: the IndexedDB repository and an initializer that requests persistent storage. |

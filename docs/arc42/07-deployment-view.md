@@ -51,4 +51,4 @@ flowchart LR
 
 ## 7.4 Data location and backup
 
-User data is only on the user's device. Backup is by exporting `.deck` files. The app periodically reminds the user of un-exported decks and can request persistent storage (`navigator.storage.persist()`) to reduce the risk of eviction.
+User data is only on the user's device. Backup is by exporting `.deck` files. The app requests persistent storage (`navigator.storage.persist()`) at startup to reduce the risk of eviction, and records per deck when it was first changed after its last export (`DeckRepository.listUnexported()`, 8.5); the periodic reminder built on that comes with the library.

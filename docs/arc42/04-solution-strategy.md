@@ -16,7 +16,7 @@
 | Ease of authoring | Layouts + themes + templates; command-based editor with undo/redo; keyboard shortcuts; slide sorter drag/drop; autosave; instant live preview of code components. |
 | Expressiveness | Components are real HTML/CSS/JS documents; permitted to use ES modules, canvas, WebGL, Web Audio; deck-scoped asset files can be referenced by relative URL; optional vendored libraries. |
 | Security | `sandbox` without `allow-same-origin`, strict CSP on the iframe document, no network by default, capability-based host API, trust prompt on opening foreign decks. |
-| Presentation reliability | No runtime network dependency; thumbnails and components are pre-initialised for next slide; autosave journaling; presenter mode uses the already-loaded state. |
+| Presentation reliability | No runtime network dependency; thumbnails and components are pre-initialised for next slide; debounced autosave with pre-migration backups; presenter mode uses the already-loaded state. |
 | Portability | Self-contained `.deck` archive with `deck.json` + assets + vendored libs; schema versioning with migrations. |
 
 ## 4.3 Key technology choices

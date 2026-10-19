@@ -205,6 +205,22 @@ describe.each(factories)('DeckRepository: %s', (_name, make) => {
       expect(expectOk(await h.repo.listBackups('dk_old'))).toHaveLength(2); // none added by the current-version load
     });
 
+    it('two tabs migrating the same deck: the first save wins, the second is a conflict, the original stays backed up', async () => {
+      await h.seed(old);
+      const tabA = expectOk(await h.repo.load('dk_old'));
+      const tabB = expectOk(await h.repo.load('dk_old'));
+      if (tabA.outcome.readOnly || tabB.outcome.readOnly) throw new Error('unreachable');
+
+      expectOk(await h.repo.save({ ...tabA.outcome.deck, title: 'edited in A' }, tabA.revision));
+      const lost = await h.repo.save({ ...tabB.outcome.deck, title: 'edited in B' }, tabB.revision);
+      expect(lost).toMatchObject({ ok: false, error: { kind: 'conflict' } });
+
+      const stored = expectOk(await h.repo.load('dk_old'));
+      expect(stored.outcome.readOnly === false && stored.outcome.deck.title).toBe('edited in A');
+      const backups = expectOk(await h.repo.listBackups('dk_old'));
+      expect(backups[0].raw).toEqual(old);
+    });
+
     it('keeps the original pre-migration copy plus the most recent ones', async () => {
       await h.seed(old);
       const extra = 4;
