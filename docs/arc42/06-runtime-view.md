@@ -13,7 +13,7 @@ sequenceDiagram
 
     U->>C: drag element
     C->>S: execute(MoveElements{ids, dx, dy}) (coalesced while dragging)
-    S->>H: push inverse patch
+    S->>H: record forward + inverse patch (merged if same coalescing key)
     S-->>R: deck signal changes
     R-->>U: updated DOM (only affected element)
     S-->>P: debounce autosave (500 ms)
