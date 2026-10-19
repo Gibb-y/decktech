@@ -6,6 +6,24 @@ The deck document (section 5.2) is the single source of truth. It is immutable f
 
 Document versions are tracked by `schemaVersion`. Every load or import runs the migration chain; unknown *newer* versions open read-only with a warning.
 
+### Validation
+
+`validateDeck(unknown)` is the single entry point for untrusted documents (import, storage). It returns `Result<Deck, ValidationError[]>`; every error carries a path (e.g. `slides[2].elements[0].w`) and all problems are collected rather than stopping at the first. It enforces:
+
+- **Types and enums:** every field has the expected type; element, fill, transition, permission and prop types are closed sets, so unknown element types are rejected.
+- **Unknown fields:** every object only accepts the fields the model defines, so nothing unmodelled can ride along. In particular a `CodeEl` cannot carry its own `html` / `css` / `js`; code lives only in `ComponentDef`.
+- **Numbers:** finite only (no `NaN` / `Infinity`), with range limits on geometry, rotation and `step`.
+- **Limits** (`ValidationOptions`, overridable per call): string length, array length, slides, elements per slide, components, assets, table cells, and nesting depth of `CodeEl.props`. Defaults live in `DEFAULT_VALIDATION_OPTIONS`.
+- **Identity:** ids match `^[A-Za-z0-9_-]{1,128}$`; slide, layout and component ids are unique, placeholder ids are unique within their layout, and element ids are unique across the whole deck.
+- **Stage:** `Deck.stage` has integer sides and must keep a width of 1920 or a height of 1080.
+- **Referential integrity:** `Slide.layoutId`, `CodeEl.componentId`, every asset reference (image, video, fills, `ComponentDef.files` / `libs`) must resolve; an empty reference is dangling.
+- **Assets (import hardening, 8.2):** `mime` must be on a configurable allow-list (`allowedMimeTypes`), and `hash` must be a lowercase hex SHA-256 digest.
+- **Theme references:** colours are validated literals (hex, `rgb()`, `hsl()` or a keyword, so no arbitrary CSS can be smuggled in) or `{ token }` references that must exist in `Theme.colors`; `TextEl.font` must exist in `Theme.fonts`.
+- **Prop specs:** a default must match the declared type, lie within `min` / `max` for numbers (and `min <= max`), and be one of the option values for selects.
+- **Hostile keys:** `__proto__`, `constructor` and `prototype` are rejected as keys in props, theme maps and prop specs. `CodeEl.props` must be plain JSON.
+
+`CodeEl.props` are deliberately not checked against the component's `propSchema`: schemas evolve, and a stale prop must not make a deck unloadable; the renderer ignores undeclared props and applies defaults. Only the current `schemaVersion` is accepted (opening newer versions read-only belongs to the migration chain, not to validation); the migration chain runs before validation. Validation checks structure, not code: the content of `ComponentDef.html/css/js` is opaque here and handled by the sandbox (8.2) and trust prompt (6.4).
+
 ### Stage and units
 
 - Logical stage: **1920 x 1080** (16:9; other ratios configurable per deck, keeping a 1080 height or 1920 width).

@@ -37,12 +37,12 @@ flowchart TB
 
 | Block | Responsibility |
 |-------|----------------|
-| `DeckModel` | Types: `Deck`, `Slide`, `Element`, `Theme`, `Layout`, `Asset`, `ComponentDef`. |
+| `DeckModel` | Types: `Deck`, `Slide`, `Element`, `Theme`, `Layout`, `AssetRef`, `ComponentDef`, plus `SCHEMA_VERSION`, the stage constants, the id generator and the `createDeck` / `createSlide` / `createElement` factories. Implemented in `src/app/core/model/`. |
 | `DeckStore` | Signal-based holder of the current deck. Exposes `deck()`, `currentSlide()`, `selection()` and computed views. Mutation only via `execute(command)`. |
 | `Command` | `{ do(deck) → patch, undo }`. Examples: `AddSlide`, `MoveElements`, `SetProps`, `ReorderSlides`. Consecutive similar commands (dragging) are coalesced. |
 | `History` | Undo/redo stacks of inverse patches; bounded size. |
 | `Migrations` | Upgrade functions `vN → vN+1` applied on load/import. |
-| `Validation` | JSON-schema validation on import; guards against malformed or hostile files. |
+| `Validation` | `validateDeck(unknown): Result<Deck, ValidationError[]>`, a hand-written runtime validator (no schema library) applied on import and load; guards against malformed or hostile files. See 8.1. |
 
 ### Document model (simplified)
 
@@ -51,6 +51,7 @@ interface Deck {
   schemaVersion: number;
   id: string;
   title: string;
+  stage: Stage;               // logical stage size, default 1920x1080
   theme: Theme;               // colors, fonts, spacing tokens
   layouts: Layout[];          // master layouts with placeholders
   slides: Slide[];
@@ -94,6 +95,33 @@ interface ComponentDef {
 ```
 
 Code is stored in `ComponentDef`, not in the element, so a component can be used on many slides and edited in one place; `CodeEl.props` carries per-instance data. A component can be "detached" into a unique copy.
+
+The remaining element and supporting types, as implemented in `src/app/core/model/types.ts`:
+
+```ts
+interface TextEl  extends ElementBase { type: 'text';  text: string; font?: string; fontSize: number; color: Color; align: 'left'|'center'|'right'; }
+interface ImageEl extends ElementBase { type: 'image'; assetId: string; alt: string; fit: 'cover'|'contain'|'stretch'; }
+interface ShapeEl extends ElementBase { type: 'shape'; shape: 'rect'|'ellipse'|'triangle'; fill?: Fill; stroke?: Color; strokeWidth: number; }
+interface LineEl  extends ElementBase { type: 'line';  stroke: Color; strokeWidth: number; }
+interface TableEl extends ElementBase { type: 'table'; rows: string[][]; }
+interface VideoEl extends ElementBase { type: 'video'; assetId: string; autoplay: boolean; loop: boolean; }
+
+type Fill =
+  | { kind: 'solid'; color: Color }
+  | { kind: 'gradient'; angle: number; stops: { offset: number; color: Color }[] }
+  | { kind: 'image'; assetId: string; fit: 'cover'|'contain'|'stretch' };
+
+type Color = string | { token: string };   // literal CSS colour, or a key of Theme.colors
+interface Stage { width: number; height: number; }   // width 1920 or height 1080
+interface Transition { type: 'none'|'fade'|'slide'|'zoom'; durationMs: number; }
+interface Theme { colors: Record<string,string>; fonts: Record<string,string>; typeScale: Record<string,number>; spacing: Record<string,number>; }
+interface Layout { id: string; name: string; background?: Fill; placeholders: Placeholder[]; }
+interface Placeholder { id: string; kind: 'title'|'body'|'image'|'footer'; x: number; y: number; w: number; h: number; }
+interface AssetRef { blobKey: string; mime: string; hash: string; size: number; }
+type Permission = 'network' | 'storage';
+```
+
+Colours are either a literal (`#rrggbb`, `rgb()`, `hsl()` or a keyword) or a `{ token }` reference into `Theme.colors`, and `TextEl.font` is a key into `Theme.fonts` (8.7). `TextEl.text` is plain text for now; it will change when ProseMirror rich text (ADR-004) is introduced. Element types are described declaratively in `ELEMENT_SCHEMAS` (`element-schema.ts`): per type, its fields and their kinds plus the defaults used by `createElement`. The validator and the factory both read it, so a new element type needs its interface in `types.ts` and one registry entry (quality scenario Q13). Ids are `<prefix>_<uuid>` strings (`dk`, `sl`, `el`, `cp`, `ly`, `ph`), generated with `crypto.randomUUID()` so they can be created offline and merged without coordination.
 
 ## 5.3 Level 2: Component Host
 
