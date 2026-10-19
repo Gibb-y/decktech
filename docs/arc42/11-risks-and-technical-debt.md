@@ -8,7 +8,7 @@
 | R2 | Resource exhaustion from a hostile or buggy component (CPU loop, memory, audio). | Medium | Medium | Heartbeat watchdog, ability to kill a frame, trust prompt; browsers offer no hard limits, so residual risk is accepted. |
 | R3 | Many iframes make editing slow (thumbnails, multiple components per slide). | Medium | Medium | Lazy frame creation, static snapshots for thumbnails, frame pooling, destroy off-screen frames. Measure early with a stress deck. |
 | R4 | Editor complexity (selection, snapping, rotation, text editing in a scaled DOM) takes longer than expected. | High | Medium | Build vertical slice first (text + shape move/resize), reuse proven libraries for text and geometry where possible, defer tables and advanced alignment. |
-| R5 | IndexedDB data eviction or loss. | Low–Medium | High | Request persistent storage, export reminders, rolling backup of previous version (`BackupSink`, written before a migrated deck is returned), simple one-click export. |
+| R5 | IndexedDB data eviction or loss. | Low–Medium | High | Request persistent storage (built), export bookkeeping for reminders (built, UI pending), rolling backup of the pre-migration version (`BackupSink`, written before a migrated deck is returned, oldest copy always kept), failure banner with retry, simple one-click export (DT-16). |
 | R6 | Component API churn breaks existing decks. | Medium | High | Versioned handshake, host supports previous major, API frozen once released, deprecation policy. |
 | R7 | Projector/laptop differences (GPU, fonts) change appearance. | Medium | Low | Embed fonts as assets, fixed stage, pre-flight check in presenter. |
 | R8 | Later collaboration requirement conflicts with the local-first model. | Medium | Medium | Patch-based commands and stable ids chosen to ease a move to CRDTs (e.g. Yjs). Not committed. |
@@ -23,6 +23,9 @@
 | Basic tables and no charts as built-in element | Charts can be written as code components. |
 | PDF export of code components is a static snapshot | Print-specific handling not designed. |
 | Single-user, single-device | Sync and collaboration deferred. |
+| Autosave writes the whole deck | Cost follows deck size (a 1000-slide deck is cloned on every write); blobs are separate and unaffected. Revisit with per-slide records or patch journaling. |
+| Unreferenced assets are never collected | `delete(deckId)` and removing an element leave blobs behind. A mark-and-sweep over all decks' `assets` is needed before storage pressure matters. |
+| No cross-tab live update | A second tab learns of a change only through a `conflict` on save; a `BroadcastChannel` notification can be added. |
 
 ## 11.3 Open questions
 
