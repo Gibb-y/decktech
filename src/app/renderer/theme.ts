@@ -41,7 +41,10 @@ export function resolveColor(color: Color | undefined, theme: Theme): string | n
   if (color === undefined || color === null) return null;
   if (typeof color === 'string') return LITERAL_COLOR.test(color) ? color : null;
   const key = color.token;
-  return typeof key === 'string' && SAFE_KEY.test(key) && hasOwn(theme.colors, key) ? `var(${themeVar('color', key)})` : null;
+  if (typeof key !== 'string' || !SAFE_KEY.test(key) || !hasOwn(theme.colors, key)) return null;
+  // Must match what `themeVars` emits, or the var() would be undefined.
+  const value: unknown = theme.colors[key];
+  return typeof value === 'string' && LITERAL_COLOR.test(value) ? `var(${themeVar('color', key)})` : null;
 }
 
 /** Font stack for a `Theme.fonts` key; the theme body font when absent or unknown. */

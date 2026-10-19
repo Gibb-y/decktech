@@ -179,6 +179,26 @@ describe('SlideRenderer content', () => {
   });
 });
 
+describe('TextElement output', () => {
+  it('outputs a multi-line title as a single heading', () => {
+    const slide = createSlide('layout');
+    slide.elements = [createElement('text', { font: 'heading', text: 'Line one\nLine two' })];
+    const fixture = setup(slide);
+    const headings = root(fixture).querySelectorAll('h2');
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent).toBe('Line one\nLine two');
+  });
+
+  it('falls back for an unknown alignment and a negative size', () => {
+    const slide = createSlide('layout');
+    slide.elements = [createElement('text', { text: 'x', align: 'justify; color: red' as never, fontSize: -4 })];
+    const fixture = setup(slide);
+    const style = (root(fixture).querySelector('.text') as HTMLElement).style;
+    expect(style.textAlign).toBe('left');
+    expect(style.fontSize).toBe('0px');
+  });
+});
+
 describe('SlideRenderer visibility', () => {
   const gated = (): Slide => {
     const slide = createSlide('layout');
@@ -289,6 +309,36 @@ describe('ImageElement assets', () => {
     expect(img?.getAttribute('src')).toBe('blob:test');
     expect(img?.getAttribute('alt')).toBe('Logo');
     expect(repo.getAsset).toHaveBeenCalledWith(hash);
+  });
+
+  it('retries after a failed read, and survives a rejecting repository', async () => {
+    const repo = new InMemoryDeckRepository();
+    const read = vi
+      .spyOn(repo, 'getAsset')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({ ok: true, value: new Blob(['x'], { type: 'image/png' }) });
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:retry'), revokeObjectURL: vi.fn() }));
+    TestBed.configureTestingModule({ providers: [{ provide: DeckRepository, useValue: repo }] });
+    const slide = imageSlide(hash);
+    const fixture = create(repo, slide);
+    await fixture.whenStable();
+    fixture.componentRef.setInput('slide', { ...slide, elements: [{ ...slide.elements[0], x: 1 } as Element] });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentRef.setInput('slide', { ...slide, elements: [{ ...slide.elements[0], x: 2 } as Element] });
+    fixture.detectChanges();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(root(fixture).querySelector('img')?.getAttribute('src')).toBe('blob:retry');
+  });
+
+  it('hides the placeholder of a decorative image (empty alt) from assistive technology', () => {
+    const slide = createSlide('layout');
+    slide.elements = [createElement('image', { assetId: '', alt: '' })];
+    const fixture = setup(slide);
+    const placeholder = root(fixture).querySelector('.missing')!;
+    expect(placeholder.getAttribute('aria-hidden')).toBe('true');
+    expect(placeholder.hasAttribute('role')).toBe(false);
+    expect(placeholder.hasAttribute('aria-label')).toBe(false);
   });
 
   it('keeps the placeholder for ids that are not content hashes, without touching the repository', async () => {

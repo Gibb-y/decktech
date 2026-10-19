@@ -16,7 +16,7 @@ const OBJECT_FIT = { cover: 'cover', contain: 'contain', stretch: 'fill' } as co
       @if (url(); as src) {
         <img [src]="src" [alt]="el.alt" [style.object-fit]="fit()" />
       } @else {
-        <div class="missing" role="img" [attr.aria-label]="el.alt"></div>
+        <div class="missing" [attr.role]="el.alt ? 'img' : null" [attr.aria-label]="el.alt || null" [attr.aria-hidden]="el.alt ? null : 'true'"></div>
       }
     }
   `,

@@ -39,6 +39,14 @@ describe('resolveColor', () => {
   });
 });
 
+describe('resolveColor with an unusable theme colour', () => {
+  it('does not return a var() that themeVars would leave undefined', () => {
+    const broken = { ...theme, colors: { ...theme.colors, accent: 'url(x)' } };
+    expect(themeVars(broken)['--deck-color-accent']).toBeUndefined();
+    expect(resolveColor({ token: 'accent' }, broken)).toBeNull();
+  });
+});
+
 describe('resolveFont', () => {
   it('uses the key, and the body font for missing or unknown keys', () => {
     expect(resolveFont('mono', theme)).toBe('var(--deck-font-mono, sans-serif)');
@@ -85,6 +93,13 @@ describe('parseText', () => {
       { kind: 'list', items: ['one', 'two'] },
       { kind: 'paragraph', text: 'after' },
       { kind: 'list', items: ['three'] },
+    ]);
+  });
+
+  it('skips bullet lines without content', () => {
+    expect(parseText('-\n- \n• \n- real')).toEqual([
+      { kind: 'paragraph', text: '-' },
+      { kind: 'list', items: ['real'] },
     ]);
   });
 

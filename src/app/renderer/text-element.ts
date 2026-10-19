@@ -4,23 +4,27 @@ import { ElementView } from './element-view';
 import { parseText } from './text-blocks';
 import { resolveColor, resolveFont } from './theme';
 
+const ALIGNS: readonly string[] = ['left', 'center', 'right'];
+
 /** Read-only render of a text element; editing is a separate concern (DT-10). */
 @Component({
   selector: 'app-text-element',
   template: `
     @if (element(); as el) {
       <div class="text" [style]="style()">
-        @for (block of blocks(); track $index) {
-          @if (block.kind === 'list') {
-            <ul>
-              @for (item of block.items; track $index) {
-                <li>{{ item }}</li>
-              }
-            </ul>
-          } @else if (isHeading()) {
-            <h2>{{ block.text }}</h2>
-          } @else {
-            <p>{{ block.text }}</p>
+        @if (isHeading()) {
+          <h2>{{ headingText() }}</h2>
+        } @else {
+          @for (block of blocks(); track $index) {
+            @if (block.kind === 'list') {
+              <ul>
+                @for (item of block.items; track $index) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            } @else {
+              <p>{{ block.text }}</p>
+            }
           }
         }
       </div>
@@ -41,6 +45,9 @@ import { resolveColor, resolveFont } from './theme';
       margin: 0;
       font: inherit;
     }
+    h2 {
+      white-space: pre-line;
+    }
     ul {
       padding-inline-start: 1.2em;
     }
@@ -50,16 +57,21 @@ export class TextElement extends ElementView<TextEl> {
   protected readonly type = 'text';
 
   protected readonly blocks = computed(() => parseText(this.element()?.text ?? ''));
-  /** The theme's `heading` font marks title text, which is output as a heading. */
+  /** The theme's `heading` font marks title text, which is output as one heading, however many lines. */
   protected readonly isHeading = computed(() => this.element()?.font === 'heading');
+  protected readonly headingText = computed(() =>
+    this.blocks()
+      .flatMap((block) => (block.kind === 'list' ? block.items : [block.text]))
+      .join('\n'),
+  );
   protected readonly style = computed(() => {
     const el = this.element();
     if (!el) return {};
     const theme = this.theme();
     const style: Record<string, string> = {
       'font-family': resolveFont(el.font, theme),
-      'font-size': `${Number.isFinite(el.fontSize) ? el.fontSize : 0}px`,
-      'text-align': el.align,
+      'font-size': `${Number.isFinite(el.fontSize) ? Math.max(0, el.fontSize) : 0}px`,
+      'text-align': ALIGNS.includes(el.align) ? el.align : 'left',
     };
     const color = resolveColor(el.color, theme);
     if (color) style['color'] = color;

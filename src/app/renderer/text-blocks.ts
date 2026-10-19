@@ -14,6 +14,7 @@ export function parseText(text: string): TextBlock[] {
     const bullet = BULLET.exec(line);
     const last = blocks[blocks.length - 1];
     if (bullet) {
+      if (bullet[1].trim() === '') continue;
       if (last?.kind === 'list') last.items.push(bullet[1]);
       else blocks.push({ kind: 'list', items: [bullet[1]] });
     } else {

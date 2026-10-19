@@ -39,8 +39,17 @@ export class AssetUrls {
 
   private async load(assetId: string, target: WritableSignal<string | null>): Promise<void> {
     if (!this.repository || !ASSET_ID.test(assetId)) return;
-    const result = await this.repository.getAsset(assetId);
-    if (!result.ok || this.destroyed) return;
-    target.set(URL.createObjectURL(result.value));
+    try {
+      const result = await this.repository.getAsset(assetId);
+      if (this.destroyed) return;
+      if (result.ok) {
+        target.set(URL.createObjectURL(result.value));
+        return;
+      }
+    } catch {
+      // treated like a failed read below
+    }
+    // Forget the failure so the next read tries again (the asset may be stored a moment later).
+    if (this.urls.get(assetId) === target) this.urls.delete(assetId);
   }
 }
