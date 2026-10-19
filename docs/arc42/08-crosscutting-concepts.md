@@ -4,7 +4,16 @@
 
 The deck document (section 5.2) is the single source of truth. It is immutable from the outside: the store replaces it with a new value on each command, and unchanged slides and elements keep their object identity, so signals and `computed` selectors only recompute what changed.
 
-Document versions are tracked by `schemaVersion`. Every load or import runs the migration chain; unknown *newer* versions open read-only with a warning.
+Document versions are tracked by `schemaVersion`. Every load or import runs the migration chain; unknown *newer* versions are reported as read-only with a reason (no editable deck is produced).
+
+### Migrations
+
+`migrate(raw)` (`src/app/core/migrations/`) is the entry point in front of `validateDeck`. It never throws: anything unexpected (e.g. a stack overflow on absurdly nested input) becomes an `unexpected` error.
+
+- **Chain:** `MIGRATIONS` maps a version to the pure step that upgrades it to the next one. The runner applies the steps in order and stamps `schemaVersion` itself after each, so a step only transforms content. Bumping `SCHEMA_VERSION` requires adding the step from the previous version (a spec checks the registry is contiguous) and a frozen fixture for the new version (`fixtures.ts`). v0 → v1 is synthetic: no released app wrote v0; it exists to exercise the chain.
+- **Atomicity:** an older document is deep-cloned once and the steps run on the clone, so a throwing or in-place-mutating step cannot change the caller's data. A step that throws, returns a non-object, or leaves a gap in the chain gives an error result (`migration-failed`, `no-path`), carrying the starting `fromVersion` and the failing `step`; a migrated deck that does not validate gives `invalid-deck` with the validation paths. A document already at the current version is validated as is, without a copy.
+- **Newer versions:** the outcome is `{ readOnly: true, reason, fromVersion, supportedVersion }`. It deliberately carries no deck: the strict validator rejects unknown fields, so a newer document rarely validates, and handing out a `Deck` with a future `schemaVersion` would make read-only a convention. The caller keeps the stored original untouched, shows the `reason`, and must not save over it. A read-only viewer would need its own tolerant reader. A missing, fractional, negative or non-numeric `schemaVersion` is an `invalid-version` error.
+- **Backup:** `migrateStored(raw, sink)` is for decks loaded from storage. Only when an upgrade actually happened (and succeeded) it awaits `sink.backup({ raw, fromVersion, toVersion })` with a copy of the untouched original (so an asynchronous sink never sees later changes), and only then returns the migrated deck. If the backup fails the result is a `backup-failed` error, so the caller keeps the stored original and never overwrites it with an un-backed-up migration. Failed migrations and read-only decks need no backup, because nothing is overwritten. The sink (rolling store, retention) is part of persistence (`DeckRepository`).
 
 ### Validation
 
@@ -22,7 +31,7 @@ Document versions are tracked by `schemaVersion`. Every load or import runs the 
 - **Prop specs:** a default must match the declared type, lie within `min` / `max` for numbers (and `min <= max`), and be one of the option values for selects.
 - **Hostile keys:** `__proto__`, `constructor` and `prototype` are rejected as keys in props, theme maps and prop specs. `CodeEl.props` must be plain JSON.
 
-`CodeEl.props` are deliberately not checked against the component's `propSchema`: schemas evolve, and a stale prop must not make a deck unloadable; the renderer ignores undeclared props and applies defaults. Only the current `schemaVersion` is accepted (opening newer versions read-only belongs to the migration chain, not to validation); the migration chain runs before validation. Validation checks structure, not code: the content of `ComponentDef.html/css/js` is opaque here and handled by the sandbox (8.2) and trust prompt (6.4).
+`CodeEl.props` are deliberately not checked against the component's `propSchema`: schemas evolve, and a stale prop must not make a deck unloadable; the renderer ignores undeclared props and applies defaults. Only the current `schemaVersion` is accepted (opening newer versions read-only belongs to `migrate`, not to validation); the migration chain runs before validation. Validation checks structure, not code: the content of `ComponentDef.html/css/js` is opaque here and handled by the sandbox (8.2) and trust prompt (6.4).
 
 ### Stage and units
 
@@ -133,7 +142,7 @@ Theme tokens (colors, font families, type scale, spacing) are defined once per d
 ## 8.9 Error handling and logging
 
 - A central `ErrorService` collects host errors and component errors (tagged by component id). The editor shows component errors in the console panel; there is no remote telemetry.
-- Failures never lose data: autosave runs before risky operations (import, migration) and migrations keep the previous version in a rolling backup store.
+- Failures never lose data: autosave runs before risky operations (import, migration) and migrations keep the previous version in a rolling backup store (`BackupSink`, see 8.1; the store itself belongs to persistence).
 
 ## 8.10 Testing strategy
 
