@@ -25,6 +25,8 @@
 | Backup sink | Interface through which the pre-migration version of a stored deck is handed to persistence for the rolling backup. |
 | `DeckRepository` | Storage abstraction for decks and assets; implemented on IndexedDB and in memory. |
 | Revision | Counter stored with each deck and incremented on every save; `save` must present the revision it loaded, so concurrent writers are detected. |
+| Library | The home screen (`library/`) listing stored decks; creates, renames, duplicates and deletes them through `DeckRepository`. |
+| Template | A built-in deck JSON from which the library creates a new deck with a fresh id. |
 | Autosave | Debounced writing of the open deck to the repository by `AutosaveService`; reports `saved`, `saving` or `error`. |
 | Asset id | Lower-case hex SHA-256 of an asset's bytes; also its `blobKey`. Identical content is stored once. |
 | Coalescing | Merging consecutive commands with the same key issued within a short window (500 ms) into one undo step, e.g. a drag. |

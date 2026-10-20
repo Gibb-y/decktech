@@ -25,6 +25,8 @@
 | Single-user, single-device | Sync and collaboration deferred. |
 | Autosave writes the whole deck | Cost follows deck size (a 1000-slide deck is cloned on every write); blobs are separate and unaffected. Revisit with per-slide records or patch journaling. |
 | Unreferenced assets are never collected | `delete(deckId)` and removing an element leave blobs behind. A mark-and-sweep over all decks' `assets` is needed before storage pressure matters. |
+| Library thumbnails are placeholders | `library` may not import `renderer` (4.4), so the home screen shows the title's initial. Slide thumbnails there need a rule change or a thumbnail provider in `shared`. Also unbuilt: import/export in the library and the export reminder UI. |
+| Library list is paged, not windowed | 60 decks at a time plus `content-visibility`, which meets Q11 for placeholder thumbnails. Revisit with real thumbnails. Renaming or deleting a deck that another tab has open surfaces as a `conflict` or as a failed save there. |
 | No cross-tab live update | A second tab learns of a change only through a `conflict` on save; a `BroadcastChannel` notification can be added. |
 
 ## 11.3 Open questions

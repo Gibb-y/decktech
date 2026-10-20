@@ -47,4 +47,8 @@ src/app/
   shared/        UI primitives, a11y utilities
 ```
 
-Dependency rule: `core` depends on nothing; `renderer` depends on `core`; `editor`, `presenter`, `components` depend on `renderer` and `core`; features never depend on one another directly.
+Dependency rule: `core` depends on nothing; `renderer` depends on `core`; `editor`, `presenter`, `components` depend on `renderer`, `core` and `shared`; `library` depends on `core` and `shared`; `shared` depends on nothing; features never depend on one another directly.
+
+The rule is enforced by `scripts/check-boundaries.mjs` (`npm run lint:boundaries`), a dependency-free script that reads every relative import under `src/app` and fails on an import the table in the script does not allow (and on an unknown top-level folder). CI runs it before the tests (`.github/workflows/ci.yml`). It stands in for an ESLint boundaries plugin so that the project needs no linter yet; the allowed-imports table is the single place to change when the rule changes. Files directly in `src/app` (`app.ts`, routes, config) wire the features together and are not restricted.
+
+Every route in `app.routes.ts` is lazy (`loadComponent`), so the initial bundle holds only the shell, the persistence banner and the shared a11y pieces; a test asserts that no route uses an eager `component`.

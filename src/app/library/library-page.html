@@ -1,0 +1,94 @@
+<h1 id="library-heading" tabindex="-1">Your decks</h1>
+
+<section aria-labelledby="create-heading" class="panel">
+  <h2 id="create-heading">Create</h2>
+  <div class="row">
+    <button type="button" class="primary" [disabled]="library.busy()" (click)="createBlank()">New blank deck</button>
+  </div>
+  <h3 id="templates-heading">Start from a template</h3>
+  <ul class="templates" aria-labelledby="templates-heading">
+    @for (template of library.templates; track template.id) {
+      <li>
+        <button type="button" [disabled]="library.busy()" (click)="createFromTemplate(template.id)">{{ template.name }}</button>
+        <span class="muted">{{ template.description }}</span>
+      </li>
+    }
+  </ul>
+</section>
+
+@if (error(); as message) {
+  <p class="error" role="alert">{{ message }}</p>
+}
+
+<section aria-labelledby="decks-heading" class="panel">
+  <h2 id="decks-heading">Decks</h2>
+  <div class="row">
+    <label for="deck-search">Search decks by title</label>
+    <input id="deck-search" type="search" autocomplete="off" [value]="query()" (input)="setQuery($event)" />
+  </div>
+
+  @switch (library.status()) {
+    @case ('loading') {
+      <p>Loading decks…</p>
+    }
+    @case ('error') {
+      <p class="muted">Your decks could not be read.</p>
+      <button type="button" (click)="retry()">Try again</button>
+    }
+    @default {
+      <p class="muted" aria-live="polite">{{ summary() }}</p>
+      @if (library.decks().length === 0) {
+        <p>You have no decks yet. Create one above.</p>
+      } @else if (matches().length === 0) {
+        <p>No deck matches “{{ query() }}”.</p>
+      }
+      <ul class="decks">
+        @for (deck of visible(); track deck.id) {
+          <li class="deck">
+            <div class="thumb" aria-hidden="true">{{ initialOf(deck.title) }}</div>
+            <div class="info">
+              @if (renamingId() === deck.id) {
+                <form class="row" (submit)="submitRename($event, deck.id)">
+                  <label [for]="'rename-' + deck.id">New title for {{ deck.title }}</label>
+                  <input [id]="'rename-' + deck.id" type="text" maxlength="200" [value]="renameDraft()" (input)="setRenameDraft($event)" />
+                  <button type="submit" class="primary" [disabled]="library.busy()">Save</button>
+                  <button type="button" (click)="cancelRename(deck.id)">Cancel</button>
+                </form>
+              } @else {
+                <a class="title" [routerLink]="['/deck', deck.id]">{{ deck.title }}</a>
+              }
+              <span class="muted">Modified <time [attr.datetime]="deck.updatedAt | date: isoFormat : 'UTC'">{{ deck.updatedAt | date: 'medium' }}</time></span>
+            </div>
+            <div class="actions">
+              <button type="button" [id]="'rename-btn-' + deck.id" [disabled]="library.busy()" (click)="startRename(deck)">
+                Rename<span class="sr-only"> {{ deck.title }}</span>
+              </button>
+              <button type="button" [disabled]="library.busy()" (click)="duplicate(deck.id)">
+                Duplicate<span class="sr-only"> {{ deck.title }}</span>
+              </button>
+              <button type="button" class="danger" [id]="'delete-btn-' + deck.id" [disabled]="library.busy()" (click)="askDelete(deck)">
+                Delete<span class="sr-only"> {{ deck.title }}</span>
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+      @if (hidden() > 0) {
+        <button type="button" (click)="showMore()">Show {{ nextChunk() }} more ({{ hidden() }} not shown)</button>
+      }
+    }
+  }
+</section>
+
+@if (pendingDelete(); as deck) {
+  <div class="backdrop">
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-text" appFocusTrap (keydown.escape)="cancelDelete()">
+      <h2 id="delete-title">Delete this deck?</h2>
+      <p id="delete-text">“{{ deck.title }}” and its backups will be removed from this browser. This cannot be undone.</p>
+      <div class="row">
+        <button type="button" data-autofocus (click)="cancelDelete()">Cancel</button>
+        <button type="button" class="danger-solid" [disabled]="library.busy()" (click)="confirmDelete()">Delete deck</button>
+      </div>
+    </div>
+  </div>
+}
