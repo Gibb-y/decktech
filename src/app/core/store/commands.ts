@@ -3,10 +3,12 @@ import {
   ELEMENT_SCHEMAS,
   createElement,
   generateId,
+  type AssetRef,
   type CodeEl,
   type ComponentDef,
   type Deck,
   type Element,
+  type Fill,
   type Slide,
 } from '../model';
 import {
@@ -21,6 +23,10 @@ import {
   type Command,
   type CommandResult,
 } from './command';
+
+/** Content-addressed asset ids (8.5): the lowercase hex SHA-256 digest. */
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+const MAX_SECTION_NAME = 200;
 
 /** Options shared by commands that are issued repeatedly during a gesture. */
 export interface GestureOptions {
@@ -141,6 +147,108 @@ export class SetNotes implements Command {
       deck,
       updateSlide(deck, this.slideId, (s) => (s.notes === this.notes ? s : { ...s, notes: this.notes })),
     );
+  }
+}
+
+/** Names the section that starts at a slide; `undefined` (or a blank name) removes the section start. */
+export class SetSlideSection implements Command {
+  readonly name = 'SetSlideSection';
+  readonly coalesceKey: string;
+  private readonly section: string | undefined;
+
+  constructor(
+    readonly slideId: string,
+    section: string | undefined,
+  ) {
+    this.coalesceKey = `section:${slideId}`;
+    this.section = section?.trim() || undefined;
+  }
+
+  do(deck: Deck): CommandResult {
+    if (this.section !== undefined && this.section.length > MAX_SECTION_NAME) {
+      throw new CommandError(`A section name has at most ${MAX_SECTION_NAME} characters`);
+    }
+    return resultOf(
+      deck,
+      updateSlide(deck, this.slideId, (s) => {
+        if (s.section === this.section) return s;
+        const { section: _old, ...rest } = s;
+        return this.section === undefined ? rest : { ...rest, section: this.section };
+      }),
+    );
+  }
+}
+
+/** Switches the layout of a slide. Elements stay where they are: layouts only supply background and placeholders. */
+export class SetSlideLayout implements Command {
+  readonly name = 'SetSlideLayout';
+
+  constructor(
+    readonly slideId: string,
+    readonly layoutId: string,
+  ) {}
+
+  do(deck: Deck): CommandResult {
+    if (!deck.layouts.some((l) => l.id === this.layoutId)) throw new CommandError(`Layout "${this.layoutId}" does not exist`);
+    return resultOf(
+      deck,
+      updateSlide(deck, this.slideId, (s) => (s.layoutId === this.layoutId ? s : { ...s, layoutId: this.layoutId })),
+    );
+  }
+}
+
+/** Sets the background of a slide, or removes it (`undefined`) so the layout's shows through. */
+export class SetSlideBackground implements Command {
+  readonly name = 'SetSlideBackground';
+  readonly coalesceKey: string;
+
+  constructor(
+    readonly slideId: string,
+    readonly background: Fill | undefined,
+  ) {
+    this.coalesceKey = `background:${slideId}`;
+  }
+
+  do(deck: Deck): CommandResult {
+    const fill = this.background;
+    if (fill?.kind === 'image' && !Object.hasOwn(deck.assets, fill.assetId)) {
+      throw new CommandError(`Asset "${fill.assetId}" does not exist`);
+    }
+    return resultOf(
+      deck,
+      updateSlide(deck, this.slideId, (s) => {
+        if (fill === undefined) {
+          if (s.background === undefined) return s;
+          const { background: _old, ...rest } = s;
+          return rest;
+        }
+        return deepEqual(s.background, fill) ? s : { ...s, background: fill };
+      }),
+    );
+  }
+}
+
+/**
+ * Registers a stored blob in the deck. Asset ids are content hashes, so adding the same content
+ * again is a no-op; a different reference under an existing id is an error.
+ */
+export class AddAsset implements Command {
+  readonly name = 'AddAsset';
+
+  constructor(
+    readonly assetId: string,
+    readonly ref: AssetRef,
+  ) {}
+
+  do(deck: Deck): CommandResult {
+    if (!SHA256_HEX.test(this.assetId) || this.ref.hash !== this.assetId || this.ref.blobKey !== this.assetId) {
+      throw new CommandError('An asset id is the SHA-256 digest of its content, which is also its hash and blob key');
+    }
+    if (Object.hasOwn(deck.assets, this.assetId)) {
+      if (!deepEqual(deck.assets[this.assetId], this.ref)) throw new CommandError(`Asset "${this.assetId}" already exists with different content`);
+      return resultOf(deck, deck);
+    }
+    return resultOf(deck, { ...deck, assets: { ...deck.assets, [this.assetId]: this.ref } });
   }
 }
 

@@ -267,12 +267,13 @@ class Validator {
   }
 
   private slide(path: string, value: unknown, slideIds: Set<string>): void {
-    const s = this.record(path, value, ['id', 'layoutId', 'background', 'elements', 'notes', 'transition']);
+    const s = this.record(path, value, ['id', 'layoutId', 'section', 'background', 'elements', 'notes', 'transition']);
     if (!s) return;
     this.unique(`${path}.id`, s['id'], slideIds, 'slide');
     if (this.id(`${path}.layoutId`, s['layoutId'])) {
       this.layoutRefs.push({ path: `${path}.layoutId`, id: s['layoutId'] as string });
     }
+    if (s['section'] !== undefined) this.string(`${path}.section`, s['section'], MAX_SHORT_STRING, 1);
     if (s['background'] !== undefined) this.fill(`${path}.background`, s['background']);
     this.string(`${path}.notes`, s['notes'], this.limits.maxStringLength, 0);
     if (s['transition'] !== undefined) this.transition(`${path}.transition`, s['transition']);

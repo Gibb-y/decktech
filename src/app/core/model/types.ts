@@ -161,6 +161,8 @@ export type ElementType = Element['type'];
 export interface Slide {
   id: string;
   layoutId: string;
+  /** Starts a named section of the deck; the section runs up to the next slide that has one. */
+  section?: string;
   background?: Fill;
   /** Array order is z-order. */
   elements: Element[];

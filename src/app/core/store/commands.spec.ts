@@ -10,6 +10,7 @@ import {
 } from '../model';
 import { CommandError, type Command } from './command';
 import {
+  AddAsset,
   AddCodeElement,
   AddElement,
   AddSlide,
@@ -23,6 +24,9 @@ import {
   SetComponentSource,
   SetNotes,
   SetProps,
+  SetSlideBackground,
+  SetSlideLayout,
+  SetSlideSection,
   SetText,
 } from './commands';
 import { DeckStore } from './deck-store';
@@ -290,5 +294,84 @@ describe('commands: do / undo / redo', () => {
       expect(result.patch).toEqual([{ op: 'remove', path: '/slides/1' }]);
       expect(result.inverse).toHaveLength(1);
     });
+  });
+});
+
+describe('commands: sections, layout, background, assets (DT-08)', () => {
+  const f = fixture();
+  const hash = 'a'.repeat(64);
+  const ref = { blobKey: hash, mime: 'image/png', hash, size: 3 };
+
+  it('SetSlideSection names, renames and clears a section start', () => {
+    const named = new SetSlideSection(f.s2.id, '  Intro  ').do(f.deck).deck;
+    expect(named.slides[1].section).toBe('Intro');
+    expect(validateDeck(named).ok).toBe(true);
+    expect(new SetSlideSection(f.s2.id, 'Intro').do(named).deck).toBe(named);
+    const cleared = new SetSlideSection(f.s2.id, undefined).do(named).deck;
+    expect('section' in cleared.slides[1]).toBe(false);
+    expect('section' in new SetSlideSection(f.s2.id, '   ').do(named).deck.slides[1]).toBe(false);
+    expect(new SetSlideSection(f.s1.id, undefined).do(f.deck).deck).toBe(f.deck);
+  });
+
+  it('SetSlideSection rejects unknown slides and over-long names', () => {
+    expect(() => new SetSlideSection('sl_missing', 'x').do(f.deck)).toThrow(CommandError);
+    expect(() => new SetSlideSection(f.s1.id, 'x'.repeat(201)).do(f.deck)).toThrow(/at most 200/);
+  });
+
+  it('SetSlideLayout switches to an existing layout only', () => {
+    const other = { id: 'ly_other', name: 'Other', placeholders: [] };
+    const deck = { ...f.deck, layouts: [...f.deck.layouts, other] };
+    expect(new SetSlideLayout(f.s1.id, other.id).do(deck).deck.slides[0].layoutId).toBe(other.id);
+    expect(new SetSlideLayout(f.s1.id, f.layoutId).do(deck).deck).toBe(deck);
+    expect(() => new SetSlideLayout(f.s1.id, 'ly_nope').do(deck)).toThrow(/does not exist/);
+    expect(() => new SetSlideLayout('sl_missing', other.id).do(deck)).toThrow(CommandError);
+  });
+
+  it('SetSlideBackground sets, replaces and removes a fill', () => {
+    const solid = { kind: 'solid', color: '#112233' } as const;
+    const set = new SetSlideBackground(f.s1.id, solid).do(f.deck).deck;
+    expect(set.slides[0].background).toEqual(solid);
+    expect(new SetSlideBackground(f.s1.id, structuredClone(solid)).do(set).deck).toBe(set);
+    const removed = new SetSlideBackground(f.s1.id, undefined).do(set).deck;
+    expect('background' in removed.slides[0]).toBe(false);
+    expect(new SetSlideBackground(f.s1.id, undefined).do(f.deck).deck).toBe(f.deck);
+  });
+
+  it('SetSlideBackground refuses an image fill whose asset is not in the deck', () => {
+    expect(() => new SetSlideBackground(f.s1.id, { kind: 'image', assetId: hash, fit: 'cover' }).do(f.deck)).toThrow(/does not exist/);
+    const withAsset = new AddAsset(hash, ref).do(f.deck).deck;
+    const ok = new SetSlideBackground(f.s1.id, { kind: 'image', assetId: hash, fit: 'cover' }).do(withAsset).deck;
+    expect(validateDeck(ok).ok).toBe(true);
+  });
+
+  it('AddAsset registers a digest once and is idempotent for the same reference', () => {
+    const added = new AddAsset(hash, ref).do(f.deck).deck;
+    expect(added.assets[hash]).toEqual(ref);
+    expect(validateDeck(added).ok).toBe(true);
+    expect(new AddAsset(hash, { ...ref }).do(added).deck).toBe(added);
+    expect(() => new AddAsset(hash, { ...ref, size: 4 }).do(added)).toThrow(/already exists with different content/);
+  });
+
+  it.each([
+    ['not a digest', 'photo', { ...ref, blobKey: 'photo', hash: 'photo' }],
+    ['a prototype key', '__proto__', { ...ref, blobKey: '__proto__', hash: '__proto__' }],
+    ['a hash that differs from the id', hash, { ...ref, hash: 'b'.repeat(64) }],
+    ['a blob key that differs from the id', hash, { ...ref, blobKey: 'b'.repeat(64) }],
+  ])('AddAsset rejects %s', (_label, id, r) => {
+    expect(() => new AddAsset(id, r).do(f.deck)).toThrow(/SHA-256/);
+  });
+
+  it('undo and redo of AddAsset and SetSlideSection go through the store', () => {
+    const store = TestBed.inject(DeckStore);
+    store.load(f.deck);
+    store.execute(new AddAsset(hash, ref));
+    store.execute(new SetSlideSection(f.s1.id, 'A'));
+    store.undo();
+    store.undo();
+    expect(store.deck()).toEqual(f.deck);
+    store.redo();
+    store.redo();
+    expect(store.deck().assets[hash]).toEqual(ref);
+    expect(store.deck().slides[0].section).toBe('A');
   });
 });
