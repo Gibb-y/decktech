@@ -56,7 +56,36 @@ sequenceDiagram
     D->>S: execute(SetComponentSource{id, html, css, js})
 ```
 
+`Insert → Code component` is `InsertActions.insert('code')`: it adds a starter `ComponentDef` with a fresh id and a code element in one `AddCodeElement` command and selects the element; the code editor itself is a later issue.
+
 Reloading the frame on each change (rather than hot-patching) keeps semantics identical to presentation. Component state that the author wants to keep across reloads can use `deck.state` (see 8.3).
+
+## 6.2a Quick insert from the keyboard
+
+```mermaid
+sequenceDiagram
+    actor U as Author
+    participant R as ShortcutRegistry
+    participant E as EditorShell
+    participant M as InsertMenu
+    participant A as InsertActions
+    participant S as DeckStore
+    participant P as PropertiesPanel
+
+    U->>R: "/" (document keydown, not in a text field)
+    R->>E: run global.insert-menu
+    E->>M: open dialog, focus the filter
+    U->>M: type "title", Enter
+    M->>E: chosen(title)
+    E->>A: insert(title) after the dialog is closed
+    A->>S: execute(AddElement) and select it
+    A-->>P: focusRequest {field: "text"}
+    P-->>U: focus in the text field
+    U->>P: type the title
+    P->>S: execute(SetProps{text}) (coalesced, one undo step)
+```
+
+The dialog is closed before the element is inserted, so the focus trap has already given focus back and the panel's focus request is the last word. A picture takes the same path up to `pickImage()`, then `insertImage(file)` once the file chooser returns.
 
 ## 6.3 Presenting
 

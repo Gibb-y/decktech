@@ -313,6 +313,15 @@ describe('commands: sections, layout, background, assets (DT-08)', () => {
     expect(new SetSlideSection(f.s1.id, undefined).do(f.deck).deck).toBe(f.deck);
   });
 
+  it('DuplicateSlide continues the section instead of starting a second one', () => {
+    const named = new SetSlideSection(f.s2.id, 'Intro').do(f.deck).deck;
+    const copy = new DuplicateSlide(f.s2.id, 'sl_copy').do(named).deck;
+    expect(copy.slides[1].section).toBe('Intro');
+    expect('section' in copy.slides[2]).toBe(false);
+    expect(copy.slides[2].id).toBe('sl_copy');
+    expect(validateDeck(copy).ok).toBe(true);
+  });
+
   it('SetSlideSection rejects unknown slides and over-long names', () => {
     expect(() => new SetSlideSection('sl_missing', 'x').do(f.deck)).toThrow(CommandError);
     expect(() => new SetSlideSection(f.s1.id, 'x'.repeat(201)).do(f.deck)).toThrow(/at most 200/);

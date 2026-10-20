@@ -92,6 +92,11 @@ export class SlideSorter {
     );
   }
 
+  /** The buttons' way to reorder: a single-pointer alternative to dragging. */
+  protected move(delta: number): void {
+    this.slideActions.moveSlideBy(delta); // the button keeps the focus: it is not part of the redrawn list
+  }
+
   protected select(slide: Slide): void {
     this.store.selectSlide(slide.id);
   }

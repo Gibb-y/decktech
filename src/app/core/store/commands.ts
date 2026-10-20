@@ -81,7 +81,7 @@ export class DeleteSlide implements Command {
   }
 }
 
-/** Inserts a copy (new slide and element ids) right after the original. */
+/** Inserts a copy (new slide and element ids, no section start) right after the original. */
 export class DuplicateSlide implements Command {
   readonly name = 'DuplicateSlide';
 
@@ -95,7 +95,7 @@ export class DuplicateSlide implements Command {
     const index = slideIndex(deck, this.slideId);
     if (deck.slides.some((s) => s.id === this.newSlideId)) throw new CommandError(`Slide "${this.newSlideId}" already exists`);
     const original = deck.slides[index];
-    const clone = structuredClone(original);
+    const { section: _section, ...clone } = structuredClone(original); // a copy continues the section, it does not start one
     const copy: Slide = {
       ...clone,
       id: this.newSlideId,

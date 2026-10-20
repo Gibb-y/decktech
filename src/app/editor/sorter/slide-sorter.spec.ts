@@ -121,13 +121,35 @@ describe('SlideSorter', () => {
 
   it('the buttons do the same: add, duplicate, delete', async () => {
     const { root, store } = await openEditor();
-    const [add, duplicate, remove] = Array.from(root.querySelectorAll<HTMLButtonElement>('.tools button'));
+    const [add, duplicate, , , remove] = Array.from(root.querySelectorAll<HTMLButtonElement>('.tools button'));
     add.click();
     expect(store.slides()).toHaveLength(4);
     duplicate.click();
     expect(store.slides()).toHaveLength(5);
     remove.click();
     expect(store.slides()).toHaveLength(4);
+  });
+
+  it('Move up and Move down reorder without dragging, and are unavailable at the ends', async () => {
+    const { fixture, root, store } = await openEditor();
+    const [a, b, c] = store.slides().map((s) => s.id);
+    const up = Array.from(root.querySelectorAll<HTMLButtonElement>('.tools button')).find((x) => x.textContent === 'Move up')!;
+    const down = Array.from(root.querySelectorAll<HTMLButtonElement>('.tools button')).find((x) => x.textContent === 'Move down')!;
+    expect(up.getAttribute('aria-disabled')).toBe('true');
+    expect(down.getAttribute('aria-disabled')).toBeNull();
+    down.focus();
+    down.click();
+    await settle(fixture);
+    expect(store.slides().map((s) => s.id)).toEqual([b, a, c]);
+    expect(up.getAttribute('aria-disabled')).toBeNull();
+    expect(document.activeElement).toBe(down); // keyboard users can press it again
+    down.click();
+    await settle(fixture);
+    expect(down.getAttribute('aria-disabled')).toBe('true');
+    down.click(); // at the end: nothing happens
+    expect(store.slides().map((s) => s.id)).toEqual([b, c, a]);
+    up.click();
+    expect(store.slides().map((s) => s.id)).toEqual([b, a, c]);
   });
 
   it('ignores slide shortcuts typed anywhere but on a slide button', async () => {
@@ -293,6 +315,23 @@ describe('SlideSorter', () => {
       const renderers = root.querySelectorAll('.sorter app-slide-renderer');
       expect(renderers).toHaveLength(3);
       expect(root.querySelector('.sorter .stage')?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('measures its margin from the scrolling list, so thumbnails just outside it are ready before they show', async () => {
+      const options: IntersectionObserverInit[] = [];
+      vi.stubGlobal(
+        'IntersectionObserver',
+        class extends FakeObserver {
+          constructor(callback: (entries: { isIntersecting: boolean }[]) => void, init: IntersectionObserverInit) {
+            super(callback);
+            options.push(init);
+          }
+        },
+      );
+      const { root } = await openEditor();
+      expect(options.length).toBeGreaterThanOrEqual(3);
+      for (const init of options) expect(init.root).toBe(root.querySelector('nav.sorter'));
+      expect(options[0].rootMargin).toBe('240px 0px');
     });
 
     it('stops observing when the sorter goes away', async () => {

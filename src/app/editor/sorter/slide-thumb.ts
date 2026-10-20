@@ -35,6 +35,8 @@ export class SlideThumb {
   readonly slide = input.required<Slide>();
   readonly theme = input.required<Theme>();
   readonly stage = input.required<Stage>();
+  /** The scrolling container the thumbnail sits in; the margin is measured from it, not from the window. */
+  readonly scroller = input<Element | null>(null);
 
   protected readonly visible = signal(typeof IntersectionObserver === 'undefined');
   protected readonly ratio = computed(() => `${this.stage().width} / ${this.stage().height}`);
@@ -49,7 +51,7 @@ export class SlideThumb {
           const last = entries[entries.length - 1];
           if (last) this.visible.set(last.isIntersecting);
         },
-        { rootMargin: MARGIN },
+        { root: this.scroller(), rootMargin: MARGIN },
       );
       observer.observe(host);
       destroyRef.onDestroy(() => observer.disconnect());

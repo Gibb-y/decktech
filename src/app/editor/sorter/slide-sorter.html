@@ -1,7 +1,9 @@
-<nav class="sorter" aria-label="Slides">
+<nav #scroller class="sorter" aria-label="Slides">
   <div class="tools" role="group" aria-label="Slide actions">
     <button type="button" (click)="slideActions.addSlide()">Add</button>
     <button type="button" (click)="slideActions.duplicateSlide()">Duplicate</button>
+    <button type="button" [attr.aria-disabled]="store.currentSlideIndex() > 0 ? null : 'true'" (click)="move(-1)">Move up</button>
+    <button type="button" [attr.aria-disabled]="store.currentSlideIndex() < store.slides().length - 1 ? null : 'true'" (click)="move(1)">Move down</button>
     <button type="button" class="danger" [attr.aria-disabled]="store.slides().length > 1 ? null : 'true'" (click)="slideActions.deleteSlide()">Delete</button>
     <button #sectionButton type="button" aria-haspopup="true" [attr.aria-expanded]="editingSection()" (click)="openSection()">Section</button>
   </div>
@@ -43,7 +45,7 @@
           (click)="select(slide)"
         >
           <span class="number" aria-hidden="true">{{ i + 1 }}</span>
-          <app-slide-thumb [slide]="slide" [theme]="store.deck().theme" [stage]="store.deck().stage" />
+          <app-slide-thumb [slide]="slide" [theme]="store.deck().theme" [stage]="store.deck().stage" [scroller]="scroller" />
         </button>
       </li>
     }

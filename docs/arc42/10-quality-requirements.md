@@ -47,7 +47,7 @@ mindmap
 | Q10 | Performance | Advance to the next slide containing code components. | Visible within 100 ms (preloaded). |
 | Q11 | Performance | Open a 200-slide deck. | List shown < 1 s; thumbnails lazily rendered. |
 | Q12 | Portability | Open a deck exported by an older app version. | Migrated automatically, no data loss. |
-| Q13 | Maintainability | Add a new built-in element type. | Touches one renderer, one editor-panel section, one schema entry; no changes in core store or history. |
+| Q13 | Maintainability | Add a new built-in element type. | Touches one renderer and one schema entry; the properties-panel section is generated from the schema entry (a special control, like colour or fill, is the only reason to touch the panel); no changes in core store or history. |
 
 ## 10.3 Measuring Q9 (drag performance)
 
@@ -62,3 +62,10 @@ Result of the first run (DT-07, development build, headless Edge on the develope
 | 6x | 0 of 620 in one run, 1 of 617 in another | 17.0 ms; once 33.4 ms | 0 | 10 ms |
 
 Under throttling an occasional single frame of about 33 ms (one dropped frame) showed up in some runs and not in others; it is not a pattern, and a drag of 600 frames stays above 99.8% on time. Throttling was checked with a calibration loop (15 ms unthrottled, 115 ms at 6x). A move costs about 1.5 ms unthrottled, so even 6x (10 ms) fits the 16.7 ms frame; browsers normally align `pointermove` to the frame (events injected over the DevTools protocol are not, and a run with four per step stayed on time too), so a high report rate should not multiply the cost. Not covered: a real GPU compositor (headless), Firefox and Safari, and the three code components of Q9, which the renderer cannot draw yet; the profile is to be repeated with them when DT-12 lands.
+
+## 10.4 Q1 and Q2 (authoring speed, keyboard-only)
+
+Both are exercised by tests in `src/app/editor/editor-chrome.spec.ts` that drive the whole editor page with key events only:
+
+- **Q1** (title and bullet list from a blank deck): Enter in the sorter adds a slide; `/`, "title", Enter inserts a title and puts the focus in its text field; the title is typed; `/`, "bullet", Enter does the same for the list. The test counts the key presses (fewer than 30) and checks the result on the slide. A person who knows the shortcuts needs well under 30 s; someone who does not has the toolbar buttons, the `/` filter and the `?` help. The manual stopwatch check with a first-time user is recorded on the pull request.
+- **Q2** (titled image, keyboard only): the same flow with "image" as the second item. The file chooser is the browser's own dialog, so the test hands the file to `InsertActions.insertImage` where the dialog would return it, then types the alt text into the field that has the focus. AXE runs on the editor page, the insert menu, the shortcut help, the sorter and the properties panel (jsdom has no layout, so colour contrast is checked by hand).
