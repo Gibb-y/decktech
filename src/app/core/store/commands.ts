@@ -234,8 +234,14 @@ export class SetTheme implements Command {
     for (const key of REQUIRED_FONT_KEYS) {
       if (!Object.hasOwn(theme.fonts, key)) throw new CommandError(`A theme needs a "${key}" font`);
     }
+    const families = new Set<string>();
     for (const face of theme.fontFaces ?? []) {
       if (!deck.assets[face.assetId].mime.startsWith('font/')) throw new CommandError(`Asset "${face.assetId}" is not a font`);
+      if (families.has(face.family)) throw new CommandError(`The font family "${face.family}" is embedded twice`);
+      families.add(face.family);
+      if (!Object.values(theme.fonts).some((stack) => stack.includes(face.family))) {
+        throw new CommandError(`The embedded font "${face.family}" is not used by any font of the theme`);
+      }
     }
     const refs = themeRefs(deck);
     for (const token of refs.colors) {

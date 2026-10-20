@@ -6,9 +6,15 @@ import { LiveAnnouncer } from '../shared';
 
 const FONT_MIME: Record<string, string> = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
 
-/** Id of the built-in theme whose colours the theme has, or `null` for a custom one. */
+/** Id of the built-in theme whose colours, type scale and spacing the theme has (extra colours are fine), or `null` for a custom one. */
 export function builtInThemeId(theme: Theme): string | null {
-  const match = BUILT_IN_THEMES.find((b) => Object.entries(b.theme.colors).every(([k, v]) => theme.colors[k] === v));
+  const same = (a: object, b: object): boolean => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
+  const match = BUILT_IN_THEMES.find(
+    (b) =>
+      Object.entries(b.theme.colors).every(([k, v]) => theme.colors[k] === v) &&
+      same(b.theme.typeScale, theme.typeScale) &&
+      same(b.theme.spacing, theme.spacing),
+  );
   return match?.id ?? null;
 }
 
@@ -53,9 +59,15 @@ export class ThemeActions {
     const { ref } = stored.value;
     const theme = this.store.deck().theme; // read after the await: the author may have edited meanwhile
     const key = family.replace(/\s+/g, '-');
+    const stack = `"${family}", sans-serif`;
+    // A file named like a theme font ("body.woff2") must not replace that font; re-adding a family is fine.
+    if (Object.hasOwn(theme.fonts, key) && theme.fonts[key] !== stack) {
+      this.announcer.announce(`The theme already has a font called “${key}”; rename the file and add it again`);
+      return false;
+    }
     const next: Theme = {
       ...theme,
-      fonts: { ...theme.fonts, [key]: `"${family}", sans-serif` },
+      fonts: { ...theme.fonts, [key]: stack },
       fontFaces: [...(theme.fontFaces ?? []).filter((f) => f.family !== family), { family, assetId: ref.hash }],
     };
     const commands: Command[] = Object.hasOwn(this.store.deck().assets, ref.hash) ? [] : [new AddAsset(ref.hash, ref)];

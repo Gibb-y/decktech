@@ -1,4 +1,4 @@
-import { instantiateLayout, createSlide, type Deck } from '../core/model';
+import { createSlide, createTheme, instantiateLayout, type Deck } from '../core/model';
 import { builtInThemeId, ThemeActions } from './theme-actions';
 import { SlideActions } from './slide-actions';
 import { TestBed } from '@angular/core/testing';
@@ -57,14 +57,15 @@ describe('layout picker for new slides', () => {
     expect(e.store.currentSlide().elements.map((x) => x.placeholder)).toEqual(['title', 'body', 'body']);
   });
 
-  it('says so instead of throwing when the chosen layout is gone', async () => {
+  it('forgets a picked layout the deck does not have and uses the current slide’s', async () => {
     const e = await openEditor();
     const announce = vi.spyOn(e.announcer, 'announce');
     const actions = TestBed.inject(SlideActions);
     actions.newSlideLayout.set('ly_missing');
     actions.addSlide();
-    expect(e.store.slides()).toHaveLength(3);
-    expect(announce).toHaveBeenCalledWith('That layout no longer exists');
+    expect(e.store.slides()).toHaveLength(4);
+    expect(actions.newSlideLayout()).toBeNull();
+    expect(announce).not.toHaveBeenCalledWith(expect.stringContaining('no longer exists'));
   });
 });
 
@@ -121,6 +122,22 @@ describe('theme picker', () => {
     expect(selectByLabel(e, 'Theme').options[0].textContent?.trim()).toBe('Custom');
   });
 
+  it('puts the select back on the deck’s theme when the change is not applied', async () => {
+    const e = await openEditor();
+    vi.spyOn(TestBed.inject(ThemeActions), 'applyBuiltIn').mockImplementation(() => undefined);
+    const picker = selectByLabel(e, 'Theme');
+    await choose(e, picker, 'dark');
+    expect(picker.value).toBe('light');
+  });
+
+  it('is not "built-in" once the type scale or spacing was customised', () => {
+    const theme = createTheme('dark');
+    expect(builtInThemeId(theme)).toBe('dark');
+    expect(builtInThemeId({ ...theme, typeScale: { ...theme.typeScale, body: 41 } })).toBeNull();
+    expect(builtInThemeId({ ...theme, spacing: { ...theme.spacing, sm: 1 } })).toBeNull();
+    expect(builtInThemeId({ ...theme, colors: { ...theme.colors, brand: '#aa0000' } })).toBe('dark');
+  });
+
   it('has no AXE violations', async () => {
     const e = await openEditor();
     expect((await runAxe(toolbar(e))).violations).toEqual([]);
@@ -157,6 +174,15 @@ describe('embedded fonts', () => {
     const before = e.store.deck();
     expect(await TestBed.inject(ThemeActions).addFont(file(name))).toBe(false);
     expect(e.store.deck()).toBe(before);
+  });
+
+  it.each(['body.woff2', 'heading.ttf', 'mono.otf'])('does not let %s replace a theme font', async (name) => {
+    const e = await openEditor();
+    const before = e.store.deck();
+    const announce = vi.spyOn(e.announcer, 'announce');
+    expect(await TestBed.inject(ThemeActions).addFont(file(name))).toBe(false);
+    expect(e.store.deck()).toBe(before);
+    expect(announce).toHaveBeenCalledWith(expect.stringContaining('already has a font'));
   });
 
   it('turns a file name into a safe family name', async () => {

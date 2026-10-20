@@ -125,6 +125,13 @@ describe('SetTheme', () => {
       expect(validateDeck(next).ok).toBe(true);
     });
 
+    it('rejects the same family twice and a face that no font uses', () => {
+      const twice = { ...themeWithFont(), fontFaces: [{ family: 'Inter', assetId: FONT }, { family: 'Inter', assetId: FONT }] };
+      expect(() => new SetTheme(twice).do(withFont('font/woff2'))).toThrow('embedded twice');
+      const unused = { ...themeWithFont(), fonts: createTheme().fonts };
+      expect(() => new SetTheme(unused).do(withFont('font/woff2'))).toThrow('not used by any font');
+    });
+
     it('rejects an asset that is not a font', () => {
       expect(() => new SetTheme(themeWithFont()).do(withFont('image/png'))).toThrow('is not a font');
     });
@@ -145,6 +152,16 @@ describe('SetSlideLayout reflow', () => {
     expect(next.slides[0].elements.map((e) => e.id)).toEqual(slide.elements.map((e) => e.id));
     expect(next.slides[0].elements.map(textOf)).toEqual(slide.elements.map(textOf));
     expect(next.slides[0].layoutId).toBe('ly_title-content');
+  });
+
+  it('lets a locked element keep its slot, so no other element is moved onto it', () => {
+    const { deck, slide } = twoColumns();
+    const second = createElement('text', { placeholder: 'title', x: 1, y: 2, w: 3, h: 4 });
+    const locked = { ...slide.elements[0], locked: true } as Element;
+    const input: Deck = { ...deck, slides: [{ ...slide, layoutId: 'ly_blank', elements: [locked, second] }] };
+    const next = new SetSlideLayout(slide.id, 'ly_title-only').do(input).deck.slides[0].elements;
+    expect(next[0]).toBe(locked);
+    expect(next[1]).toBe(second); // the only title slot belongs to the locked title
   });
 
   it('pairs the n-th bound element in z-order with the n-th placeholder of its kind', () => {

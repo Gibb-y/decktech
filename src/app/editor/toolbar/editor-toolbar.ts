@@ -25,7 +25,7 @@ import { ThemeActions, builtInThemeId } from '../theme-actions';
       </label>
       <label>
         Theme
-        <select (change)="themes.applyBuiltIn(choice($event))">
+        <select (change)="chooseTheme($event)">
           @if (current() === null) {
             <option value="" selected disabled>Custom</option>
           }
@@ -92,6 +92,12 @@ export class EditorToolbar {
 
   protected choice(event: Event): string {
     return (event.target as HTMLSelectElement).value;
+  }
+
+  /** Applies the theme, then puts the select back on what the deck has, which differs if the change was refused. */
+  protected chooseTheme(event: Event): void {
+    this.themes.applyBuiltIn(this.choice(event));
+    (event.target as HTMLSelectElement).value = this.current() ?? '';
   }
 
   protected layoutChoice(event: Event): string | null {

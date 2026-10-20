@@ -12,7 +12,7 @@ const SHARED = {
   spacing: { sm: 16, md: 32, lg: 64 },
 } as const;
 
-const make = (colors: Theme['colors']): Theme => structuredClone({ colors, ...SHARED }) as Theme;
+const make = (colors: Theme['colors']): Theme => ({ colors, fonts: { ...SHARED.fonts }, typeScale: { ...SHARED.typeScale }, spacing: { ...SHARED.spacing } });
 
 /**
  * The themes the editor offers (arc42 §8.7). Every text colour reaches WCAG AA (4.5:1) on the

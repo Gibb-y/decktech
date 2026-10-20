@@ -111,6 +111,18 @@ describe('embedded fonts', () => {
     expect(deleted).toEqual(FakeFontFace.instances);
   });
 
+  it('removes a face the theme no longer lists', async () => {
+    const { fixture, repo } = create(createSlide('ly'), createDeck().theme);
+    const stored = await repo.putAsset(new Blob([new Uint8Array([9, 9])], { type: 'font/woff2' }));
+    if (!stored.ok) throw new Error('put failed');
+    fixture.componentRef.setInput('theme', { ...createDeck().theme, fontFaces: [{ family: 'Inter', assetId: stored.value.ref.hash }] });
+    await flush(fixture);
+    expect(added).toHaveLength(1);
+    fixture.componentRef.setInput('theme', createDeck().theme);
+    await flush(fixture);
+    expect(deleted).toEqual(added);
+  });
+
   it('does nothing for a font whose asset cannot be read', async () => {
     const { fixture } = create(createSlide('ly'), themeWithFont());
     await flush(fixture);

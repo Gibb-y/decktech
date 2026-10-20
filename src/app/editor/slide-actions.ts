@@ -21,9 +21,12 @@ export class SlideActions {
    */
   addSlide(): void {
     const deck = this.store.deck();
+    // A picked layout that this deck does not have (another deck, an undone import) is forgotten.
+    const picked = this.newSlideLayout();
+    if (picked !== null && !deck.layouts.some((l) => l.id === picked)) this.newSlideLayout.set(null);
     const layoutId = this.newSlideLayout() ?? this.store.currentSlide().layoutId;
     const layout = deck.layouts.find((l) => l.id === layoutId);
-    if (!layout) return void this.announcer.announce('That layout no longer exists');
+    if (!layout) return void this.announcer.announce('The layout of this slide no longer exists');
     const index = this.store.currentSlideIndex() + 1;
     const slide = instantiateLayout(createSlide(layout.id), layout, deck.theme);
     if (!this.run(() => this.store.execute(new AddSlide(slide, index)))) return;

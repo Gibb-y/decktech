@@ -30,16 +30,18 @@ export function instantiateLayout(slide: Slide, layout: Layout, theme: Theme): S
 /**
  * Moves the elements bound to a placeholder kind into the placeholders of `layout` of the same
  * kind: the n-th bound element (in z-order) takes the n-th placeholder. Elements without a
- * placeholder, locked ones and surplus ones keep their place and binding, so no content is lost
+ * placeholder, locked ones (which still use up their slot) and surplus ones keep their place and binding, so no content is lost
  * and switching back finds them again. Returns the same array when nothing moves.
  */
 export function reflowToLayout(elements: readonly Element[], layout: Layout): readonly Element[] {
   const used = new Map<PlaceholderKind, number>();
   let changed = false;
   const next = elements.map((e) => {
-    if (e.placeholder === undefined || e.locked) return e;
+    if (e.placeholder === undefined) return e;
+    // A locked element stays where it is but still occupies its slot, so nothing is moved onto it.
     const index = used.get(e.placeholder) ?? 0;
     used.set(e.placeholder, index + 1);
+    if (e.locked) return e;
     const target = layout.placeholders.filter((p) => p.kind === e.placeholder)[index];
     if (!target || (e.x === target.x && e.y === target.y && e.w === target.w && e.h === target.h && e.rotation === 0)) return e;
     changed = true;
