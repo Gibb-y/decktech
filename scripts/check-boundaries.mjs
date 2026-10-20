@@ -1,5 +1,5 @@
 // Enforces the dependency rule of docs/arc42/04-solution-strategy.md §4.4. Run with
-// `npm run lint:boundaries`; CI fails on any violation. It has no dependencies, so it also runs without `npm ci`.
+// `npm run lint:boundaries`; It exits 1 on any violation. It has no dependencies, so it also runs without `npm ci`.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
