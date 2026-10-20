@@ -1,0 +1,109 @@
+<aside aria-label="Properties">
+  @if (single(); as element) {
+    <h2>Properties</h2>
+    <p class="subtitle">{{ title() }}</p>
+    @if (locked()) {
+      <p class="note">This element is locked. Untick “Locked” to change it.</p>
+    }
+    @for (section of sections(); track section.id) {
+      <fieldset [disabled]="locked() && section.id !== 'arrange'">
+        <legend>{{ section.label }}</legend>
+        @for (field of section.fields; track field.key) {
+          @switch (field.control) {
+            @case ('number') {
+              <div class="field">
+                <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                <input
+                  type="number"
+                  [id]="'prop-' + field.key"
+                  [formField]="form.numbers[field.key]"
+                  [attr.aria-invalid]="form.numbers[field.key]().invalid() ? 'true' : null"
+                  [attr.aria-describedby]="form.numbers[field.key]().invalid() ? 'error-' + field.key : null"
+                />
+                @for (error of form.numbers[field.key]().errors(); track $index) {
+                  <span class="error" role="alert" [id]="'error-' + field.key">{{ error.message }}</span>
+                }
+              </div>
+            }
+            @case ('text') {
+              <div class="field">
+                <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                <input type="text" [id]="'prop-' + field.key" [formField]="form.texts[field.key]" />
+              </div>
+            }
+            @case ('textarea') {
+              <div class="field">
+                <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                <textarea rows="5" [id]="'prop-' + field.key" [formField]="form.texts[field.key]"></textarea>
+              </div>
+            }
+            @case ('checkbox') {
+              <div class="field check">
+                <input type="checkbox" [id]="'prop-' + field.key" [formField]="form.flags[field.key]" />
+                <label [for]="'prop-' + field.key">{{ field.label }}</label>
+              </div>
+            }
+            @case ('select') {
+              <div class="field">
+                <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                <select [id]="'prop-' + field.key" [formField]="form.texts[field.key]">
+                  @for (option of field.options; track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </div>
+            }
+            @case ('font') {
+              <div class="field">
+                <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                <select [id]="'prop-' + field.key" [formField]="form.texts[field.key]">
+                  <option value="">Body (default)</option>
+                  @for (name of fontNames(); track name) {
+                    <option [value]="name">{{ name }}</option>
+                  }
+                </select>
+              </div>
+            }
+            @case ('color') {
+              <app-color-control
+                [label]="field.label"
+                [value]="asColor(valueOf(element, field.key))"
+                [theme]="theme()"
+                [optional]="field.optional === true"
+                (changed)="setColorOrFill(element, field.key, $event)"
+              />
+            }
+            @case ('fill') {
+              <app-fill-control
+                [label]="field.label"
+                [value]="asFill(valueOf(element, field.key))"
+                [theme]="theme()"
+                [optional]="field.optional === true"
+                (changed)="setColorOrFill(element, field.key, $event)"
+              />
+            }
+          }
+        }
+      </fieldset>
+    }
+  } @else if (selected().length > 1) {
+    <h2>Properties</h2>
+    <p class="note">{{ selected().length }} elements selected. Use the align and arrange tools above the canvas, or select a single element to edit its properties.</p>
+  } @else {
+    <h2>Slide {{ store.currentSlideIndex() + 1 }}</h2>
+    <fieldset>
+      <legend>Layout and background</legend>
+      <div class="field">
+        <label for="slide-layout">Layout</label>
+        <select id="slide-layout" (change)="setLayout($event)">
+          @for (layout of layouts(); track layout.id) {
+            <option [value]="layout.id" [selected]="layout.id === store.currentSlide().layoutId">{{ layout.name }}</option>
+          }
+        </select>
+      </div>
+      <app-fill-control label="Background" noneLabel="Layout background" [optional]="true" [value]="store.currentSlide().background" [theme]="theme()" (changed)="setBackground($event)" />
+    </fieldset>
+    <p class="note">Select an element on the slide to edit it.</p>
+  }
+  <app-reading-order />
+</aside>

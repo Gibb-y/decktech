@@ -161,21 +161,3 @@ summary:focus-visible {
   background: rgb(31 79 196 / 0.12);
   pointer-events: none;
 }
-.shortcuts {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
-  background: #f1f2f4;
-  border-top: 1px solid #c3c6cc;
-}
-.shortcuts dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.2rem 1rem;
-  margin: 0.5rem 0 0;
-}
-.shortcuts dt {
-  font-weight: 600;
-}
-.shortcuts dd {
-  margin: 0;
-}

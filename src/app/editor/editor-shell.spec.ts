@@ -57,7 +57,7 @@ describe('EditorShell', () => {
   it('switches slides from the sorter and marks the current one', async () => {
     const { fixture, deck, store } = await setup();
     await settle(fixture);
-    const buttons = Array.from(root(fixture).querySelectorAll<HTMLButtonElement>('.sorter button'));
+    const buttons = Array.from(root(fixture).querySelectorAll<HTMLButtonElement>('.sorter button.slide'));
     expect(buttons.map((b) => b.getAttribute('aria-current'))).toEqual(['true', null]);
     buttons[1].click();
     fixture.detectChanges();

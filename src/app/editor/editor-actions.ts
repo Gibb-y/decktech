@@ -184,6 +184,23 @@ export class EditorActions {
     if (this.store.currentSlide() !== before) this.announceSelection();
   }
 
+  /**
+   * Moves one element a step earlier or later in the slide's element order (its z-order and reading
+   * order) and keeps it selected. Used by the reading-order panel.
+   */
+  moveInReadingOrder(id: string, direction: 'earlier' | 'later'): void {
+    const slide = this.store.currentSlide();
+    const index = slide.elements.findIndex((e) => e.id === id);
+    if (index < 0) return;
+    const last = slide.elements.length - 1;
+    if (direction === 'earlier' ? index === 0 : index === last) {
+      return void this.announcer.announce(direction === 'earlier' ? 'Already first in reading order' : 'Already last in reading order');
+    }
+    this.store.execute(new ReorderElements(slide.id, [id], direction === 'earlier' ? 'backward' : 'forward'));
+    this.store.select([id]);
+    this.announcer.announce(`${describeElement(slide.elements[index])} moved to position ${index + (direction === 'earlier' ? 0 : 2)} of ${slide.elements.length}`);
+  }
+
   undo(): void {
     if (!this.store.canUndo()) return void this.announcer.announce('Nothing to undo');
     this.store.undo();

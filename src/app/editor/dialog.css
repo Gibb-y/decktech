@@ -1,0 +1,54 @@
+/* Shared by the modal dialogs of the editor (insert menu, shortcut help). */
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #111;
+}
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.5);
+}
+.dialog {
+  position: relative;
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #5a5a5a;
+  border-radius: 0.5rem;
+}
+.dialog:focus {
+  outline: none;
+}
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #5a5a5a;
+  border-radius: 0.25rem;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

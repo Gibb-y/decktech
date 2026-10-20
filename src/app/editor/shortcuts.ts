@@ -1,3 +1,4 @@
+import { matchesBinding, type KeyBinding, type KeyLike } from './shortcut-registry';
 import { NUDGE, NUDGE_LARGE, ROTATE_STEP, ROTATE_STEP_LARGE, type EditorActions } from './editor-actions';
 
 /** What a shortcut can reach: the deck actions and the parts of the canvas that are view state. */
@@ -15,22 +16,9 @@ export interface ShortcutContext {
   };
 }
 
-export interface KeyLike {
-  key: string;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
-}
+export type { KeyLike };
 
-export interface Shortcut {
-  /** `e.key` compared case-insensitively. */
-  key: string | readonly string[];
-  /** Ctrl (or Cmd). Default `false`. */
-  ctrl?: boolean;
-  /** `undefined` = shift is passed on to `run` and does not matter for matching. */
-  shift?: boolean;
-  alt?: boolean;
+export interface Shortcut extends KeyBinding {
   /** Human-readable combination for the help text. */
   keys: string;
   description: string;
@@ -111,17 +99,15 @@ export const CANVAS_SHORTCUTS: readonly Shortcut[] = [
   { key: 'Enter', keys: 'Enter', description: 'Toggle interact mode for the selected code component', run: ({ view }) => view.toggleInteract() },
 ];
 
-/** The shortcut for a key press, or `undefined`. Modifiers must match exactly unless the entry leaves them open. */
+/** The shortcut for a key press, or `undefined`. Modifiers must match exactly unless the entry leaves shift open. */
 export function findShortcut(event: KeyLike): Shortcut | undefined {
-  const ctrl = event.ctrlKey || event.metaKey;
-  const key = event.key.toLowerCase();
-  return CANVAS_SHORTCUTS.find((s) => {
-    const keys = typeof s.key === 'string' ? [s.key] : s.key;
-    return (
-      keys.some((k) => k.toLowerCase() === key) &&
-      (s.ctrl ?? false) === ctrl &&
-      (s.alt ?? false) === event.altKey &&
-      (s.shift === undefined || s.shift === event.shiftKey)
-    );
-  });
+  return CANVAS_SHORTCUTS.find((s) => matchesBinding(s, event));
 }
+
+const SYMBOL_NAMES: Record<string, string> = { '[': 'bracket-left', ']': 'bracket-right', '+': 'plus', '-': 'minus' };
+
+/** Registry id of a canvas shortcut, derived from its key combination (unique within the table). */
+export const canvasShortcutId = (s: Shortcut): string => {
+  const parts = s.keys.split(/\+(?=.)|\s+/).map((part) => SYMBOL_NAMES[part] ?? part.toLowerCase());
+  return `canvas.${parts.join('-')}`;
+};

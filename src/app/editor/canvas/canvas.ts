@@ -4,7 +4,8 @@ import { DeckStore, MoveElements, ResizeElements, SetProps, type ElementGeometry
 import { SlideRenderer } from '../../renderer';
 import { LiveAnnouncer } from '../../shared';
 import { EditorActions } from '../editor-actions';
-import { CANVAS_SHORTCUTS, findShortcut, type ShortcutContext } from '../shortcuts';
+import { ShortcutRegistry } from '../shortcut-registry';
+import { CANVAS_SHORTCUTS, canvasShortcutId, type ShortcutContext } from '../shortcuts';
 import {
   HANDLES,
   HANDLE_IDS,
@@ -64,11 +65,11 @@ export class Canvas {
   protected readonly store = inject(DeckStore);
   protected readonly actions = inject(EditorActions);
   private readonly announcer = inject(LiveAnnouncer);
+  private readonly registry = inject(ShortcutRegistry);
 
   private readonly viewportEl = viewChild.required<ElementRef<HTMLElement>>('area');
 
   protected readonly handleIds = HANDLE_IDS;
-  protected readonly shortcuts = CANVAS_SHORTCUTS;
   protected readonly alignButtons: readonly { kind: AlignKind; label: string }[] = [
     { kind: 'left', label: 'Align left' },
     { kind: 'center', label: 'Align centres horizontally' },
@@ -149,6 +150,10 @@ export class Canvas {
       destroyRef.onDestroy(() => observer.disconnect());
     });
     destroyRef.onDestroy(() => this.endGesture());
+    const unregister = CANVAS_SHORTCUTS.map((s) =>
+      this.registry.register({ ...s, id: canvasShortcutId(s), scope: 'canvas', run: (event) => s.run(this.contextFor(), event.shiftKey) }),
+    );
+    destroyRef.onDestroy(() => unregister.forEach((u) => u()));
   }
 
   // ----------------------------------------------------------- view actions
@@ -449,10 +454,7 @@ export class Canvas {
       return this.cancelGesture();
     }
     if (this.gesture) return;
-    const shortcut = findShortcut(e);
-    if (!shortcut) return;
-    const ctx = this.contextFor();
-    if (shortcut.run(ctx, e.shiftKey) !== false) e.preventDefault();
+    this.registry.handle(e, 'canvas');
   }
 
   protected onKeyUp(e: KeyboardEvent): void {

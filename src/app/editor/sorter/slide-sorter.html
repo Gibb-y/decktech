@@ -1,0 +1,51 @@
+<nav class="sorter" aria-label="Slides">
+  <div class="tools" role="group" aria-label="Slide actions">
+    <button type="button" (click)="slideActions.addSlide()">Add</button>
+    <button type="button" (click)="slideActions.duplicateSlide()">Duplicate</button>
+    <button type="button" class="danger" [attr.aria-disabled]="store.slides().length > 1 ? null : 'true'" (click)="slideActions.deleteSlide()">Delete</button>
+    <button #sectionButton type="button" aria-haspopup="true" [attr.aria-expanded]="editingSection()" (click)="openSection()">Section</button>
+  </div>
+
+  @if (editingSection()) {
+    <form class="section-form" (submit)="saveSection($event, name)" (keydown.escape)="closeSection()">
+      <label for="section-name">Section starting at this slide</label>
+      <input #name id="section-name" type="text" maxlength="200" autocomplete="off" aria-describedby="section-hint" [value]="store.currentSlide().section ?? ''" />
+      <p id="section-hint" class="hint">Leave empty to remove the section.</p>
+      <div class="tools">
+        <button type="submit">Save</button>
+        <button type="button" (click)="closeSection()">Cancel</button>
+      </div>
+    </form>
+  }
+
+  <ol (keydown)="onKeydown($event)">
+    @for (slide of store.slides(); track slide.id; let i = $index; let last = $last) {
+      <li
+        draggable="true"
+        [class.dragging]="dragId() === slide.id"
+        [class.drop-before]="dropAt() === i"
+        [class.drop-after]="last && dropAt() === i + 1"
+        (dragstart)="onDragStart($event, slide)"
+        (dragover)="onDragOver($event, i)"
+        (drop)="onDrop($event)"
+        (dragend)="endDrag()"
+      >
+        @if (slide.section) {
+          <p class="section" aria-hidden="true">{{ slide.section }}</p>
+        }
+        <button
+          type="button"
+          class="slide"
+          [attr.data-slide-id]="slide.id"
+          [attr.aria-current]="slide.id === store.currentSlideId() ? 'true' : null"
+          [attr.aria-label]="label(slide, i)"
+          [attr.tabindex]="slide.id === store.currentSlideId() ? 0 : -1"
+          (click)="select(slide)"
+        >
+          <span class="number" aria-hidden="true">{{ i + 1 }}</span>
+          <app-slide-thumb [slide]="slide" [theme]="store.deck().theme" [stage]="store.deck().stage" />
+        </button>
+      </li>
+    }
+  </ol>
+</nav>
