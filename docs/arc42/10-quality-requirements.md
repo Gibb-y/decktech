@@ -48,3 +48,17 @@ mindmap
 | Q11 | Performance | Open a 200-slide deck. | List shown < 1 s; thumbnails lazily rendered. |
 | Q12 | Portability | Open a deck exported by an older app version. | Migrated automatically, no data loss. |
 | Q13 | Maintainability | Add a new built-in element type. | Touches one renderer, one editor-panel section, one schema entry; no changes in core store or history. |
+
+## 10.3 Measuring Q9 (drag performance)
+
+`npx ng serve`, then `node scripts/profile-drag.mjs http://localhost:4300/dev/stress [cpuThrottle]`. The dev-only route `dev/stress` (registered only in dev mode) creates the stress deck, a slide with 100 text, shape and line elements (`createStressDeck`, some rotated), and opens it in the editor. The script drives headless Edge or Chrome over the DevTools protocol, drags one element along a path with 300 pointer moves and reports frame times, long tasks and main-thread time per move. Headless rendering is capped at 60 fps, so the criterion read from it is that no frame takes longer than 1000 / 55 = 18.2 ms.
+
+Result of the first run (DT-07, development build, headless Edge on the developer's machine; the Q9 target is stated for a mid-range laptop, hence the throttling):
+
+| CPU throttle | Frames over 18.2 ms | Longest frame | Long tasks (> 50 ms) | Main thread per pointer move |
+|--------------|--------------------|---------------|----------------------|------------------------------|
+| none | 0 of about 600 (3 runs) | 17.2 ms | 0 | 1.5 ms |
+| 4x | 0 of 610; with 4 moves per step 1 of 1507 | 16.9 ms; once 34.6 ms | 0 | about 5 ms |
+| 6x | 0 of 620 in one run, 1 of 617 in another | 17.0 ms; once 33.4 ms | 0 | 10 ms |
+
+Under throttling an occasional single frame of about 33 ms (one dropped frame) showed up in some runs and not in others; it is not a pattern, and a drag of 600 frames stays above 99.8% on time. Throttling was checked with a calibration loop (15 ms unthrottled, 115 ms at 6x). A move costs about 1.5 ms unthrottled, so even 6x (10 ms) fits the 16.7 ms frame; browsers normally align `pointermove` to the frame (events injected over the DevTools protocol are not, and a run with four per step stayed on time too), so a high report rate should not multiply the cost. Not covered: a real GPU compositor (headless), Firefox and Safari, and the three code components of Q9, which the renderer cannot draw yet; the profile is to be repeated with them when DT-12 lands.

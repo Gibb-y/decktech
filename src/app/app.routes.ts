@@ -1,3 +1,4 @@
+import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 
 /** Every screen is a lazy chunk, so the initial bundle holds only the shell (arc42 §4.4). */
@@ -22,5 +23,15 @@ export const routes: Routes = [
     title: 'Presenter view – DeckTech',
     loadComponent: () => import('./presenter/presenter-view-page').then((m) => m.PresenterViewPage),
   },
+  // Profiling aid for quality scenario Q9; not part of production builds.
+  ...(isDevMode()
+    ? [
+        {
+          path: 'dev/stress',
+          title: 'Stress deck – DeckTech',
+          loadComponent: () => import('./dev-stress-page').then((m) => m.DevStressPage),
+        },
+      ]
+    : []),
   { path: '**', redirectTo: '' },
 ];

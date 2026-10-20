@@ -66,6 +66,18 @@ describe('App', () => {
     fixture.nativeElement.remove();
   });
 
+  it('creates and opens the 100-element stress deck from the dev route', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/dev/stress');
+    for (let i = 0; i < 20 && !TestBed.inject(Router).url.startsWith('/deck/'); i++) await new Promise((r) => setTimeout(r, 10));
+    const router = TestBed.inject(Router);
+    expect(router.url).toMatch(/^\/deck\/dk_/);
+    const repo = TestBed.inject(DeckRepository);
+    const id = router.url.split('/')[2];
+    const loaded = await repo.load(id);
+    expect(loaded.ok && !loaded.value.outcome.readOnly && loaded.value.outcome.deck.slides[0].elements.length).toBe(100);
+  });
+
   it('sends unknown URLs to the library', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/no/such/page');
@@ -76,7 +88,8 @@ describe('App', () => {
 describe('routes', () => {
   it('are all lazy, so no feature is in the initial bundle', () => {
     const real = routes.filter((r) => r.redirectTo === undefined);
-    expect(real.map((r) => r.path)).toEqual(['', 'deck/:id', 'deck/:id/present', 'deck/:id/presenter-view']);
+    // `dev/stress` exists only in dev mode, which is what tests run in.
+    expect(real.map((r) => r.path)).toEqual(['', 'deck/:id', 'deck/:id/present', 'deck/:id/presenter-view', 'dev/stress']);
     for (const route of real) {
       expect(route.component).toBeUndefined();
       expect(route.loadComponent ?? route.loadChildren).toBeTypeOf('function');
