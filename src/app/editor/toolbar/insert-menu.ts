@@ -11,7 +11,7 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
   imports: [FocusTrap],
   template: `
     <div class="backdrop" aria-hidden="true" (click)="closed.emit()"></div>
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="insert-title" appFocusTrap (keydown.escape)="closed.emit()">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="insert-title" appFocusTrap (keydown.escape)="closed.emit(); $event.preventDefault()">
       <h2 id="insert-title">Insert</h2>
       <label for="insert-filter">Find an element</label>
       <input

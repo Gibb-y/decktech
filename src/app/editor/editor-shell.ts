@@ -1,8 +1,9 @@
-import { Component, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, ElementRef, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AutosaveService } from '../core/persistence';
 import { DeckStore } from '../core/store';
 import { Canvas } from './canvas';
+import { EditorActions } from './editor-actions';
 import { InsertActions, type InsertKind } from './insert-actions';
 import { NotesPane } from './notes-pane';
 import { PropertiesPanel } from './properties/properties-panel';
@@ -141,6 +142,8 @@ export class EditorShell {
   private readonly autosave = inject(AutosaveService);
   private readonly registry = inject(ShortcutRegistry);
   private readonly insert = inject(InsertActions);
+  private readonly actions = inject(EditorActions);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   protected readonly state = signal<ShellState>({ status: 'loading' });
   protected readonly dialog = signal<Dialog>(null);
   private opening = 0;
@@ -186,9 +189,25 @@ export class EditorShell {
   }
 
   protected onDocumentKeydown(event: KeyboardEvent): void {
-    // A key the canvas or sorter already used, a dialog's own keys, and typing in a field are not ours.
-    if (event.defaultPrevented || this.dialog() !== null || (isTextEntry(event.target) && !event.ctrlKey && !event.metaKey)) return;
+    // A key the canvas or sorter already used and a dialog's own keys are not ours.
+    if (event.defaultPrevented || this.dialog() !== null) return;
+    if (event.key === 'Escape') return this.leaveToCanvas(event);
+    // Typing in a field is not ours either.
+    if (isTextEntry(event.target) && !event.ctrlKey && !event.metaKey) return;
     this.registry.handle(event, 'global');
+  }
+
+  /**
+   * Escape from anywhere outside the canvas (a panel field, the sorter, the notes) leaves it: the
+   * selection is cleared and the focus returns to the canvas, which is where people expect to be.
+   * Edits are already committed per keystroke, so nothing is lost. The canvas handles its own Escape.
+   */
+  private leaveToCanvas(event: KeyboardEvent): void {
+    const viewport = this.host.querySelector<HTMLElement>('app-canvas .viewport');
+    if (this.state().status !== 'ready' || !viewport || viewport.contains(event.target as Node)) return;
+    event.preventDefault();
+    this.actions.deselect();
+    viewport.focus();
   }
 
   protected onInsert(kind: InsertKind): void {

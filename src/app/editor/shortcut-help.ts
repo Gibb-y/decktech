@@ -11,7 +11,7 @@ import { SCOPE_LABELS, ShortcutRegistry } from './shortcut-registry';
   imports: [FocusTrap],
   template: `
     <div class="backdrop" aria-hidden="true" (click)="closed.emit()"></div>
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-help-title" appFocusTrap (keydown.escape)="closed.emit()">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shortcut-help-title" appFocusTrap (keydown.escape)="closed.emit(); $event.preventDefault()">
       <h2 id="shortcut-help-title">Keyboard shortcuts</h2>
       @for (scope of registry.scopes(); track scope) {
         <section [attr.aria-labelledby]="'shortcut-scope-' + scope">

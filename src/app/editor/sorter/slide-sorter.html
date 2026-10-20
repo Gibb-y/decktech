@@ -9,7 +9,7 @@
   </div>
 
   @if (editingSection()) {
-    <form class="section-form" (submit)="saveSection($event, name)" (keydown.escape)="closeSection()">
+    <form class="section-form" (submit)="saveSection($event, name)" (keydown.escape)="closeSection(); $event.preventDefault()">
       <label for="section-name">Section starting at this slide</label>
       <input #name id="section-name" type="text" maxlength="200" autocomplete="off" aria-describedby="section-hint" [value]="store.currentSlide().section ?? ''" />
       <p id="section-hint" class="hint">Leave empty to remove the section.</p>

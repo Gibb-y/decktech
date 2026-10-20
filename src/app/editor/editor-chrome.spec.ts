@@ -209,6 +209,87 @@ describe('the keyboard shortcut help', () => {
   });
 });
 
+describe('Escape', () => {
+  const viewport = (root: HTMLElement) => root.querySelector<HTMLElement>('app-canvas .viewport')!;
+
+  it('from the text field of a freshly inserted element clears the selection and returns to the canvas', async () => {
+    const { fixture, root, store } = await openEditor();
+    press(slideButtons(root)[0], '/');
+    await settle(fixture);
+    typeInto(root.querySelector<HTMLInputElement>('#insert-filter')!, 'title');
+    await settle(fixture);
+    press(document.activeElement!, 'Enter');
+    await settle(fixture);
+    expect(document.activeElement?.id).toBe('prop-text');
+    expect(store.selection()).toHaveLength(1);
+    const event = press(document.activeElement!, 'Escape');
+    await settle(fixture);
+    expect(event.defaultPrevented).toBe(true);
+    expect(store.selection()).toEqual([]);
+    expect(document.activeElement).toBe(viewport(root));
+    expect(store.canUndo()).toBe(true); // the insertion stays
+  });
+
+  it.each([
+    ['a slide button', (r: HTMLElement) => slideButtons(r)[0]],
+    ['the notes', (r: HTMLElement) => r.querySelector<HTMLElement>('#speaker-notes')!],
+    ['a reading-order button', (r: HTMLElement) => r.querySelector<HTMLElement>('app-reading-order .name')!],
+    ['a number field', (r: HTMLElement) => r.querySelector<HTMLElement>('#prop-x')!],
+  ])('from %s clears the selection and focuses the canvas', async (_label, target) => {
+    const { fixture, root, store } = await openEditor();
+    store.select([store.currentSlide().elements[0].id]);
+    await settle(fixture);
+    const element = target(root);
+    element.focus();
+    press(element, 'Escape');
+    await settle(fixture);
+    expect(store.selection()).toEqual([]);
+    expect(document.activeElement).toBe(viewport(root));
+  });
+
+  it('with nothing selected only moves the focus to the canvas', async () => {
+    const { fixture, root, store } = await openEditor();
+    press(root.querySelector('#speaker-notes')!, 'Escape');
+    await settle(fixture);
+    expect(document.activeElement).toBe(viewport(root));
+    expect(store.canUndo()).toBe(false);
+  });
+
+  it('on the canvas is left to the canvas, which announces once', async () => {
+    const { fixture, root, store, announcer } = await openEditor();
+    store.select([store.currentSlide().elements[0].id]);
+    await settle(fixture);
+    const announce = vi.spyOn(announcer, 'announce');
+    viewport(root).focus();
+    press(viewport(root), 'Escape');
+    expect(store.selection()).toEqual([]);
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith('Selection cleared');
+  });
+
+  it('does nothing while a dialog is open', async () => {
+    const { fixture, root, store } = await openEditor();
+    store.select([store.currentSlide().elements[0].id]);
+    press(slideButtons(root)[0], '?');
+    await settle(fixture);
+    press(document.activeElement!, 'Escape'); // closes the dialog only
+    await settle(fixture);
+    expect(root.querySelector('[role="dialog"]')).toBeNull();
+    expect(store.selection()).toHaveLength(1);
+  });
+
+  it('closing the section form with Escape keeps the selection', async () => {
+    const { fixture, root, store } = await openEditor();
+    store.select([store.currentSlide().elements[0].id]);
+    root.querySelector<HTMLButtonElement>('.tools button[aria-haspopup]')!.click();
+    await settle(fixture);
+    press(root.querySelector('#section-name')!, 'Escape');
+    await settle(fixture);
+    expect(root.querySelector('form')).toBeNull();
+    expect(store.selection()).toHaveLength(1);
+  });
+});
+
 describe('shortcut registration', () => {
   it('registers without conflict and removes everything when the editor is destroyed', async () => {
     const { fixture } = await openEditor();
