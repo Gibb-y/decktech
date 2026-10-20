@@ -1,6 +1,7 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
-import { STAGE_HEIGHT, STAGE_WIDTH, type Element, type ElementType, type Fill, type Slide, type Stage, type Theme } from '../core/model';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal } from '@angular/core';
+import { STAGE_HEIGHT, STAGE_WIDTH, type Element, type ElementType, type Fill, type Layout, type Slide, type Stage, type Theme } from '../core/model';
 import { AssetUrls } from './asset-urls';
+import { FontFaces } from './font-faces';
 import { ImageElement } from './image-element';
 import { LineElement } from './line-element';
 import { ShapeElement } from './shape-element';
@@ -79,6 +80,8 @@ interface Item {
 export class SlideRenderer {
   readonly slide = input.required<Slide>();
   readonly theme = input.required<Theme>();
+  /** The slide's layout; its background shows where the slide has none of its own. */
+  readonly layout = input<Layout | undefined>(undefined);
   readonly mode = input<RenderMode>('present');
   /** Highest step reached; elements with a larger `step` are omitted. Defaults to all revealed. */
   readonly step = input<number>(ALL_STEPS);
@@ -86,6 +89,7 @@ export class SlideRenderer {
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly assets = inject(AssetUrls);
+  private readonly fonts = inject(FontFaces);
   private readonly containerWidth = signal(0);
 
   /** `containerWidth / stageWidth`, the factor of the stage's `transform: scale(k)`. */
@@ -108,7 +112,7 @@ export class SlideRenderer {
 
   protected readonly stageStyle = computed(() => {
     const { width, height } = this.stage();
-    const background = this.slide().background ?? DEFAULT_BACKGROUND;
+    const background = this.slide().background ?? this.layout()?.background ?? DEFAULT_BACKGROUND;
     return {
       ...themeVars(this.theme()),
       ...fillStyle(background, this.theme(), (id) => this.assets.url(id)),
@@ -119,6 +123,7 @@ export class SlideRenderer {
   });
 
   constructor() {
+    effect(() => this.fonts.register(this.theme().fontFaces));
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const element = this.host.nativeElement;

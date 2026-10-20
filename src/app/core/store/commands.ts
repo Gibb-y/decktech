@@ -3,6 +3,12 @@ import {
   ELEMENT_SCHEMAS,
   createElement,
   generateId,
+  PLACEHOLDER_KINDS,
+  reflowToLayout,
+  REQUIRED_COLOR_TOKENS,
+  REQUIRED_FONT_KEYS,
+  themeRefs,
+  validateTheme,
   type AssetRef,
   type CodeEl,
   type ComponentDef,
@@ -10,6 +16,7 @@ import {
   type Element,
   type Fill,
   type Slide,
+  type Theme,
 } from '../model';
 import {
   CommandError,
@@ -179,7 +186,11 @@ export class SetSlideSection implements Command {
   }
 }
 
-/** Switches the layout of a slide. Elements stay where they are: layouts only supply background and placeholders. */
+/**
+ * Switches the layout of a slide. Elements bound to a placeholder (`Element.placeholder`) move into
+ * the new layout's placeholders of the same kind; every other element stays where it is, and no
+ * element is ever removed (arc42 §8.7).
+ */
 export class SetSlideLayout implements Command {
   readonly name = 'SetSlideLayout';
 
@@ -192,8 +203,48 @@ export class SetSlideLayout implements Command {
     if (!deck.layouts.some((l) => l.id === this.layoutId)) throw new CommandError(`Layout "${this.layoutId}" does not exist`);
     return resultOf(
       deck,
-      updateSlide(deck, this.slideId, (s) => (s.layoutId === this.layoutId ? s : { ...s, layoutId: this.layoutId })),
+      updateSlide(deck, this.slideId, (s) => {
+        if (s.layoutId === this.layoutId) return s;
+        const layout = deck.layouts.find((l) => l.id === this.layoutId)!;
+        const elements = reflowToLayout(s.elements, layout);
+        return { ...s, layoutId: this.layoutId, ...(elements === s.elements ? {} : { elements: [...elements] }) };
+      }),
     );
+  }
+}
+
+/**
+ * Replaces the deck's theme (colours, fonts, type scale, spacing, embedded fonts). Elements refer
+ * to the theme by token name, so this restyles every built-in element without touching one. The
+ * new theme must be valid, define the tokens the renderer falls back on and every token or font
+ * key the deck still uses, and its embedded fonts must be font assets of the deck.
+ */
+export class SetTheme implements Command {
+  readonly name = 'SetTheme';
+
+  constructor(readonly theme: Theme) {}
+
+  do(deck: Deck): CommandResult {
+    const checked = validateTheme(this.theme, Object.keys(deck.assets));
+    if (!checked.ok) throw new CommandError(`Invalid theme: ${checked.error.map((e) => `${e.path} ${e.message}`).join('; ')}`);
+    const theme = structuredClone(this.theme);
+    for (const token of REQUIRED_COLOR_TOKENS) {
+      if (!Object.hasOwn(theme.colors, token)) throw new CommandError(`A theme needs a "${token}" colour`);
+    }
+    for (const key of REQUIRED_FONT_KEYS) {
+      if (!Object.hasOwn(theme.fonts, key)) throw new CommandError(`A theme needs a "${key}" font`);
+    }
+    for (const face of theme.fontFaces ?? []) {
+      if (!deck.assets[face.assetId].mime.startsWith('font/')) throw new CommandError(`Asset "${face.assetId}" is not a font`);
+    }
+    const refs = themeRefs(deck);
+    for (const token of refs.colors) {
+      if (!Object.hasOwn(theme.colors, token)) throw new CommandError(`The deck still uses the colour "${token}", which the theme lacks`);
+    }
+    for (const font of refs.fonts) {
+      if (!Object.hasOwn(theme.fonts, font)) throw new CommandError(`The deck still uses the font "${font}", which the theme lacks`);
+    }
+    return resultOf(deck, deepEqual(deck.theme, theme) ? deck : { ...deck, theme });
   }
 }
 
@@ -408,6 +459,7 @@ const BASE_RULES: Record<string, { optional?: boolean; check: (v: unknown) => st
   locked: { optional: true, check: (v) => (typeof v === 'boolean' ? undefined : 'a boolean') },
   hidden: { optional: true, check: (v) => (typeof v === 'boolean' ? undefined : 'a boolean') },
   step: { optional: true, check: (v) => (Number.isInteger(v) && (v as number) >= 0 ? undefined : 'a non-negative integer') },
+  placeholder: { optional: true, check: (v) => ((PLACEHOLDER_KINDS as readonly unknown[]).includes(v) ? undefined : `one of ${PLACEHOLDER_KINDS.join(', ')}`) },
 };
 
 function finite(v: unknown, min?: number, max?: number): string | undefined {

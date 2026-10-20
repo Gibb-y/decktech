@@ -7,7 +7,7 @@ afterEach(() => document.body.replaceChildren());
 const HASH = 'a'.repeat(64);
 
 function prepare(deck: Deck): void {
-  deck.layouts.push({ id: 'ly_title', name: 'Title slide', placeholders: [] });
+  deck.layouts.push({ id: 'ly_custom', name: 'Title slide', placeholders: [] });
   deck.assets[HASH] = { blobKey: HASH, mime: 'image/png', hash: HASH, size: 4 };
   deck.slides[0].elements.push(
     createElement('shape', { x: 50, y: 60, w: 300, h: 200, shape: 'rect', stroke: { token: 'text' }, strokeWidth: 2 }),
@@ -283,12 +283,12 @@ describe('PropertiesPanel: the slide', () => {
   it('switches the layout through a command and says nothing is wrong when it is already set', async () => {
     const e = await open();
     const layout = panel(e).querySelector<HTMLSelectElement>('#slide-layout')!;
-    expect(Array.from(layout.options, (o) => o.textContent)).toEqual(['Blank', 'Title slide']);
-    await edit(e, layout, 'ly_title');
-    expect(e.store.currentSlide().layoutId).toBe('ly_title');
+    expect(Array.from(layout.options, (o) => o.textContent)).toEqual(['Blank', 'Title slide', 'Title and content', 'Two columns', 'Title only', 'Title slide']);
+    await edit(e, layout, 'ly_custom');
+    expect(e.store.currentSlide().layoutId).toBe('ly_custom');
     e.store.undo();
     await settle(e.fixture);
-    expect(e.store.currentSlide().layoutId).not.toBe('ly_title');
+    expect(e.store.currentSlide().layoutId).not.toBe('ly_custom');
     expect(panel(e).querySelector<HTMLSelectElement>('#slide-layout')!.value).toBe(e.store.currentSlide().layoutId);
   });
 

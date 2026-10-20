@@ -1,5 +1,6 @@
 export * from './asset-urls';
 export * from './element-view';
+export * from './font-faces';
 export * from './image-element';
 export * from './line-element';
 export * from './shape-element';

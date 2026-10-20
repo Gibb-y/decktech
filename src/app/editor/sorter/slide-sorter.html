@@ -45,7 +45,7 @@
           (click)="select(slide)"
         >
           <span class="number" aria-hidden="true">{{ i + 1 }}</span>
-          <app-slide-thumb [slide]="slide" [theme]="store.deck().theme" [stage]="store.deck().stage" [scroller]="scroller" />
+          <app-slide-thumb [slide]="slide" [theme]="store.deck().theme" [layout]="layouts().get(slide.layoutId)" [stage]="store.deck().stage" [scroller]="scroller" />
         </button>
       </li>
     }

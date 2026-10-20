@@ -1,11 +1,12 @@
 import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { FormField, form, validate } from '@angular/forms/signals';
 import { ELEMENT_SCHEMAS, type Color, type Element, type Fill } from '../../core/model';
-import { CommandError, DeckStore, SetProps, SetSlideBackground, SetSlideLayout, type Command } from '../../core/store';
+import { CommandError, DeckStore, SetProps, SetSlideBackground, type Command } from '../../core/store';
 import { LiveAnnouncer } from '../../shared';
 import { describeElement } from '../describe';
 import { InsertActions } from '../insert-actions';
 import { ReadingOrder } from '../reading-order';
+import { SlideActions } from '../slide-actions';
 import { ColorControl } from './color-control';
 import { BASE_FIELDS, fieldsOf, sectionsOf, typeFields, type FieldDef } from './field-defs';
 import { FillControl } from './fill-control';
@@ -35,6 +36,7 @@ export class PropertiesPanel {
   protected readonly store = inject(DeckStore);
   private readonly announcer = inject(LiveAnnouncer);
   private readonly insert = inject(InsertActions);
+  private readonly slideActions = inject(SlideActions);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
@@ -122,7 +124,7 @@ export class PropertiesPanel {
   // -------------------------------------------------------------- slide edits
 
   protected setLayout(event: Event): void {
-    this.run(new SetSlideLayout(this.store.currentSlideId(), (event.target as HTMLSelectElement).value));
+    this.slideActions.setLayout(this.store.currentSlideId(), (event.target as HTMLSelectElement).value);
   }
 
   protected setBackground(fill: Fill | undefined): void {

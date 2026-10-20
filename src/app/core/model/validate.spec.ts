@@ -193,7 +193,7 @@ describe('validateDeck', () => {
     it('rejects duplicate layout ids', () => {
       expectErrorAt(
         tamper((d) => d.layouts.push({ ...d.layouts[0] })),
-        'layouts[1].id',
+        'layouts[5].id',
       );
     });
 

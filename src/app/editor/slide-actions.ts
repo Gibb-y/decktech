@@ -1,6 +1,6 @@
-import { Service, inject } from '@angular/core';
-import { createSlide, generateId } from '../core/model';
-import { AddSlide, CommandError, DeckStore, DeleteSlide, DuplicateSlide, ReorderSlides, SetSlideSection } from '../core/store';
+import { Service, inject, signal } from '@angular/core';
+import { createSlide, generateId, instantiateLayout } from '../core/model';
+import { AddSlide, CommandError, DeckStore, DeleteSlide, DuplicateSlide, ReorderSlides, SetSlideLayout, SetSlideSection } from '../core/store';
 import { LiveAnnouncer } from '../shared';
 
 /**
@@ -12,11 +12,20 @@ export class SlideActions {
   private readonly store = inject(DeckStore);
   private readonly announcer = inject(LiveAnnouncer);
 
-  /** Adds an empty slide with the current slide's layout right after it and makes it current. */
+  /** Layout of the next slide `addSlide` creates; `null` = the current slide's. Shared by the toolbar and the sorter. */
+  readonly newSlideLayout = signal<string | null>(null);
+
+  /**
+   * Adds a slide right after the current one and makes it current. It gets the layout picked for
+   * new slides (else the current slide's), with an element in each of the layout's placeholders.
+   */
   addSlide(): void {
-    const current = this.store.currentSlide();
+    const deck = this.store.deck();
+    const layoutId = this.newSlideLayout() ?? this.store.currentSlide().layoutId;
+    const layout = deck.layouts.find((l) => l.id === layoutId);
+    if (!layout) return void this.announcer.announce('That layout no longer exists');
     const index = this.store.currentSlideIndex() + 1;
-    const slide = createSlide(current.layoutId);
+    const slide = instantiateLayout(createSlide(layout.id), layout, deck.theme);
     if (!this.run(() => this.store.execute(new AddSlide(slide, index)))) return;
     this.store.selectSlide(slide.id);
     this.announcer.announce(`Slide ${index + 1} added`);
@@ -56,6 +65,13 @@ export class SlideActions {
     const to = Math.min(slides.length - 1, Math.max(0, from + delta));
     if (to === from) return void this.announcer.announce(delta < 0 ? 'Already the first slide' : 'Already the last slide');
     this.moveTo(slideId, to);
+  }
+
+  /** Switches a slide's layout; placeholder content moves into the new layout's placeholders. */
+  setLayout(slideId: string, layoutId: string): void {
+    if (!this.run(() => this.store.execute(new SetSlideLayout(slideId, layoutId)))) return;
+    const name = this.store.deck().layouts.find((l) => l.id === layoutId)?.name ?? layoutId;
+    this.announcer.announce(`Layout “${name}” applied to slide ${this.position(slideId)}`);
   }
 
   /** Starts (or, with a blank name, ends) a section at a slide. */

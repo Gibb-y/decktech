@@ -1,5 +1,8 @@
-import { Component, inject, output } from '@angular/core';
+import { Component, computed, inject, output } from '@angular/core';
+import { BUILT_IN_THEMES } from '../../core/model';
+import { DeckStore } from '../../core/store';
 import { SlideActions } from '../slide-actions';
+import { ThemeActions, builtInThemeId } from '../theme-actions';
 
 /**
  * The editor's top bar: the actions that are about the deck rather than the selection (the canvas
@@ -11,6 +14,27 @@ import { SlideActions } from '../slide-actions';
     <div class="toolbar" role="group" aria-label="Editor tools">
       <button type="button" aria-haspopup="dialog" (click)="insert.emit()">Insert <kbd aria-hidden="true">/</kbd></button>
       <button type="button" (click)="slides.addSlide()">Add slide</button>
+      <label>
+        New slide layout
+        <select (change)="slides.newSlideLayout.set(layoutChoice($event))">
+          <option value="" [selected]="slides.newSlideLayout() === null">Same as current slide</option>
+          @for (layout of store.deck().layouts; track layout.id) {
+            <option [value]="layout.id" [selected]="slides.newSlideLayout() === layout.id">{{ layout.name }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Theme
+        <select (change)="themes.applyBuiltIn(choice($event))">
+          @if (current() === null) {
+            <option value="" selected disabled>Custom</option>
+          }
+          @for (theme of builtIn; track theme.id) {
+            <option [value]="theme.id" [selected]="current() === theme.id">{{ theme.name }}</option>
+          }
+        </select>
+      </label>
+      <button type="button" (click)="themes.pickFont()">Add font…</button>
       <button type="button" aria-haspopup="dialog" (click)="help.emit()">Keyboard shortcuts <kbd aria-hidden="true">?</kbd></button>
     </div>
   `,
@@ -19,6 +43,23 @@ import { SlideActions } from '../slide-actions';
       display: flex;
       flex-wrap: wrap;
       gap: 0.35rem;
+    }
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    select {
+      font: inherit;
+      padding: 0.25rem 0.35rem;
+      border: 1px solid #5a5a5a;
+      border-radius: 0.25rem;
+      background: #fff;
+      color: #111;
+    }
+    select:focus-visible {
+      outline: 3px solid #ffbf47;
+      outline-offset: 2px;
     }
     button {
       font: inherit;
@@ -44,6 +85,18 @@ import { SlideActions } from '../slide-actions';
 })
 export class EditorToolbar {
   protected readonly slides = inject(SlideActions);
+  protected readonly themes = inject(ThemeActions);
+  protected readonly store = inject(DeckStore);
+  protected readonly builtIn = BUILT_IN_THEMES;
+  protected readonly current = computed(() => builtInThemeId(this.store.deck().theme));
+
+  protected choice(event: Event): string {
+    return (event.target as HTMLSelectElement).value;
+  }
+
+  protected layoutChoice(event: Event): string | null {
+    return this.choice(event) || null;
+  }
 
   readonly insert = output<void>();
   readonly help = output<void>();
