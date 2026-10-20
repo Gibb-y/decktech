@@ -26,11 +26,19 @@ export interface Stage {
 }
 
 /** Design tokens, referenced by name from elements and injected into code components as CSS variables. */
+/** A font file kept as a deck asset and registered under `family` with `FontFace` (arc42 §8.7). */
+export interface FontFaceRef {
+  family: string;
+  assetId: string;
+}
+
 export interface Theme {
   colors: Record<string, string>;
   fonts: Record<string, string>;
   typeScale: Record<string, number>;
   spacing: Record<string, number>;
+  /** Embedded font files; the family names can be used in `fonts` stacks. */
+  fontFaces?: FontFaceRef[];
 }
 
 export type PlaceholderKind = 'title' | 'body' | 'image' | 'footer';
@@ -103,6 +111,8 @@ export interface ElementBase {
   hidden?: boolean;
   /** Appears at this step; 0 = always visible. */
   step?: number;
+  /** Fills the placeholder of this kind in the slide's layout: a layout change moves it there (arc42 §8.7). */
+  placeholder?: PlaceholderKind;
 }
 
 export interface TextEl extends ElementBase {

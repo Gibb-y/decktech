@@ -7,8 +7,9 @@
 | Slide | One page of a deck, with a layout, elements, notes and optional transition. |
 | Element | An object on a slide: text, image, shape, line, table, video or code. Positioned in stage units. |
 | Stage | The 1920x1080 logical coordinate space of a slide, scaled to the display. |
-| Layout / master | A reusable arrangement of placeholders and background applied to slides. |
-| Theme | Deck-wide design tokens: colors, fonts, type scale, spacing. |
+| Layout / master | A reusable arrangement of placeholders and background applied to slides. Switching a slide's layout re-flows the elements bound to placeholders. |
+| Placeholder | A named slot of a layout (`title`, `body`, `image`, `footer`) with a position and size. An element that has `placeholder` set to that kind fills it. |
+| Theme | Deck-wide design tokens: colors, fonts, type scale, spacing, plus embedded font files. Elements refer to tokens by name, so replacing the theme restyles them. |
 | Code component | An element backed by user-provided HTML, CSS and JavaScript, running in a sandboxed iframe. |
 | Component definition (`ComponentDef`) | The source and metadata of a code component; shared by one or more code elements. |
 | Component API (`deck`) | The JavaScript API injected into every code component frame. |

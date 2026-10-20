@@ -1,5 +1,5 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
-import type { Slide, Stage, Theme } from '../../core/model';
+import type { Layout, Slide, Stage, Theme } from '../../core/model';
 import { SlideRenderer } from '../../renderer';
 
 /** How far outside the scroll area a thumbnail is already drawn, so scrolling rarely shows an empty box. */
@@ -16,7 +16,7 @@ const MARGIN = '240px 0px';
   imports: [SlideRenderer],
   template: `
     @if (visible()) {
-      <app-slide-renderer [slide]="slide()" [theme]="theme()" [stage]="stage()" mode="thumbnail" />
+      <app-slide-renderer [slide]="slide()" [theme]="theme()" [layout]="layout()" [stage]="stage()" mode="thumbnail" />
     }
   `,
   styles: `
@@ -35,6 +35,7 @@ export class SlideThumb {
   readonly slide = input.required<Slide>();
   readonly theme = input.required<Theme>();
   readonly stage = input.required<Stage>();
+  readonly layout = input<Layout | undefined>(undefined);
   /** The scrolling container the thumbnail sits in; the margin is measured from it, not from the window. */
   readonly scroller = input<Element | null>(null);
 

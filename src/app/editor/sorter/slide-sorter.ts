@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import type { Slide } from '../../core/model';
 import { DeckStore } from '../../core/store';
 import { EditorActions } from '../editor-actions';
@@ -37,6 +37,8 @@ export class SlideSorter {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly sectionButton = viewChild<ElementRef<HTMLButtonElement>>('sectionButton');
 
+  /** Layout of each slide, for the thumbnails' backgrounds. */
+  protected readonly layouts = computed(() => new Map(this.store.deck().layouts.map((l) => [l.id, l] as const)));
   protected readonly editingSection = signal(false);
   protected readonly dragId = signal<string | null>(null);
   /** Where a drop would land: before the slide at this index (`slides.length` = at the end). */

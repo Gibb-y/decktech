@@ -2,7 +2,7 @@ import { MAX_STAGE_SIZE, SCHEMA_VERSION, STAGE_HEIGHT, STAGE_WIDTH } from './con
 import { ELEMENT_BASE_KEYS, ELEMENT_SCHEMAS, ELEMENT_TYPES, type FieldSpec } from './element-schema';
 import { ID_PATTERN } from './ids';
 import { err, ok, type Result } from './result';
-import type { Deck } from './types';
+import type { Deck, Theme } from './types';
 
 export interface ValidationError {
   /** Location of the problem, e.g. `slides[2].elements[0].w`. */
@@ -62,9 +62,12 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 /** Hex, a plain keyword, or an rgb()/hsl() function: nothing that can smuggle other CSS. */
 export const LITERAL_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{1,30}|(rgb|hsl)a?\([0-9.,%\s/-]{1,60}\))$/;
 
+/** A family name that is safe inside a CSS font stack and a `FontFace` constructor. */
+export const FONT_FAMILY = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,63}$/;
+
 const FITS = ['cover', 'contain', 'stretch'] as const;
 const PERMISSIONS = ['network', 'storage'] as const;
-const PLACEHOLDER_KINDS = ['title', 'body', 'image', 'footer'] as const;
+export const PLACEHOLDER_KINDS = ['title', 'body', 'image', 'footer'] as const;
 const TRANSITIONS = ['none', 'fade', 'slide', 'zoom'] as const;
 const PROP_TYPES = ['string', 'number', 'boolean', 'color', 'asset', 'select'] as const;
 
@@ -82,6 +85,13 @@ export function validateDeck(
   const v = new Validator({ ...DEFAULT_VALIDATION_OPTIONS, ...options });
   v.deck(input);
   return v.errors.length === 0 ? ok(input as Deck) : err(v.errors);
+}
+
+/** Validates a theme the way `validateDeck` does, for commands that replace it. Font assets must be in `assetIds`. */
+export function validateTheme(input: unknown, assetIds: Iterable<string>): Result<Theme, ValidationError[]> {
+  const v = new Validator(DEFAULT_VALIDATION_OPTIONS);
+  v.themeOnly(input, assetIds);
+  return v.errors.length === 0 ? ok(input as Theme) : err(v.errors);
 }
 
 class Validator {
@@ -127,6 +137,12 @@ class Validator {
     this.resolve(this.assetRefs, this.assetIds, 'asset');
   }
 
+  /** A theme on its own (`SetTheme`); font assets must be among `assetIds`. */
+  themeOnly(input: unknown, assetIds: Iterable<string>): void {
+    this.theme('theme', input);
+    this.resolve(this.assetRefs, new Set(assetIds), 'asset');
+  }
+
   // --- structures -------------------------------------------------------------------------
 
   /** Either side of the default stage must be kept so 16:9-based layouts stay meaningful (§8.1). */
@@ -141,7 +157,7 @@ class Validator {
   }
 
   private theme(path: string, value: unknown): void {
-    const t = this.record(path, value, ['colors', 'fonts', 'typeScale', 'spacing']);
+    const t = this.record(path, value, ['colors', 'fonts', 'typeScale', 'spacing', 'fontFaces']);
     if (!t) return;
     this.map(`${path}.colors`, t['colors'], (p, x, key) => {
       if (this.literalColor(p, x)) this.themeColors.add(key);
@@ -151,6 +167,15 @@ class Validator {
     });
     for (const key of ['typeScale', 'spacing'] as const) {
       this.map(`${path}.${key}`, t[key], (p, x) => this.number(p, x, { min: 0, max: MAX_COORDINATE }));
+    }
+    if (t['fontFaces'] !== undefined) {
+      this.array(`${path}.fontFaces`, t['fontFaces'], this.limits.maxArrayLength)?.forEach((face, i) => {
+        const p = `${path}.fontFaces[${i}]`;
+        const f = this.record(p, face, ['family', 'assetId']);
+        if (!f) return;
+        if (typeof f['family'] !== 'string' || !FONT_FAMILY.test(f['family'])) this.fail(`${p}.family`, 'must be a plain font family name');
+        this.assetRef(`${p}.assetId`, f['assetId']);
+      });
     }
   }
 
@@ -326,6 +351,7 @@ class Validator {
       if (e[flag] !== undefined) this.boolean(`${path}.${flag}`, e[flag]);
     }
     if (e['step'] !== undefined) this.number(`${path}.step`, e['step'], { min: 0, max: MAX_STEP, int: true });
+    if (e['placeholder'] !== undefined) this.oneOf(`${path}.placeholder`, e['placeholder'], PLACEHOLDER_KINDS);
 
     if (!this.oneOf(`${path}.type`, e['type'], ELEMENT_TYPES)) return;
     const schema = ELEMENT_SCHEMAS[e['type'] as keyof typeof ELEMENT_SCHEMAS];

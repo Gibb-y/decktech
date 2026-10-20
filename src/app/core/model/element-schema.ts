@@ -91,4 +91,4 @@ export const ELEMENT_SCHEMAS: Record<ElementType, ElementSchema> = {
 export const ELEMENT_TYPES = Object.keys(ELEMENT_SCHEMAS) as ElementType[];
 
 /** Fields shared by every element (`ElementBase`) plus the discriminator. */
-export const ELEMENT_BASE_KEYS = ['id', 'type', 'x', 'y', 'w', 'h', 'rotation', 'locked', 'hidden', 'step'] as const;
+export const ELEMENT_BASE_KEYS = ['id', 'type', 'x', 'y', 'w', 'h', 'rotation', 'locked', 'hidden', 'step', 'placeholder'] as const;

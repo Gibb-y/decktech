@@ -1,19 +1,12 @@
 import { SCHEMA_VERSION, STAGE_HEIGHT, STAGE_WIDTH } from './constants';
 import { ELEMENT_SCHEMAS } from './element-schema';
 import { generateId } from './ids';
-import type { Deck, Element, ElementBase, ElementType, Layout, Slide, Theme } from './types';
+import { createBuiltInLayouts } from './layouts';
+import { createTheme } from './themes';
+import type { Deck, Element, ElementBase, ElementType, Layout, Slide } from './types';
 
 type ElementOf<T extends ElementType> = Extract<Element, { type: T }>;
 type ElementOverrides<T extends ElementType> = Partial<Omit<ElementOf<T>, 'type' | 'id'>>;
-
-function createTheme(): Theme {
-  return {
-    colors: { background: '#ffffff', text: '#111111', accent: '#2457d6' },
-    fonts: { heading: 'sans-serif', body: 'sans-serif', mono: 'monospace' },
-    typeScale: { title: 96, heading: 64, body: 40, caption: 28 },
-    spacing: { sm: 16, md: 32, lg: 64 },
-  };
-}
 
 export function createLayout(name = 'Blank'): Layout {
   return { id: generateId('layout'), name, placeholders: [] };
@@ -23,17 +16,17 @@ export function createSlide(layoutId: string): Slide {
   return { id: generateId('slide'), layoutId, elements: [], notes: '' };
 }
 
-/** A new deck with a blank layout and one empty slide. */
+/** A new deck with the built-in theme and layouts and one empty slide on the blank layout. */
 export function createDeck(title = 'Untitled deck'): Deck {
-  const layout = createLayout();
+  const layouts = createBuiltInLayouts();
   return {
     schemaVersion: SCHEMA_VERSION,
     id: generateId('deck'),
     title,
     stage: { width: STAGE_WIDTH, height: STAGE_HEIGHT },
     theme: createTheme(),
-    layouts: [layout],
-    slides: [createSlide(layout.id)],
+    layouts,
+    slides: [createSlide(layouts[0].id)],
     assets: {},
     components: [],
   };
