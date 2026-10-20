@@ -10,7 +10,7 @@ export const routes: Routes = [
   {
     path: 'deck/:id',
     title: 'Editor – DeckTech',
-    loadComponent: () => import('./editor/editor-page').then((m) => m.EditorPage),
+    loadComponent: () => import('./editor/editor-shell').then((m) => m.EditorShell),
   },
   {
     path: 'deck/:id/present',

@@ -39,6 +39,8 @@ export class History {
   private open: HistoryEntry | undefined;
   /** The document before the first command of the open entry. */
   private openBefore: unknown;
+  /** Key of a gesture in progress; its commands merge however long the pauses between them. */
+  private held: string | undefined;
 
   readonly canUndo = computed(() => this.undoStack().length > 0);
   readonly canRedo = computed(() => this.redoStack().length > 0);
@@ -63,7 +65,7 @@ export class History {
       top === this.open &&
       entry.coalesceKey !== undefined &&
       top.coalesceKey === entry.coalesceKey &&
-      entry.time - top.time <= this.windowMs
+      (entry.time - top.time <= this.windowMs || entry.coalesceKey === this.held)
     ) {
       this.open = {
         ...top,
@@ -77,6 +79,17 @@ export class History {
     this.open = entry;
     this.openBefore = snapshots.before;
     this.undoStack.set([...stack, entry].slice(-this.limit));
+  }
+
+  /**
+   * Keeps merging commands with `key` for as long as the hold lasts, regardless of the window, so
+   * a drag that pauses mid-way is still one undo step. Returns the release function.
+   */
+  hold(key: string): () => void {
+    this.held = key;
+    return () => {
+      if (this.held === key) this.held = undefined;
+    };
   }
 
   /** The entry `undo()` would move, without moving it. */
