@@ -209,8 +209,35 @@ describe('LibraryPage', () => {
       button(root(fixture), 'Delete deck').click();
       await settle(fixture);
       expect(rowTitles(fixture)).toEqual(['Stuck']);
-      expect(root(fixture).querySelector('[role="alert"]')?.textContent).toContain('Could not delete the deck: closed');
+      // The dialog stays open with the reason, so the user can retry or cancel.
+      const dialog = root(fixture).querySelector<HTMLElement>('[role="alertdialog"]')!;
+      expect(dialog.querySelector('[role="alert"]')?.textContent).toContain('Could not delete the deck: closed');
+      button(dialog, 'Cancel').click();
+      await settle(fixture);
+      expect(root(fixture).querySelector('[role="alertdialog"]')).toBeNull();
+      expect(document.activeElement?.id).toBe(`delete-btn-${decks[0].id}`);
     });
+  });
+
+  it('ignores actions while another one is running instead of disabling the buttons', async () => {
+    const { fixture, repo } = await setup(['A']);
+    const trigger = button(root(fixture), 'New blank deck');
+    const save = vi.spyOn(repo, 'save');
+    trigger.click();
+    trigger.click();
+    await settle(fixture);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(trigger.disabled).toBe(false);
+  });
+
+  it('puts focus somewhere real when the duplicate is filtered out of view', async () => {
+    // A 200-character title is cut in the copy's "Copy of ..." title, so the search no longer matches it.
+    const title = 'x'.repeat(200);
+    const { fixture } = await setup([title]);
+    await type(fixture, root(fixture).querySelector<HTMLInputElement>('#deck-search')!, title);
+    button(root(fixture), /^Duplicate/).click();
+    await settle(fixture);
+    expect(document.activeElement?.id).toBe('library-heading');
   });
 
   it('offers a retry when the list cannot be read', async () => {

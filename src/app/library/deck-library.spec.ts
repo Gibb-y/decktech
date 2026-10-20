@@ -249,6 +249,13 @@ describe('templates', () => {
     expect(instantiateTemplate({ ...broken, deck: null }).ok).toBe(false);
   });
 
+  it('keeps text readable on the accent background of Big statement', () => {
+    const template = BUILT_IN_TEMPLATES.find((t) => t.id === 'big-statement')!;
+    const deck = template.deck as { slides: { elements: { color: unknown }[] }[] };
+    // The default text colour (#111) on the accent (#2457d6) is about 2.7:1; white is above 6:1.
+    expect(deck.slides[0].elements[0].color).toBe('#ffffff');
+  });
+
   it('has unique ids', () => {
     const ids = BUILT_IN_TEMPLATES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);

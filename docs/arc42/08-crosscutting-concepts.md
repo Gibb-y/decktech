@@ -143,7 +143,7 @@ Theme tokens (colors, font families, type scale, spacing) are defined once per d
 - Slides render as semantic HTML (headings, lists, `alt` text for images); elements that are hidden or not yet reached by the step are not in the DOM when presenting, and thumbnails are `aria-hidden` and `inert` (5.7). A "reading order" panel lets authors fix tab order.
 - Presentation mode honours `prefers-reduced-motion` (transitions off) and exposes an ARIA live region announcing slide changes.
 - Code components receive `prefers-reduced-motion` and contrast information through the runtime; the app cannot guarantee their content is accessible and shows a checklist in the code editor.
-- App-wide pieces live in `shared/` (5.8): a skip link as the first focusable element, a `main` landmark, one polite live region (`LiveAnnouncer`) for status messages, and a `FocusTrap` for dialogs. Interactive controls are native elements; actions on repeated rows carry the row's title in their accessible name.
+- App-wide pieces live in `shared/` (5.8): a skip link as the first focusable element, a `main` landmark, one polite live region (`LiveAnnouncer`) for status messages, and a `FocusTrap` for dialogs. Controls that are briefly unavailable use `aria-disabled` instead of `disabled`, and built-in templates set text colours that reach AA on their backgrounds. Interactive controls are native elements; actions on repeated rows carry the row's title in their accessible name.
 - Automated AXE checks run in CI against the library today and against the editor and presentation views as they are built (jsdom has no layout, so colour contrast is not checked by AXE there; the palettes are chosen for AA by hand).
 
 ## 8.9 Error handling and logging

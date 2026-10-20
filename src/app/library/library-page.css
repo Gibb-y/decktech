@@ -59,10 +59,6 @@ h1:focus { outline: none; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
 .backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.55); z-index: 1500; }
 .dialog { max-width: 28rem; margin: 1rem; padding: 1.25rem; background: #fff; border-radius: 0.5rem; }
-.sr-only {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
-  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
-}
 @media (max-width: 40rem) {
   .deck { grid-template-columns: 5rem 1fr; }
   .actions { grid-column: 1 / -1; justify-content: flex-start; }

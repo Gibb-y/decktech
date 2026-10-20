@@ -46,6 +46,21 @@ describe('App', () => {
     expect(page.textContent).toContain('dk_1');
   });
 
+  it('moves focus to the new page heading after navigation, but not on first load', async () => {
+    const fixture = TestBed.createComponent(App);
+    document.body.appendChild(fixture.nativeElement);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(document.body);
+    await router.navigateByUrl('/deck/dk_1');
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
+    expect(document.activeElement?.tagName).toBe('H1');
+    expect(document.activeElement?.textContent).toBe('Editor');
+    fixture.nativeElement.remove();
+  });
+
   it('sends unknown URLs to the library', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/no/such/page');

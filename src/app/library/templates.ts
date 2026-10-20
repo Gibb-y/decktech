@@ -75,7 +75,7 @@ export const BUILT_IN_TEMPLATES: readonly DeckTemplate[] = [
     description: 'A single bold statement on an accent background.',
     deck: {
       ...deck('Big statement', [
-        { id: 'sl_statement', elements: [text('el_statement', [160, 340, 1600, 400], 'One idea per slide', 96, 'heading', 'center')] },
+        { id: 'sl_statement', elements: [{ ...text('el_statement', [160, 340, 1600, 400], 'One idea per slide', 96, 'heading', 'center'), color: '#ffffff' }] },
       ]),
       layouts: [{ ...LAYOUT, background: { kind: 'solid', color: { token: 'accent' } } }],
     },

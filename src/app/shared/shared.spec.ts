@@ -26,6 +26,19 @@ describe('LiveAnnouncer', () => {
   });
 });
 
+describe('LiveAnnouncer overlap', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('lets only the latest of quick announcements through', async () => {
+    vi.useFakeTimers();
+    const announcer = TestBed.inject(LiveAnnouncer);
+    announcer.announce('first');
+    announcer.announce('second');
+    await vi.advanceTimersByTimeAsync(60);
+    expect(announcer.message()).toBe('second');
+  });
+});
+
 describe('SkipLink', () => {
   it('is a link that moves focus to the target without navigating', () => {
     @Component({

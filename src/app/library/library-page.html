@@ -3,13 +3,13 @@
 <section aria-labelledby="create-heading" class="panel">
   <h2 id="create-heading">Create</h2>
   <div class="row">
-    <button type="button" class="primary" [disabled]="library.busy()" (click)="createBlank()">New blank deck</button>
+    <button type="button" class="primary" [attr.aria-disabled]="library.busy() || null" (click)="createBlank()">New blank deck</button>
   </div>
   <h3 id="templates-heading">Start from a template</h3>
   <ul class="templates" aria-labelledby="templates-heading">
     @for (template of library.templates; track template.id) {
       <li>
-        <button type="button" [disabled]="library.busy()" (click)="createFromTemplate(template.id)">{{ template.name }}</button>
+        <button type="button" [attr.aria-disabled]="library.busy() || null" (click)="createFromTemplate(template.id)">{{ template.name }}</button>
         <span class="muted">{{ template.description }}</span>
       </li>
     }
@@ -51,7 +51,7 @@
                 <form class="row" (submit)="submitRename($event, deck.id)">
                   <label [for]="'rename-' + deck.id">New title for {{ deck.title }}</label>
                   <input [id]="'rename-' + deck.id" type="text" maxlength="200" [value]="renameDraft()" (input)="setRenameDraft($event)" />
-                  <button type="submit" class="primary" [disabled]="library.busy()">Save</button>
+                  <button type="submit" class="primary" [attr.aria-disabled]="library.busy() || null">Save</button>
                   <button type="button" (click)="cancelRename(deck.id)">Cancel</button>
                 </form>
               } @else {
@@ -60,13 +60,13 @@
               <span class="muted">Modified <time [attr.datetime]="deck.updatedAt | date: isoFormat : 'UTC'">{{ deck.updatedAt | date: 'medium' }}</time></span>
             </div>
             <div class="actions">
-              <button type="button" [id]="'rename-btn-' + deck.id" [disabled]="library.busy()" (click)="startRename(deck)">
+              <button type="button" [id]="'rename-btn-' + deck.id" [attr.aria-disabled]="library.busy() || null" (click)="startRename(deck)">
                 Rename<span class="sr-only"> {{ deck.title }}</span>
               </button>
-              <button type="button" [disabled]="library.busy()" (click)="duplicate(deck.id)">
+              <button type="button" [attr.aria-disabled]="library.busy() || null" (click)="duplicate(deck.id)">
                 Duplicate<span class="sr-only"> {{ deck.title }}</span>
               </button>
-              <button type="button" class="danger" [id]="'delete-btn-' + deck.id" [disabled]="library.busy()" (click)="askDelete(deck)">
+              <button type="button" class="danger" [id]="'delete-btn-' + deck.id" [attr.aria-disabled]="library.busy() || null" (click)="askDelete(deck)">
                 Delete<span class="sr-only"> {{ deck.title }}</span>
               </button>
             </div>
@@ -85,9 +85,12 @@
     <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-text" appFocusTrap (keydown.escape)="cancelDelete()">
       <h2 id="delete-title">Delete this deck?</h2>
       <p id="delete-text">“{{ deck.title }}” and its backups will be removed from this browser. This cannot be undone.</p>
+      @if (deleteError(); as message) {
+        <p class="error" role="alert">{{ message }}</p>
+      }
       <div class="row">
         <button type="button" data-autofocus (click)="cancelDelete()">Cancel</button>
-        <button type="button" class="danger-solid" [disabled]="library.busy()" (click)="confirmDelete()">Delete deck</button>
+        <button type="button" class="danger-solid" [attr.aria-disabled]="library.busy() || null" (click)="confirmDelete()">Delete deck</button>
       </div>
     </div>
   </div>

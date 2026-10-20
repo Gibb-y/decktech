@@ -27,6 +27,7 @@ export class LibraryPage {
   protected readonly renamingId = signal<string | null>(null);
   protected readonly renameDraft = signal('');
   protected readonly pendingDelete = signal<DeckSummary | null>(null);
+  protected readonly deleteError = signal<string | null>(null);
 
   protected readonly matches = computed(() => {
     const needle = this.query().trim().toLowerCase();
@@ -69,19 +70,23 @@ export class LibraryPage {
   }
 
   protected async createBlank(): Promise<void> {
+    if (this.library.busy()) return;
     await this.open(await this.library.createBlank(), 'Blank deck created');
   }
 
   protected async createFromTemplate(templateId: string): Promise<void> {
+    if (this.library.busy()) return;
     await this.open(await this.library.createFromTemplate(templateId), 'Deck created from template');
   }
 
   protected async duplicate(id: string): Promise<void> {
+    if (this.library.busy()) return;
     const result = await this.library.duplicate(id);
     if (!result.ok) return this.fail(result.error.message);
     this.error.set(null);
     this.announcer.announce(`Duplicated as ${result.value.title}`);
-    this.focus(`rename-btn-${result.value.id}`);
+    // The copy can be filtered out or beyond the first page; the heading is always there.
+    this.focus(`rename-btn-${result.value.id}`, 'library-heading');
   }
 
   protected startRename(deck: DeckSummary): void {
@@ -102,6 +107,7 @@ export class LibraryPage {
 
   protected async submitRename(event: Event, id: string): Promise<void> {
     event.preventDefault();
+    if (this.library.busy()) return;
     const result = await this.library.rename(id, this.renameDraft());
     if (!result.ok) return this.fail(result.error.message);
     this.error.set(null);
@@ -111,19 +117,24 @@ export class LibraryPage {
   }
 
   protected askDelete(deck: DeckSummary): void {
+    this.deleteError.set(null);
     this.pendingDelete.set(deck);
   }
 
   protected cancelDelete(): void {
+    const deck = this.pendingDelete();
     this.pendingDelete.set(null);
+    // Some browsers do not focus a clicked button, so the trap cannot know where to return to.
+    if (deck) this.focus(`delete-btn-${deck.id}`, 'library-heading');
   }
 
   protected async confirmDelete(): Promise<void> {
     const deck = this.pendingDelete();
-    if (!deck) return;
+    if (!deck || this.library.busy()) return;
     const result = await this.library.remove(deck.id);
+    // The dialog stays open on failure so the user sees why and can retry or cancel.
+    if (!result.ok) return this.deleteError.set(result.error.message);
     this.pendingDelete.set(null);
-    if (!result.ok) return this.fail(result.error.message);
     this.error.set(null);
     this.announcer.announce(`Deleted ${deck.title}`);
     // The trigger is gone with the row; the dialog would restore focus to a removed button.
@@ -137,12 +148,15 @@ export class LibraryPage {
     await this.router.navigate(['/deck', result.value.id]);
   }
 
+  /** Shown in the alert banner, which assistive technology announces by itself. */
   private fail(message: string): void {
     this.error.set(message);
-    this.announcer.announce(message);
   }
 
-  private focus(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+  private focus(id: string, fallbackId?: string): void {
+    afterNextRender(
+      () => (document.getElementById(id) ?? (fallbackId ? document.getElementById(fallbackId) : null))?.focus(),
+      { injector: this.injector },
+    );
   }
 }
