@@ -85,6 +85,15 @@ describe('EditorShell', () => {
     expect(root(fixture).querySelector('h1')?.textContent).toBe('Second');
   });
 
+  it('shows an error instead of loading forever when opening throws', async () => {
+    const { fixture, repo } = await setup();
+    vi.spyOn(repo, 'load').mockRejectedValue(new Error('disk on fire'));
+    fixture.componentRef.setInput('id', 'dk_other');
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(root(fixture).querySelector('[role="alert"]')?.textContent).toContain('disk on fire');
+  });
+
   it('has no AXE violations', async () => {
     const { fixture } = await setup();
     await settle(fixture);

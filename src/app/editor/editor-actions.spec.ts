@@ -68,6 +68,13 @@ describe('EditorActions selection', () => {
     expect(store.selection()).toEqual([ids[2]]);
   });
 
+  it('treats a selection that is not on this slide like no selection', () => {
+    const { store, actions, ids } = setup();
+    store.select(['el_gone']);
+    expect(actions.selectNext(1)).toBe(true);
+    expect(store.selection()).toEqual([ids[0]]);
+  });
+
   it('mentions locked and hidden elements', () => {
     const { actions, announce, store } = setup(() => [createElement('text', { text: 'x', locked: true, hidden: true })]);
     store.select([store.currentSlide().elements[0].id]);
@@ -172,6 +179,14 @@ describe('EditorActions geometry', () => {
     actions.distribute('horizontal');
     // 100..300, 400..500, 700..800: gaps 100 and 200 become 150 each... span 100..800, widths 400.
     expect(byId(store, ids[1]).x).toBeCloseTo(100 + 200 + 150);
+    expect(announce).toHaveBeenLastCalledWith('Distributed horizontally');
+    actions.distribute('vertical');
+    expect(announce).toHaveBeenLastCalledWith('Already evenly spaced');
+    store.select([ids[1]]);
+    actions.nudge(0, 50);
+    store.select(ids);
+    actions.distribute('vertical');
+    expect(announce).toHaveBeenLastCalledWith('Distributed vertically');
   });
 });
 

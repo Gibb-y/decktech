@@ -82,7 +82,8 @@ export class EditorActions {
     if (selected.size === 0) target = direction === 1 ? 0 : elements.length - 1;
     else {
       const indices = elements.flatMap((e, i) => (selected.has(e.id) ? [i] : []));
-      target = (direction === 1 ? Math.max(...indices) : Math.min(...indices)) + direction;
+      // A stale selection (none of its ids on this slide) behaves like no selection.
+      target = indices.length === 0 ? (direction === 1 ? 0 : elements.length - 1) : (direction === 1 ? Math.max(...indices) : Math.min(...indices)) + direction;
     }
     if (target < 0 || target >= elements.length) return false;
     this.store.select([elements[target].id]);
@@ -135,13 +136,13 @@ export class EditorActions {
     const items = this.placed(this.editable);
     if (items.length === 0) return this.announceLocked();
     const changes = alignItems(items, kind, this.slideRect());
-    this.applyGeometry(changes, `Aligned ${kind}`);
+    this.applyGeometry(changes, `Aligned ${kind}`, 'Already aligned');
   }
 
   distribute(axis: DistributeAxis): void {
     const items = this.placed(this.editable);
     if (items.length < 3) return void this.announcer.announce('Select at least three elements to distribute');
-    this.applyGeometry(distributeItems(items, axis), `Distributed ${axis}ly`);
+    this.applyGeometry(distributeItems(items, axis), axis === 'horizontal' ? 'Distributed horizontally' : 'Distributed vertically', 'Already evenly spaced');
   }
 
   // ------------------------------------------------------------ structure
@@ -169,8 +170,9 @@ export class EditorActions {
   paste(): void {
     const clip = this.clipboard();
     if (!clip || clip.deckId !== this.store.deck().id) return void this.announcer.announce('Nothing to paste');
-    clip.pastes += 1;
-    this.insertCopies(clip.elements, clip.pastes, 'pasted');
+    const pastes = clip.pastes + 1;
+    this.clipboard.set({ ...clip, pastes });
+    this.insertCopies(clip.elements, pastes, 'pasted');
   }
 
   /** Moves the selection in z-order; a move that changes nothing is silent. */
@@ -205,8 +207,8 @@ export class EditorActions {
     this.announcer.announce(copies.length === 1 ? `${describeElement(copies[0])} ${verb}` : `${copies.length} elements ${verb}`);
   }
 
-  private applyGeometry(changes: ElementGeometry[], message: string): void {
-    if (changes.length === 0) return void this.announcer.announce('Already aligned');
+  private applyGeometry(changes: ElementGeometry[], message: string, unchanged: string): void {
+    if (changes.length === 0) return void this.announcer.announce(unchanged);
     this.store.execute(new ResizeElements(changes));
     this.announcer.announce(message);
   }

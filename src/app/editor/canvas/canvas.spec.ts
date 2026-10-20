@@ -264,6 +264,37 @@ describe('Canvas cancel', () => {
   });
 });
 
+describe('Canvas interrupted gestures', () => {
+  it('a cancelled pointer does not narrow a multi-selection', () => {
+    const { fixture, store, ids, canvas } = setup();
+    store.select(ids);
+    fire(hits(fixture)[1], 'pointerdown', px(canvas, 1000, 500));
+    fire(area(fixture), 'pointercancel', px(canvas, 1000, 500));
+    expect(store.selection()).toEqual(ids);
+  });
+
+  it('losing focus or the pointer capture mid-drag ends the gesture, so the keyboard works again', () => {
+    const { fixture, store, ids, canvas } = setup();
+    for (const end of ['blur', 'lostpointercapture']) {
+      store.select([ids[0]]);
+      fire(hits(fixture)[1], 'pointerdown', px(canvas, 1000, 500));
+      fire(area(fixture), 'pointermove', px(canvas, 1100, 500), { altKey: true });
+      area(fixture).dispatchEvent(new Event(end));
+      const x = stored(store, ids[1]).x;
+      key(fixture, 'ArrowRight');
+      expect(stored(store, ids[1]).x).toBe(x + 1);
+    }
+  });
+
+  it('forgets a held Space when focus leaves, so the next click selects instead of panning', () => {
+    const { fixture, store, ids, canvas } = setup();
+    area(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+    area(fixture).dispatchEvent(new Event('blur'));
+    fire(hits(fixture)[0], 'pointerdown', px(canvas, 300, 300));
+    expect(store.selection()).toEqual([ids[0]]);
+  });
+});
+
 describe('Canvas resize and rotate', () => {
   it.each([0.5, 2])('resizes with the south-east handle at zoom %d', (zoom) => {
     const el = createElement('shape', { x: 400, y: 300, w: 200, h: 100, shape: 'rect' });

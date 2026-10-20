@@ -169,7 +169,13 @@ export class EditorShell {
   private async open(id: string): Promise<void> {
     const attempt = ++this.opening;
     this.state.set({ status: 'loading' });
-    const result = await this.autosave.open(id);
+    let result: Awaited<ReturnType<AutosaveService['open']>>;
+    try {
+      result = await this.autosave.open(id);
+    } catch (e) {
+      if (attempt === this.opening) this.state.set({ status: 'unavailable', message: `This deck could not be opened: ${e instanceof Error ? e.message : String(e)}` });
+      return;
+    }
     if (attempt !== this.opening) return; // the route changed while loading
     if (!result.ok) return this.state.set({ status: 'unavailable', message: `This deck could not be opened: ${result.error.message}` });
     if (result.value.readOnly) return this.state.set({ status: 'unavailable', message: result.value.reason });

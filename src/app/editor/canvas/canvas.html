@@ -5,12 +5,10 @@
   </div>
   <div class="group" role="group" aria-label="Arrange">
     @for (b of alignButtons; track b.kind) {
-      <button type="button" [attr.aria-label]="b.label" [title]="b.label" (click)="actions.align(b.kind)" [attr.aria-disabled]="hasSelection() ? null : 'true'">{{ b.kind }}</button>
+      <button type="button" (click)="actions.align(b.kind)" [attr.aria-disabled]="hasSelection() ? null : 'true'">{{ b.label }}</button>
     }
     @for (b of distributeButtons; track b.axis) {
-      <button type="button" [attr.aria-label]="b.label" [title]="b.label" (click)="actions.distribute(b.axis)" [attr.aria-disabled]="selection().length >= 3 ? null : 'true'">
-        {{ b.axis === 'horizontal' ? 'spread across' : 'spread down' }}
-      </button>
+      <button type="button" (click)="actions.distribute(b.axis)" [attr.aria-disabled]="selection().length >= 3 ? null : 'true'">{{ b.label }}</button>
     }
   </div>
   <div class="group" role="group" aria-label="Stacking order">
@@ -46,7 +44,9 @@
   (pointerdown)="onViewportDown($event)"
   (pointermove)="onPointerMove($event)"
   (pointerup)="onPointerUp($event)"
-  (pointercancel)="onPointerUp($event)"
+  (pointercancel)="onPointerCancel()"
+  (lostpointercapture)="onPointerCancel()"
+  (blur)="onBlur()"
   (wheel)="onWheel($event)"
   (keydown)="onKeyDown($event)"
   (keyup)="onKeyUp($event)"

@@ -3,7 +3,6 @@ import type { Deck, Element } from '../../core/model';
 import { DeckStore, MoveElements, ResizeElements, SetProps, type ElementGeometry } from '../../core/store';
 import { SlideRenderer } from '../../renderer';
 import { LiveAnnouncer } from '../../shared';
-import { describeElement } from '../describe';
 import { EditorActions } from '../editor-actions';
 import { CANVAS_SHORTCUTS, findShortcut, type ShortcutContext } from '../shortcuts';
 import {
@@ -382,6 +381,17 @@ export class Canvas {
     this.store.select(this.slide().elements.filter((x) => hit.has(x.id)).map((x) => x.id));
   }
 
+  /** The browser took the pointer away (touch gesture, lost capture): keep what was done, select nothing new. */
+  protected onPointerCancel(): void {
+    this.endGesture();
+  }
+
+  /** Focus left mid-gesture or with Space down: no pointerup / keyup will arrive here. */
+  protected onBlur(): void {
+    this.spaceHeld = false;
+    this.endGesture();
+  }
+
   protected onPointerUp(e: PointerEvent): void {
     const g = this.gesture;
     if (!g) return;
@@ -465,10 +475,6 @@ export class Canvas {
   }
 
   // --------------------------------------------------------------- template
-
-  protected label(element: Element): string {
-    return describeElement(element);
-  }
 
   protected hitStyle(element: Element): Record<string, string | null> {
     return {
