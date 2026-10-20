@@ -1,4 +1,3 @@
-import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 
 /** Every screen is a lazy chunk, so the initial bundle holds only the shell (arc42 §4.4). */
@@ -24,7 +23,9 @@ export const routes: Routes = [
     loadComponent: () => import('./presenter/presenter-view-page').then((m) => m.PresenterViewPage),
   },
   // Profiling aid for quality scenario Q9; not part of production builds.
-  ...(isDevMode()
+  // `ngDevMode` is a build-time constant (false in production), so the bundler drops this whole
+  // branch, including the lazy import and its chunk; `isDevMode()` would be a runtime call it cannot fold.
+  ...(typeof ngDevMode !== 'undefined' && ngDevMode
     ? [
         {
           path: 'dev/stress',
