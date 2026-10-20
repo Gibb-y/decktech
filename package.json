@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "lint:boundaries": "node scripts/check-boundaries.mjs"
   },
   "private": true,
   "packageManager": "npm@11.19.1",
