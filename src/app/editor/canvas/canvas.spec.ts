@@ -8,6 +8,8 @@ import { LiveAnnouncer } from '../../shared';
 import { Canvas } from './canvas';
 import { corners } from './geometry';
 import { createStressDeck } from './stress-deck';
+import { ShortcutRegistry } from '../shortcut-registry';
+import { CANVAS_SHORTCUTS } from '../shortcuts';
 
 let now = 0;
 const probe = vi.fn();
@@ -431,10 +433,12 @@ describe('Canvas keyboard', () => {
     expect(canvas.viewport().panX).toBe(before.panX + 40);
   });
 
-  it('every shortcut is listed in the help', () => {
-    const { fixture } = setup();
-    const terms = Array.from(root(fixture).querySelectorAll('.shortcuts dt'), (d) => d.textContent);
-    expect(terms).toEqual(expect.arrayContaining(['Tab', 'Ctrl+D', 'Ctrl+Z', 'Ctrl+Shift+Z', '[', ']', 'Delete', 'Ctrl+A']));
+  it('registers every canvas shortcut, so the help overlay lists them', () => {
+    setup();
+    const registry = TestBed.inject(ShortcutRegistry);
+    const keys = registry.shortcuts().filter((s) => s.scope === 'canvas').map((s) => s.keys);
+    expect(keys).toEqual(expect.arrayContaining(['Tab', 'Ctrl+D', 'Ctrl+Z', 'Ctrl+Shift+Z', '[', ']', 'Delete', 'Ctrl+A']));
+    expect(keys).toHaveLength(CANVAS_SHORTCUTS.length);
   });
 });
 

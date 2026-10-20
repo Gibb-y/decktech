@@ -346,6 +346,20 @@ describe('validateDeck', () => {
     );
   });
 
+  describe('slide sections', () => {
+    it('accepts a named section start', () => {
+      expect(validateDeck(tamper((d) => (d.slides[1].section = 'Introduction'))).ok).toBe(true);
+    });
+
+    it.each([
+      ['an empty name', ''],
+      ['a name that is not a string', 7],
+      ['a name that is too long', 'x'.repeat(1_001)],
+    ])('rejects %s', (_label, value) => {
+      expectErrorAt(tamper((d) => ((d.slides[1] as unknown as Record<string, unknown>)['section'] = value)), 'slides[1].section');
+    });
+  });
+
   describe('hostile input', () => {
     it('rejects __proto__ keys in props', () => {
       const props = JSON.parse('{"__proto__": {"polluted": true}}');

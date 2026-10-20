@@ -32,6 +32,11 @@
 | Gesture | One continuous pointer action on the canvas (drag, resize, rotate). It issues many commands with one `coalesceKey`, holds the key open with `beginGesture`, and so is one undo step. |
 | Batch | A command that runs several commands in order as one undo step. |
 | Interact mode | Canvas mode in which the overlay lets the pointer through to the one selected code element instead of selecting and dragging it. |
+| Section | A named group of slides: `Slide.section` on a slide starts it, and it runs to the next slide that has one. Shown in the slide sorter. |
+| Reading order | The order in which assistive technology and the Tab key visit a slide's elements: the element array, which is also the z-order. Fixed in the reading-order panel. |
+| Shortcut registry | `ShortcutRegistry`: the single table of keyboard shortcuts (id, scope, key combination, handler) with conflict detection; the source of the shortcut help. |
+| Quick insert | Opening the insert menu with `/` and choosing an element by typing part of its name. |
+| Properties panel | The contextual panel for the selected element (or the slide), built from `ELEMENT_SCHEMAS`; its scalar fields are a Signal Form whose edits become `SetProps` commands. |
 | Snapping guide | A line drawn while a dragged edge or centre is aligned with the slide or another element. |
 | Coalescing | Merging consecutive commands with the same key issued within a short window (500 ms) into one undo step, e.g. a drag. |
 | Trust | The user's decision to allow code components in an imported deck to run; bound to the deck's content hash. |
