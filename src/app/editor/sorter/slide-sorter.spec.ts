@@ -106,6 +106,22 @@ describe('SlideSorter', () => {
     expect(store.slides().map((s) => s.id)).toEqual([first, second]);
   });
 
+  it('Ctrl+Z and Ctrl+Shift+Z undo and redo from the sorter, so a deleted slide can be brought back', async () => {
+    const { fixture, root, store } = await openEditor();
+    const ids = store.slides().map((s) => s.id);
+    press(slideButtons(root)[0], 'Delete');
+    await settle(fixture);
+    expect(store.slides()).toHaveLength(2);
+    press(document.activeElement!, 'z', { ctrlKey: true });
+    await settle(fixture);
+    expect(store.slides().map((s) => s.id)).toEqual(ids);
+    press(document.activeElement!, 'z', { ctrlKey: true, shiftKey: true });
+    await settle(fixture);
+    expect(store.slides()).toHaveLength(2);
+    press(document.activeElement!, 'y', { ctrlKey: true });
+    expect(store.slides()).toHaveLength(2);
+  });
+
   it('Ctrl+D duplicates the slide with fresh ids and selects the copy', async () => {
     const { fixture, root, store } = await openEditor();
     const original = store.slides()[0];

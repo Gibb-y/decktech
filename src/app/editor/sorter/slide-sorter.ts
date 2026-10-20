@@ -1,6 +1,7 @@
 import { Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import type { Slide } from '../../core/model';
 import { DeckStore } from '../../core/store';
+import { EditorActions } from '../editor-actions';
 import { SlideActions } from '../slide-actions';
 import { ShortcutRegistry, type ShortcutDef } from '../shortcut-registry';
 import { SlideThumb } from './slide-thumb';
@@ -31,6 +32,7 @@ export class SlideSorter {
   protected readonly store = inject(DeckStore);
   protected readonly slideActions = inject(SlideActions);
   private readonly registry = inject(ShortcutRegistry);
+  private readonly editor = inject(EditorActions);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly sectionButton = viewChild<ElementRef<HTMLButtonElement>>('sectionButton');
@@ -72,6 +74,9 @@ export class SlideSorter {
       def('add', 'Enter', 'Enter', 'Add a slide after this one', after(() => slides.addSlide())),
       def('duplicate', 'd', 'Ctrl+D', 'Duplicate the slide', after(() => slides.duplicateSlide()), { ctrl: true }),
       def('delete', 'Delete', 'Delete', 'Delete the slide', after(() => slides.deleteSlide())),
+      def('undo', 'z', 'Ctrl+Z', 'Undo', after(() => this.editor.undo()), { ctrl: true }),
+      { ...def('redo', 'z', 'Ctrl+Shift+Z', 'Redo', after(() => this.editor.redo()), { ctrl: true }), shift: true },
+      { ...def('redo-y', 'y', 'Ctrl+Y', 'Redo', after(() => this.editor.redo()), { ctrl: true }), shift: undefined },
     ].map((d) => this.registry.register(d));
     inject(DestroyRef).onDestroy(() => unregister.forEach((u) => u()));
   }

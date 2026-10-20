@@ -17,7 +17,7 @@ export class SlideActions {
     const current = this.store.currentSlide();
     const index = this.store.currentSlideIndex() + 1;
     const slide = createSlide(current.layoutId);
-    this.store.execute(new AddSlide(slide, index));
+    if (!this.run(() => this.store.execute(new AddSlide(slide, index)))) return;
     this.store.selectSlide(slide.id);
     this.announcer.announce(`Slide ${index + 1} added`);
   }

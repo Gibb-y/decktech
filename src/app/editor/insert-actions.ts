@@ -51,7 +51,8 @@ const starterComponent = (): ComponentDef => ({
 /**
  * Inserts new elements into the current slide. Every insertion is one command (one undo step),
  * selects the new element and announces it; pictures are stored first and registered in the deck
- * in the same step as the element, so a failure never leaves a half-added image.
+ * in the same step as the element, so a failure never leaves a half-added image in the deck (the
+ * stored blob of a failed insertion stays until asset garbage collection exists, see 11.2).
  */
 @Service()
 export class InsertActions {
@@ -127,7 +128,9 @@ export class InsertActions {
       x: Math.round((this.store.deck().stage.width - size.w) / 2),
       y: Math.round((this.store.deck().stage.height - size.h) / 2),
     });
-    if (!this.run(() => this.store.execute(new Batch('Insert image', [new AddAsset(ref.hash, ref), new AddElement(slideId, element)])))) return false;
+    // The hash identifies the content: an asset already in the deck is reused as it is, even if the browser reported another mime type this time.
+    const commands: Command[] = Object.hasOwn(this.store.deck().assets, ref.hash) ? [] : [new AddAsset(ref.hash, ref)];
+    if (!this.run(() => this.store.execute(new Batch('Insert image', [...commands, new AddElement(slideId, element)])))) return false;
     if (this.store.currentSlideId() === slideId) this.afterInsert(element, 'image');
     else this.announcer.announce('Image added to the slide you were on');
     return true;

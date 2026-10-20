@@ -4,6 +4,7 @@ import { generateId, type Element } from '../core/model';
 import {
   AddElement,
   Batch,
+  CommandError,
   DeleteElements,
   DeckStore,
   MoveElements,
@@ -196,7 +197,12 @@ export class EditorActions {
     if (direction === 'earlier' ? index === 0 : index === last) {
       return void this.announcer.announce(direction === 'earlier' ? 'Already first in reading order' : 'Already last in reading order');
     }
-    this.store.execute(new ReorderElements(slide.id, [id], direction === 'earlier' ? 'backward' : 'forward'));
+    try {
+      this.store.execute(new ReorderElements(slide.id, [id], direction === 'earlier' ? 'backward' : 'forward'));
+    } catch (e) {
+      if (!(e instanceof CommandError)) throw e;
+      return void this.announcer.announce(e.message);
+    }
     this.store.select([id]);
     this.announcer.announce(`${describeElement(slide.elements[index])} moved to position ${index + (direction === 'earlier' ? 0 : 2)} of ${slide.elements.length}`);
   }
