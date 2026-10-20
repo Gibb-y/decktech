@@ -1,0 +1,181 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  color: #111;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  padding: 0.4rem 0.5rem;
+  background: #f1f2f4;
+  border-bottom: 1px solid #c3c6cc;
+}
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.zoom {
+  min-width: 3.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #5a5a5a;
+  border-radius: 0.25rem;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+}
+button[aria-pressed='true'] {
+  background: #1f4fc4;
+  border-color: #1f4fc4;
+  color: #fff;
+}
+button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+button.danger {
+  color: #8a1c14;
+  border-color: #8a1c14;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+/* The area the stage is shown in. It is the keyboard target and owns every pointer gesture. */
+.viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 24rem;
+  overflow: hidden;
+  background: #d9dce1;
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+.viewport.panning {
+  cursor: grabbing;
+}
+.viewport:focus-visible {
+  outline: 3px solid #1f4fc4;
+  outline-offset: -3px;
+}
+.page {
+  position: absolute;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.35);
+}
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  /* Constant on-screen size for handles and lines whatever the zoom. */
+  --handle: calc(12px * var(--inv, 1));
+  --line: calc(1.5px * var(--inv, 1));
+}
+.hit {
+  position: absolute;
+  cursor: move;
+}
+.hit.locked {
+  cursor: default;
+}
+.hit.interacting {
+  /* Interact mode: the pointer reaches the component underneath. */
+  pointer-events: none;
+}
+.hit.selected {
+  outline: var(--line) solid #1f4fc4;
+}
+.frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: var(--line) solid #1f4fc4;
+  pointer-events: none;
+}
+.frame.locked {
+  border-style: dashed;
+}
+.handle {
+  position: absolute;
+  box-sizing: border-box;
+  width: var(--handle);
+  height: var(--handle);
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: var(--line) solid #1f4fc4;
+  pointer-events: auto;
+}
+.h-nw { left: 0; top: 0; cursor: nwse-resize; }
+.h-n { left: 50%; top: 0; cursor: ns-resize; }
+.h-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.h-e { left: 100%; top: 50%; cursor: ew-resize; }
+.h-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.h-s { left: 50%; top: 100%; cursor: ns-resize; }
+.h-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.h-w { left: 0; top: 50%; cursor: ew-resize; }
+.handle.rotate {
+  left: 50%;
+  top: calc(-32px * var(--inv, 1));
+  border-radius: 50%;
+  cursor: grab;
+}
+.stalk {
+  position: absolute;
+  left: 50%;
+  top: calc(-32px * var(--inv, 1));
+  width: var(--line);
+  height: calc(32px * var(--inv, 1));
+  background: #1f4fc4;
+}
+.guide {
+  position: absolute;
+  background: #d6249f;
+  pointer-events: none;
+}
+.guide.vertical {
+  top: 0;
+  bottom: 0;
+  width: var(--line);
+}
+.guide.horizontal {
+  left: 0;
+  right: 0;
+  height: var(--line);
+}
+.marquee {
+  position: absolute;
+  border: var(--line) dashed #1f4fc4;
+  background: rgb(31 79 196 / 0.12);
+  pointer-events: none;
+}
+.shortcuts {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  background: #f1f2f4;
+  border-top: 1px solid #c3c6cc;
+}
+.shortcuts dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0.5rem 0 0;
+}
+.shortcuts dt {
+  font-weight: 600;
+}
+.shortcuts dd {
+  margin: 0;
+}

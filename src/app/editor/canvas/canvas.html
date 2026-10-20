@@ -1,0 +1,109 @@
+<div class="toolbar" role="group" aria-label="Canvas tools">
+  <div class="group" role="group" aria-label="History">
+    <button type="button" (click)="actions.undo()" [attr.aria-disabled]="store.canUndo() ? null : 'true'">Undo</button>
+    <button type="button" (click)="actions.redo()" [attr.aria-disabled]="store.canRedo() ? null : 'true'">Redo</button>
+  </div>
+  <div class="group" role="group" aria-label="Arrange">
+    @for (b of alignButtons; track b.kind) {
+      <button type="button" [attr.aria-label]="b.label" [title]="b.label" (click)="actions.align(b.kind)" [attr.aria-disabled]="hasSelection() ? null : 'true'">{{ b.kind }}</button>
+    }
+    @for (b of distributeButtons; track b.axis) {
+      <button type="button" [attr.aria-label]="b.label" [title]="b.label" (click)="actions.distribute(b.axis)" [attr.aria-disabled]="selection().length >= 3 ? null : 'true'">
+        {{ b.axis === 'horizontal' ? 'spread across' : 'spread down' }}
+      </button>
+    }
+  </div>
+  <div class="group" role="group" aria-label="Stacking order">
+    <button type="button" (click)="actions.reorder('back')" [attr.aria-disabled]="hasSelection() ? null : 'true'">To back</button>
+    <button type="button" (click)="actions.reorder('backward')" [attr.aria-disabled]="hasSelection() ? null : 'true'">Backward</button>
+    <button type="button" (click)="actions.reorder('forward')" [attr.aria-disabled]="hasSelection() ? null : 'true'">Forward</button>
+    <button type="button" (click)="actions.reorder('front')" [attr.aria-disabled]="hasSelection() ? null : 'true'">To front</button>
+  </div>
+  <div class="group" role="group" aria-label="Edit">
+    <button type="button" (click)="actions.duplicateSelection()" [attr.aria-disabled]="hasSelection() ? null : 'true'">Duplicate</button>
+    <button type="button" class="danger" (click)="actions.deleteSelection()" [attr.aria-disabled]="hasSelection() ? null : 'true'">Delete</button>
+  </div>
+  <div class="group" role="group" aria-label="Zoom">
+    <button type="button" aria-label="Zoom out" (click)="zoomBy(1 / 1.25)">−</button>
+    <output class="zoom" aria-label="Zoom level">{{ zoomLabel() }}</output>
+    <button type="button" aria-label="Zoom in" (click)="zoomBy(1.25)">+</button>
+    <button type="button" (click)="fit()" [attr.aria-pressed]="fitting()">Fit</button>
+    <button type="button" (click)="actualSize()">100%</button>
+  </div>
+  <div class="group" role="group" aria-label="Code component">
+    <button type="button" [attr.aria-pressed]="interact()" [attr.aria-disabled]="canInteract() ? null : 'true'" (click)="toggleInteract()">Interact</button>
+  </div>
+</div>
+
+<div
+  #area
+  class="viewport"
+  [class.panning]="panning()"
+  role="group"
+  aria-label="Slide canvas"
+  aria-describedby="canvas-help"
+  tabindex="0"
+  (pointerdown)="onViewportDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerUp($event)"
+  (wheel)="onWheel($event)"
+  (keydown)="onKeyDown($event)"
+  (keyup)="onKeyUp($event)"
+>
+  <div class="page" [style.left.px]="viewport().panX" [style.top.px]="viewport().panY" [style.width.px]="stage().width * viewport().zoom">
+    <app-slide-renderer [slide]="slide()" [theme]="theme()" [stage]="stage()" mode="edit" />
+    <div
+      class="overlay"
+      [style.width.px]="stage().width"
+      [style.height.px]="stage().height"
+      [style.transform]="'scale(' + viewport().zoom + ')'"
+      [style.--inv]="inverseZoom()"
+    >
+      @for (element of slide().elements; track element.id) {
+        <div
+          class="hit"
+          [class.selected]="selectedIds().has(element.id)"
+          [class.locked]="element.locked"
+          [class.interacting]="isInteracting(element)"
+          [style]="hitStyle(element)"
+          (pointerdown)="onElementDown(element, $event)"
+        ></div>
+      }
+      @for (guide of guides(); track guide.axis + guide.position) {
+        <div class="guide" [class.vertical]="guide.axis === 'x'" [class.horizontal]="guide.axis === 'y'" [style.left.px]="guide.axis === 'x' ? guide.position : null" [style.top.px]="guide.axis === 'y' ? guide.position : null"></div>
+      }
+      @if (frame(); as f) {
+        <div class="frame" [class.locked]="f.locked" [style]="frameStyle(f)">
+          @if (f.resizable) {
+            @for (h of handleIds; track h) {
+              <div class="handle h-{{ h }}" (pointerdown)="onHandleDown(h, $event)"></div>
+            }
+          }
+          @if (f.rotatable) {
+            <div class="stalk"></div>
+            <div class="handle rotate" (pointerdown)="onRotateDown($event)"></div>
+          }
+        </div>
+      }
+      @if (marquee(); as m) {
+        <div class="marquee" [style]="marqueeStyle(m)"></div>
+      }
+    </div>
+  </div>
+</div>
+
+<p id="canvas-help" class="sr-only">
+  Slide canvas. Tab selects the next element, arrow keys move the selection, Delete removes it. With nothing selected the arrow keys pan the slide. The list of keyboard
+  shortcuts follows the canvas.
+</p>
+
+<details class="shortcuts">
+  <summary>Keyboard shortcuts</summary>
+  <dl>
+    @for (s of shortcuts; track s.keys + s.description) {
+      <dt>{{ s.keys }}</dt>
+      <dd>{{ s.description }}</dd>
+    }
+  </dl>
+</details>
