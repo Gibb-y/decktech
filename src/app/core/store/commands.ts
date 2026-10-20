@@ -457,3 +457,27 @@ export class AddCodeElement implements Command {
     return resultOf(deck, replaceSlide(withComponent, index, { ...slide, elements: [...slide.elements, this.element] }));
   }
 }
+
+/**
+ * Runs several commands as one undo step (paste or duplicate of a selection). They run in order,
+ * each on the result of the previous one; if any throws, nothing changes. The patches are derived
+ * from the start and end deck, so the entry is as small as the net change.
+ */
+export class Batch implements Command {
+  readonly coalesceKey?: string;
+
+  constructor(
+    readonly name: string,
+    readonly commands: readonly Command[],
+    options: GestureOptions = {},
+  ) {
+    this.coalesceKey = options.coalesceKey;
+  }
+
+  do(deck: Deck): CommandResult {
+    if (this.commands.length === 0) throw new CommandError('No commands given');
+    let current = deck;
+    for (const command of this.commands) current = command.do(current).deck;
+    return resultOf(deck, current);
+  }
+}

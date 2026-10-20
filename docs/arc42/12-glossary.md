@@ -29,6 +29,10 @@
 | Template | A built-in deck JSON from which the library creates a new deck with a fresh id. |
 | Autosave | Debounced writing of the open deck to the repository by `AutosaveService`; reports `saved`, `saving` or `error`. |
 | Asset id | Lower-case hex SHA-256 of an asset's bytes; also its `blobKey`. Identical content is stored once. |
+| Gesture | One continuous pointer action on the canvas (drag, resize, rotate). It issues many commands with one `coalesceKey`, holds the key open with `beginGesture`, and so is one undo step. |
+| Batch | A command that runs several commands in order as one undo step. |
+| Interact mode | Canvas mode in which the overlay lets the pointer through to the one selected code element instead of selecting and dragging it. |
+| Snapping guide | A line drawn while a dragged edge or centre is aligned with the slide or another element. |
 | Coalescing | Merging consecutive commands with the same key issued within a short window (500 ms) into one undo step, e.g. a drag. |
 | Trust | The user's decision to allow code components in an imported deck to run; bound to the deck's content hash. |
 | Vendored library | A third-party JS/CSS library stored inside the deck so it works offline. |

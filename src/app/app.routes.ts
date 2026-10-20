@@ -10,7 +10,7 @@ export const routes: Routes = [
   {
     path: 'deck/:id',
     title: 'Editor – DeckTech',
-    loadComponent: () => import('./editor/editor-page').then((m) => m.EditorPage),
+    loadComponent: () => import('./editor/editor-shell').then((m) => m.EditorShell),
   },
   {
     path: 'deck/:id/present',
@@ -22,5 +22,17 @@ export const routes: Routes = [
     title: 'Presenter view – DeckTech',
     loadComponent: () => import('./presenter/presenter-view-page').then((m) => m.PresenterViewPage),
   },
+  // Profiling aid for quality scenario Q9; not part of production builds.
+  // `ngDevMode` is a build-time constant (false in production), so the bundler drops this whole
+  // branch, including the lazy import and its chunk; `isDevMode()` would be a runtime call it cannot fold.
+  ...(typeof ngDevMode !== 'undefined' && ngDevMode
+    ? [
+        {
+          path: 'dev/stress',
+          title: 'Stress deck – DeckTech',
+          loadComponent: () => import('./dev-stress-page').then((m) => m.DevStressPage),
+        },
+      ]
+    : []),
   { path: '**', redirectTo: '' },
 ];

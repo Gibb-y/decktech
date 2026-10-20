@@ -88,6 +88,14 @@ export class DeckStore {
     this.commit(result.deck, before);
   }
 
+  /**
+   * Marks the start of a gesture: until the returned function is called, commands with this
+   * `coalesceKey` form one undo step even if the pointer rests longer than the coalescing window.
+   */
+  beginGesture(coalesceKey: string): () => void {
+    return this.history.hold(coalesceKey);
+  }
+
   /** Applies the patch first, so a failing patch leaves deck and history as they were. */
   undo(): void {
     const entry = this.history.peekUndo();

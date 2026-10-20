@@ -11,8 +11,10 @@ sequenceDiagram
     participant R as Renderer
     participant P as Persistence
 
+    U->>C: press on element
+    C->>S: beginGesture("drag:n")
     U->>C: drag element
-    C->>S: execute(MoveElements{ids, dx, dy}) (coalesced while dragging)
+    C->>S: execute(MoveElements{ids, dx, dy}) per pointer move, same coalesceKey
     S->>H: record forward + inverse patch (merged if same coalescing key)
     S-->>R: deck signal changes
     R-->>U: updated DOM (only affected element)
@@ -22,7 +24,7 @@ sequenceDiagram
     S->>H: pop inverse patch and apply
 ```
 
-Only changed elements re-render because each element renderer reads a `computed` that selects its own element by id.
+Only changed elements re-render because each element renderer reads a `computed` that selects its own element by id. A drag on a 100-element slide therefore re-renders only the dragged element per pointer move (a canvas test counts this with `RENDER_PROBE`), and its history entry stays one patch pair of the net change however long the gesture is. On pointer release the canvas ends the gesture hold; Escape instead undoes the whole gesture.
 
 `AutosaveService` watches `DeckStore.deck()` but only for the deck handed to it by `create(deck)` or `open(id)`: opening a deck never rewrites it (except right after a migration, so the upgrade is stored), and a deck swapped into the store behind its back is ignored. Each change restarts a 500 ms timer; a continuous gesture is written at the latest after 5 s (`maxWaitMs`). Writes are serialised and each one passes the revision of the last stored copy, so a second tab that saved in between turns the write into a `conflict` instead of an overwrite (8.5). `flush()` writes immediately and is awaited before opening another deck, import and other risky operations.
 

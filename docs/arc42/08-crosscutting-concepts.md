@@ -110,7 +110,7 @@ type PropSpec =
 ## 8.4 Editing interactions and undo/redo
 
 - All state changes pass through commands; there is no direct mutation. Commands produce forward and inverse JSON patches, which also serve as the basis for a future collaboration/CRDT adaptation.
-- Gestures (drag, resize, typing bursts) are coalesced into a single history entry using a coalescing key and a time window.
+- Gestures (drag, resize, rotate, typing bursts) are coalesced into a single history entry using a coalescing key and a time window. Pointer gestures additionally hold their key open (`DeckStore.beginGesture`) so a pause does not end them; keyboard bursts (a held arrow key) rely on the window alone. Operations that touch several elements in different ways (duplicate, paste, rotating a selection) are one `Batch` command.
 - Selection and viewport (zoom, scroll) are UI state, not part of history.
 - Patches are a subset of RFC 6902 (`add`, `replace`, `remove`, JSON-pointer paths) applied immutably, so undo keeps the identity of untouched slides and elements. `applyPatch` refuses `__proto__`, `constructor` and `prototype` keys and out-of-range paths (`PatchError`); `diff` therefore replaces an object that has such a key as a whole instead of descending into it, and treats inherited names such as `toString` as absent.
 - The coalescing window slides: each merged command extends it by 500 ms. Gestures should supply a key per gesture (e.g. `drag:<ids>`); `SetNotes` coalesces per slide by default.

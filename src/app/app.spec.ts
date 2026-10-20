@@ -35,7 +35,6 @@ describe('App', () => {
   });
 
   it.each([
-    ['/deck/dk_1', 'Editor'],
     ['/deck/dk_1/present', 'Presentation'],
     ['/deck/dk_1/presenter-view', 'Presenter view'],
   ])('routes %s to %s with the deck id', async (url, heading) => {
@@ -44,6 +43,12 @@ describe('App', () => {
     const page = harness.routeNativeElement!;
     expect(page.querySelector('h1')?.textContent).toBe(heading);
     expect(page.textContent).toContain('dk_1');
+  });
+
+  it('opens the editor route, headed "Editor" until the deck is open', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/deck/dk_1');
+    expect(harness.routeNativeElement!.querySelector('h1')?.textContent).toBe('Editor');
   });
 
   it('moves focus to the new page heading after navigation, but not on first load', async () => {
@@ -61,6 +66,18 @@ describe('App', () => {
     fixture.nativeElement.remove();
   });
 
+  it('creates and opens the 100-element stress deck from the dev route', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/dev/stress');
+    for (let i = 0; i < 20 && !TestBed.inject(Router).url.startsWith('/deck/'); i++) await new Promise((r) => setTimeout(r, 10));
+    const router = TestBed.inject(Router);
+    expect(router.url).toMatch(/^\/deck\/dk_/);
+    const repo = TestBed.inject(DeckRepository);
+    const id = router.url.split('/')[2];
+    const loaded = await repo.load(id);
+    expect(loaded.ok && !loaded.value.outcome.readOnly && loaded.value.outcome.deck.slides[0].elements.length).toBe(100);
+  });
+
   it('sends unknown URLs to the library', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/no/such/page');
@@ -71,7 +88,8 @@ describe('App', () => {
 describe('routes', () => {
   it('are all lazy, so no feature is in the initial bundle', () => {
     const real = routes.filter((r) => r.redirectTo === undefined);
-    expect(real.map((r) => r.path)).toEqual(['', 'deck/:id', 'deck/:id/present', 'deck/:id/presenter-view']);
+    // `dev/stress` exists only in dev mode, which is what tests run in.
+    expect(real.map((r) => r.path)).toEqual(['', 'deck/:id', 'deck/:id/present', 'deck/:id/presenter-view', 'dev/stress']);
     for (const route of real) {
       expect(route.component).toBeUndefined();
       expect(route.loadComponent ?? route.loadChildren).toBeTypeOf('function');
