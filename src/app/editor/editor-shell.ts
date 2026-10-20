@@ -52,7 +52,10 @@ type ShellState = { status: 'loading' } | { status: 'ready' } | { status: 'unava
   `,
   styles: `
     :host {
-      display: block;
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
       color: #111;
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     }
@@ -71,6 +74,8 @@ type ShellState = { status: 'loading' } | { status: 'ready' } | { status: 'unava
     }
     .layout {
       display: grid;
+      flex: 1 1 auto;
+      min-height: 0;
       grid-template-columns: 9rem minmax(0, 1fr) 16rem;
       grid-template-rows: minmax(0, 1fr) auto;
       grid-template-areas:
@@ -81,6 +86,7 @@ type ShellState = { status: 'loading' } | { status: 'ready' } | { status: 'unava
     }
     .sorter {
       grid-area: sorter;
+      overflow-y: auto;
       padding: 0.5rem;
       border-right: 1px solid #c3c6cc;
     }
@@ -113,14 +119,18 @@ type ShellState = { status: 'loading' } | { status: 'ready' } | { status: 'unava
     .canvas {
       grid-area: canvas;
       min-width: 0;
+      min-height: 0;
     }
     .properties {
       grid-area: properties;
+      overflow-y: auto;
       padding: 0.5rem 1rem;
       border-left: 1px solid #c3c6cc;
     }
     .notes {
       grid-area: notes;
+      max-height: 30vh;
+      overflow-y: auto;
       padding: 0.5rem 1rem;
       border-top: 1px solid #c3c6cc;
     }
