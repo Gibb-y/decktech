@@ -6,7 +6,7 @@ export type NavigateRequest = { action: 'next' | 'prev' } | { action: 'goTo'; sl
 
 /**
  * What code components tell the rest of the app, and what the presenter tells them, keyed by
- * element id. The presenter's step engine (a later issue) reads `stepCounts` and writes
+ * element id. The presenter's step engine reads `stepCounts` and writes
  * `stepIndexes`; it does so through this service because renderer views are created by the
  * renderer and cannot be wired with outputs.
  */

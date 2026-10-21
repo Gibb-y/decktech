@@ -2,6 +2,7 @@ import { InsertActions } from './insert-actions';
 import { ShortcutRegistry } from './shortcut-registry';
 import { currentSlideButton, openEditor, press, runAxe, settle, slideButtons, type as typeInto } from './editor-test-setup';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -379,5 +380,37 @@ describe('quality scenarios', () => {
     expect(image).toMatchObject({ type: 'image', alt: 'Five people around a table' });
     expect(Object.keys(store.deck().assets)).toHaveLength(1);
     expect(currentSlideButton(root)).not.toBeNull();
+  });
+});
+
+describe('starting the presentation', () => {
+  async function editorWithRouterSpy() {
+    const editor = await openEditor();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    return { ...editor, navigate };
+  }
+
+  it('starts from the current slide with the Present button', async () => {
+    const { fixture, root, store, navigate } = await editorWithRouterSpy();
+    store.selectSlide(store.slides()[1].id);
+    await settle(fixture);
+    const button = Array.from(root.querySelectorAll<HTMLButtonElement>('app-editor-toolbar button')).find((b) => b.textContent?.includes('Present'))!;
+    button.click();
+    expect(navigate).toHaveBeenCalledWith(['/deck', store.deck().id, 'present'], { queryParams: { slide: store.currentSlideIndex() + 1 } });
+  });
+
+  it('starts with F5 from the sorter', async () => {
+    const { fixture, root, store, navigate } = await editorWithRouterSpy();
+    const event = press(slideButtons(root)[0], 'F5');
+    await settle(fixture);
+    expect(event.defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenCalledWith(['/deck', store.deck().id, 'present'], { queryParams: { slide: 1 } });
+  });
+
+  it('lists the shortcut in the help', async () => {
+    const { fixture, root } = await openEditor();
+    press(slideButtons(root)[0], '?');
+    await settle(fixture);
+    expect(root.querySelector('app-shortcut-help')?.textContent).toContain('Present from the current slide');
   });
 });
