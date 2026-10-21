@@ -60,7 +60,7 @@ Text elements follow the same gesture, with a different editor: clicking the sel
 
 `Insert → Code component` is `InsertActions.insert('code')`: it adds a starter `ComponentDef` with a fresh id and a code element in one `AddCodeElement` command and selects the element; the code editor itself is a later issue.
 
-Reloading the frame on each change (rather than hot-patching) keeps semantics identical to presentation. Component state that the author wants to keep across reloads can use `deck.state` (see 8.3).
+Reloading the frame on each change (rather than hot-patching) keeps semantics identical to presentation. Component state that the author wants to keep across reloads can use `deck.state` (see 8.3). In the diagram the "ready" / "init" pair is the handshake of 5.3: the frame posts `ready { apiVersion }`, the supervisor answers with a transferred `MessagePort`, and `init` (props, theme, mode, size, saved state, libraries) goes over that port, which is the only channel from then on.
 
 ## 6.2a Quick insert from the keyboard
 
@@ -140,5 +140,5 @@ The inspector shows source as text only. No frame is created for an untrusted co
 ## 6.5 Error handling at runtime
 
 - A component that throws or hangs shows an error overlay (in edit mode) or is replaced by a neutral placeholder (in presentation mode) so one broken component never stops the talk.
-- Frame heartbeat missing for 5 s → the supervisor marks it unresponsive; the author can reload or skip it.
+- Frame heartbeat missing for 5 s → the supervisor marks it unresponsive; the author can reload or skip it. Built (DT-11): the runtime beats every second; a frame that never says `ready` within 5 s, navigates away, floods or sends garbage is `failed` and destroyed, a silent one is `unresponsive` and recovers if it beats again; the editor shows the reason with "Reload component", presenting shows "This component is unavailable.", and the slide is never blocked (Q8). Reasons also go to `HostConsole`.
 - Autosave failure (quota, IndexedDB error, conflict with another tab) sets `AutosaveService.status` to `error` and shows the persistent `PersistenceBanner` (`role="alert"`) with "Try again" and, once DT-16 provides `DECK_EXPORT_HANDLER`, an immediate `.deck` download. The failed deck stays pending: nothing is marked saved, the next edit or "Try again" retries, and `open(id)` refuses to leave a deck whose changes could not be saved unless forced.

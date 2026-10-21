@@ -95,7 +95,7 @@ export interface ComponentDef {
   js: string;
   propSchema: PropSpec[];
   permissions: Permission[];
-  /** Asset ids addressable by relative URL. */
+  /** Asset ids the component may read with `deck.assets.url`. */
   files: string[];
   /** Vendored library asset ids. */
   libs: string[];

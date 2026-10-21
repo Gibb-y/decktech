@@ -281,6 +281,23 @@ describe('CodeElementRenderer', () => {
       expect(h.frames()[0]).toBe(frame);
     });
 
+    it('replaces the frame when its libraries or files change', async () => {
+      const h = await harness();
+      const first = h.frames()[0];
+      h.fixture.componentRef.setInput('components', [{ ...h.def, libs: ['a'.repeat(64)] }]);
+      await h.settle();
+      expect(h.frames()[0]).not.toBe(first);
+    });
+
+    it('keeps a hidden element dimmed in the editor, out of the tab order and the accessibility tree', async () => {
+      const h = await harness({ mode: 'edit' });
+      await h.update({ hidden: true });
+      const host = root(h).querySelector('app-code-element')!;
+      expect(host.classList.contains('ghost')).toBe(true);
+      expect(host.getAttribute('aria-hidden')).toBe('true');
+      expect(host.hasAttribute('inert')).toBe(true);
+    });
+
     it('removes the frame and ends the conversation when destroyed', async () => {
       const h = await harness();
       const port = h.handshake();

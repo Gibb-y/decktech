@@ -271,6 +271,18 @@ describe('deck-runtime.js', () => {
       expect(await response.text()).toBe('hi');
     });
 
+    it.each([[204], [304], [404], [500]])('turns a %i answer into a Response', async (status) => {
+      const frame = await boot();
+      frame.connect();
+      frame.host(init({ permissions: { network: true } }));
+      const promise = frame.window.deck.fetch('https://api.example.com/x');
+      const request = frame.toHost.find((m) => m.type === 'fetch');
+      frame.host({ type: 'fetch-result', id: request.id, ok: status < 400, status, statusText: '', headers: [], body: new ArrayBuffer(0) });
+      const response = await promise;
+      expect(response.status).toBe(status);
+      expect(response.ok).toBe(status >= 200 && status < 300);
+    });
+
     it('rejects on a refusal and on a body that is not a string', async () => {
       const frame = await boot();
       frame.connect();

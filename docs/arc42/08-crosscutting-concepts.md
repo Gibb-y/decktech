@@ -60,6 +60,15 @@ Defence in depth:
 
 Residual risks (CPU/memory exhaustion, side-channel timing, audio nuisance) are listed in section 11.
 
+### As built (DT-11)
+
+- **Sandbox.** `createSandboxFrame` is the only code that creates a frame; it sets `sandbox="allow-scripts"`, `allow=""` and `referrerpolicy="no-referrer"` and calls `assertSafeSandbox`, which throws for any forbidden flag or any list other than the approved one. Three guards keep it so: the unit tests (the list, the created element, every forbidden flag), `npm run lint:boundaries` (a forbidden flag in any source or template, a frame created elsewhere) and the renderer test that a definition asking for `allow-same-origin` in its HTML still gets a frame with `allow-scripts` only.
+- **CSP.** As in the table, plus `font-src blob: data:` and `media-src blob:` (assets reach the frame as blob URLs), `base-uri 'none'` and `form-action 'none'`. `contentSecurityPolicy(origins)` widens `connect-src` and `img-src` with the normalised origins it is given (https, or http on localhost/127.0.0.1; no paths, no credentials; anything else is dropped), never `script-src` or `default-src`. The origins come from `ComponentPolicy` and only count if the component declares `network`; today the policy grants none.
+- **Bridge.** The bridge parses every message into the closed set of 5.3, with unknown and inherited type names (`toString`), extra fields, wrong types, hostile keys, non-JSON values, depth over 32 and size over 64 KiB (2 MiB for a snapshot image, which must be PNG, JPEG or WebP) refused; 200 messages per second, then drops, then the cut-off. Host messages to the frame are fixed shapes built in the host.
+- **Handshake and ports.** Only `ready` from the frame's own window with origin `"null"` is looked at, and only the first; the port is transferred to that window only, and the runtime takes a port only from its parent, once.
+- **Navigation.** The runtime cancels link clicks and form submits and turns `window.open` into a `link` message; the host refuses anything but `http(s):` and `mailto:` (`isSafeHref`), asks with a confirm dialog and opens with `noopener,noreferrer`. A second `load` of the frame (it navigated itself, for example with a meta refresh) destroys the frame.
+- **Residual risk.** A component can still navigate its own frame (`location = ...`, a meta refresh): the request to that address leaves before the host notices the second `load`, so it can carry data the component already has (props, state) to a server; browsers have no CSP directive to forbid it. Nothing of the host or other decks is reachable. A separate sandbox origin (11.3) would not change this; a trust decision (ADR-008) is the control. The frame's CPU and memory use is not limited either.
+
 ## 8.3 Code component API
 
 Authors write ordinary web code. The runtime script injected into every frame exposes a global `deck` object. The protocol version is `apiVersion` (semver major in the handshake); the host supports the current and previous major.
@@ -107,6 +116,20 @@ type PropSpec =
   | { key: string; type: 'select'; label: string; options: { value: string; label: string }[]; default: string };
 ```
 
+### As built (DT-11)
+
+Bridge and runtime implement the table above as follows (`API_VERSION` is 1; the host speaks the current and the previous major, so today only 1).
+
+- `deck.ready(cb)` gets `{ props, theme, mode, size }`, `theme` being the `--deck-*` variables, `mode` `edit` or `present`; a callback registered after `init` runs in a microtask. The user module only starts after `init`, so `deck.ready` inside it fires at once. `deck.apiVersion`, `deck.mode` and `deck.size` are readable, `deck` itself is read-only.
+- `props` contain exactly the declared props, validated against their spec with the defaults filled in (`resolveProps`); `onProps` gets the whole new object.
+- `deck.state.get(key)` is synchronous (the saved state arrives in `init`); `set(key, value)` stores a JSON copy locally and tells the host, `set(key, undefined)` and `remove(key)` remove. Limits: 64 keys of at most 64 characters and 64 KiB in total; a write beyond them is refused with a warning in the console, and the component's own copy then differs from the saved one.
+- `deck.assets.url(assetId)` returns a promise of a `blob:` URL created inside the frame from bytes the host transferred. Only asset ids in the definition's `files` and `libs` are served (the model has no file names, so "addressable by relative URL" is not built); anything else rejects.
+- Libraries: each id in `libs` becomes an entry of the import map whose specifier is the asset id, for example `import 'a1b2...'`.
+- `deck.navigate.*` is honoured only in `present` mode; the request is published through `CodeHostEvents`. `deck.steps(n)` takes 0 to 1000 and is published the same way; `onStep(i)` receives the index a presenter writes to `CodeHostEvents.stepIndexes`.
+- `deck.log(...)` and the page's `console.log/info/warn/error` both go to `HostConsole` (at most 10 arguments, strings cut at 2000 characters); uncaught errors and unhandled rejections arrive as errors. A component that logs more than the rate limit allows loses messages and, in a sustained flood, its frame.
+- `deck.snapshot(blob)` is published through `CodeHostEvents.snapshots`; nothing draws it yet (thumbnails show a placeholder, 11.2).
+- `deck.fetch(url, init)` exists only when the network is granted (5.3, "Network") and returns a normal `Response`; `init` may carry `method`, `headers` and a string `body`.
+
 `mode` lets a component simplify itself for thumbnails (e.g. render a static frame, skip animation). Thumbnails are produced by rendering the component in `thumbnail` mode and rasterizing the host-side snapshot supplied by the component (`deck.snapshot(blob)`); components that do not provide one get a labelled placeholder.
 
 ## 8.4 Editing interactions and undo/redo
@@ -133,7 +156,7 @@ type PropSpec =
 
 ## 8.6 Offline and dependencies
 
-Code components can include libraries (e.g. D3, Three.js, Chart.js). To keep decks working offline and reproducible, libraries are **vendored into the deck** as assets and exposed through an import map. The editor offers "Add library" (from file, or fetch-and-vendor from npm via a CDN once while online). Direct CDN links are possible only with the `network` permission and are flagged as an offline risk in the editor.
+Code components can include libraries (e.g. D3, Three.js, Chart.js). To keep decks working offline and reproducible, libraries are **vendored into the deck** as assets and exposed through an import map. The editor offers "Add library" (from file, or fetch-and-vendor from npm via a CDN once while online). Direct CDN links are possible only with the `network` permission and are flagged as an offline risk in the editor. Built (DT-11): the host reads each library asset and sends its bytes in `init`; the runtime turns them into blob URLs and an import map keyed by the asset id, and always gives them a JavaScript MIME type. "Add library" and naming a library (a friendlier specifier than its hash) are later issues.
 
 ## 8.7 Theming
 
@@ -155,7 +178,7 @@ Theme tokens (colors, font families, type scale, spacing) are defined once per d
 
 ## 8.9 Error handling and logging
 
-- A central `ErrorService` collects host errors and component errors (tagged by component id). The editor shows component errors in the console panel; there is no remote telemetry.
+- `HostConsole` (`components/host`) collects what components log and the errors they raise, plus the supervisor's reasons for ending a frame, tagged by component id, newest 200 only. The console panel of the code editor (a later issue) reads it; there is no remote telemetry. A general `ErrorService` for host errors does not exist yet.
 - Failures never lose data: `AutosaveService.flush()` runs before risky operations (opening another deck; import will use it too) and migrations keep the previous version in a rolling backup store (`BackupSink`, see 8.1 and 8.5). A failed write keeps the changes pending and visible in the banner (6.5).
 
 ## 8.10 Testing strategy
@@ -165,6 +188,6 @@ Theme tokens (colors, font families, type scale, spacing) are defined once per d
 | Unit | Commands, history, migrations, step engine, schema validation, bridge message validation (including hostile payloads). |
 | Component | Element renderers and properties panel with Angular testing utilities. |
 | End-to-end | Playwright: create deck, add slides, insert code component, present, export/import round trip. |
-| Security | Dedicated tests with malicious components attempting to access `parent`, `localStorage`, `indexedDB`, network, top navigation; all must fail. |
+| Security | Dedicated tests with malicious components attempting to access `parent`, `localStorage`, `indexedDB`, network, top navigation; all must fail (DT-19, in a real browser). Until then the unit tests cover what jsdom can: the bridge and the protocol with hostile payloads, the sandbox attribute list, the CSP and document builder, the supervisor's handshake checks, and the runtime against the real `HostApi`. jsdom enforces neither the sandbox nor the CSP, so they are not tested through it. |
 | Accessibility | AXE in e2e; manual keyboard-only run-through per release. |
 | Visual regression | Screenshot comparison of reference slides across element types. |

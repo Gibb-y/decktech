@@ -273,7 +273,11 @@
         if (!request) break;
         fetchRequests.delete(data.id);
         if (data.error && !data.status) request.reject(new TypeError(data.error));
-        else request.resolve(new Response(data.body, { status: data.status, statusText: data.statusText, headers: data.headers }));
+        else {
+          // A Response with a null-body status (101, 204, 205, 304) must not be given a body.
+          var noBody = [101, 204, 205, 304].indexOf(data.status) >= 0;
+          request.resolve(new Response(noBody ? null : data.body, { status: data.status, statusText: data.statusText, headers: data.headers }));
+        }
         break;
       }
     }

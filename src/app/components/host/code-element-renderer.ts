@@ -111,6 +111,8 @@ const sameRecord = (a: Record<string, string>, b: Record<string, string>): boole
   host: {
     '[class.ghost]': 'ghost()',
     '[attr.aria-hidden]': 'ghost() ? "true" : null',
+    // A hidden element is only shown dimmed in the editor: its frame must not stay a tab stop.
+    '[attr.inert]': 'ghost() ? "" : null',
   },
 })
 export class CodeElementRenderer extends ElementView<CodeEl> {
@@ -148,6 +150,11 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   }, { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) });
   private readonly vars = computed(() => themeVars(this.theme()), { equal: sameRecord });
   private readonly size = computed(() => ({ w: this.frame().w, h: this.frame().h }), { equal: (a, b) => a.w === b.w && a.h === b.h });
+  /** Libraries and files are read when the frame starts, so a change to them needs a new frame. */
+  private readonly assetKey = computed(() => {
+    const def = this.definition();
+    return def ? `${def.libs.join(',')}|${def.files.join(',')}` : '';
+  });
   private readonly frameMode = computed<'edit' | 'present'>(() => (this.mode() === 'edit' ? 'edit' : 'present'));
 
   /** Allowed network origins: the component must ask (permission) and the policy must grant. */
@@ -190,6 +197,7 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
       const slot = this.slot()?.nativeElement;
       const srcdoc = this.srcdoc();
       this.reloads();
+      this.assetKey();
       if (!slot || srcdoc === null) return;
       untracked(() => this.start(slot, srcdoc));
       onCleanup(() => this.stop(slot));
