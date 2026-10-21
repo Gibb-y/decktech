@@ -1,8 +1,12 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, Location } from '@angular/common';
+import { Router } from '@angular/router';
 import type { Deck, Layout, Slide, Transition } from '../core/model';
 import { ALL_STEPS, CodeHostEvents, SlideRenderer } from '../renderer';
 import { slidesToMount } from './preloader';
+import { PresenterSync, type SyncConnection } from './presenter-view/presenter-sync';
+import { PresenterTimer } from './presenter-view/presenter-timer';
+import type { SyncMessage } from './presenter-view/sync-protocol';
 import { StepEngine } from './step-engine';
 
 /** Horizontal distance (px) a finger has to travel to count as a swipe rather than a tap. */
@@ -10,13 +14,15 @@ const SWIPE_DISTANCE = 50;
 /** The controls fade out this long after the last pointer movement. */
 const CONTROLS_MS = 3000;
 const MAX_TRANSITION_MS = 5000;
+/** Opening a window can make the browser leave fullscreen; a change this soon after is not the presenter leaving. */
+const WINDOW_OPEN_GRACE_MS = 2000;
 
 /** How long a transition runs; none for "none" and for a length that is not a positive number. */
 const transitionMs = (transition: Transition | undefined): number =>
   transition && transition.type !== 'none' && transition.durationMs > 0 ? Math.min(transition.durationMs, MAX_TRANSITION_MS) : 0;
 
-const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', 'Enter', ' ']);
-const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace']);
+export const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', 'Enter', ' ']);
+export const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace']);
 
 interface Layer {
   slide: Slide;
@@ -63,6 +69,11 @@ export class PresentationView {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly events = inject(CodeHostEvents);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly sync = inject(PresenterSync);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
+  private readonly timer = new PresenterTimer(() => Date.now());
+  private connection: SyncConnection | null = null;
 
   protected readonly engine = new StepEngine({
     slides: () => this.deck().slides,
@@ -74,6 +85,8 @@ export class PresentationView {
   private readonly animating = signal(false);
   private readonly note = signal<string | null>(null);
 
+  /** Its own computed, so an edit of the deck does not reconnect the channel. */
+  private readonly deckId = computed(() => this.deck().id);
   protected readonly ratio = computed(() => this.deck().stage.width / this.deck().stage.height);
 
   protected readonly layers = computed<Layer[]>(() => {
@@ -121,6 +134,8 @@ export class PresentationView {
   private touch: { x: number; y: number } | null = null;
   private swiped = false;
   private endPresses = false;
+  private openingWindow = false;
+  private openingTimer: ReturnType<typeof setTimeout> | undefined;
   private leaveTimer: ReturnType<typeof setTimeout> | undefined;
   private controlsTimer: ReturnType<typeof setTimeout> | undefined;
   private handledNavigation = this.events.navigation()?.seq ?? 0;
@@ -161,6 +176,28 @@ export class PresentationView {
       });
     });
 
+    // The presenter view mirrors this window: the position and the clock go out whenever they change,
+    // and its commands are applied here, so the engine stays the one source of truth.
+    effect((onCleanup) => {
+      const connection = this.sync.connect(this.deckId(), (message) => this.onSync(message));
+      untracked(() => {
+        this.connection = connection;
+        this.timer.apply('start');
+        this.broadcast();
+      });
+      onCleanup(() => {
+        connection.close();
+        if (this.connection === connection) this.connection = null;
+      });
+    });
+    effect(() => {
+      void this.engine.slide();
+      void this.engine.step();
+      void this.engine.plan().total;
+      void this.engine.slideCount();
+      untracked(() => this.broadcast());
+    });
+
     if (typeof matchMedia === 'function') {
       const query = matchMedia('(prefers-reduced-motion: reduce)');
       this.reducedMotion.set(query.matches);
@@ -176,6 +213,7 @@ export class PresentationView {
     this.destroyRef.onDestroy(() => {
       clearTimeout(this.leaveTimer);
       clearTimeout(this.controlsTimer);
+      clearTimeout(this.openingTimer);
       this.events.stepIndexes.set(new Map());
       this.leaveFullscreen();
     });
@@ -237,6 +275,15 @@ export class PresentationView {
     this.engine.prev();
   }
 
+  /** Opens the presenter view in its own window (same origin, `noopener`: the windows talk over the channel, not through `opener`). */
+  protected openPresenterView(): void {
+    const url = this.location.prepareExternalUrl(this.router.serializeUrl(this.router.createUrlTree(['/deck', this.deck().id, 'presenter-view'])));
+    this.openingWindow = true;
+    clearTimeout(this.openingTimer);
+    this.openingTimer = setTimeout(() => (this.openingWindow = false), WINDOW_OPEN_GRACE_MS);
+    this.document.defaultView?.open(url, 'decktech-presenter-view', 'noopener');
+  }
+
   protected exit(): void {
     if (this.done) return;
     this.done = true;
@@ -249,8 +296,32 @@ export class PresentationView {
     else if (this.fullscreenEntered && !this.document.fullscreenElement) {
       // The browser took us out (Escape, F11): that is the end of the presentation.
       this.fullscreenEntered = false;
-      this.exit();
+      if (!this.openingWindow) this.exit();
     }
+  }
+
+  private onSync(message: SyncMessage): void {
+    if (message.type === 'hello') this.broadcast();
+    else if (message.type === 'timer') {
+      this.timer.apply(message.action);
+      this.broadcast();
+    } else if (message.type === 'command') {
+      this.note.set(null);
+      if (message.action === 'next') this.advance();
+      else if (message.action === 'prev') this.engine.prev();
+      else if (message.action === 'goTo') this.engine.goTo(message.slide, message.step);
+    }
+  }
+
+  private broadcast(): void {
+    this.connection?.post({
+      type: 'state',
+      slide: this.engine.slide(),
+      step: this.engine.step(),
+      steps: this.engine.plan().total,
+      slides: this.engine.slideCount(),
+      timer: this.timer.snapshot(),
+    });
   }
 
   private handled(event: KeyboardEvent, action: () => unknown): void {

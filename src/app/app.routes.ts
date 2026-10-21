@@ -20,7 +20,7 @@ export const routes: Routes = [
   {
     path: 'deck/:id/presenter-view',
     title: 'Presenter view – DeckTech',
-    loadComponent: () => import('./presenter/presenter-view-page').then((m) => m.PresenterViewPage),
+    loadComponent: () => import('./presenter/presenter-view/presenter-view-page').then((m) => m.PresenterViewPage),
   },
   // Profiling aid for quality scenario Q9; not part of production builds.
   // `ngDevMode` is a build-time constant (false in production), so the bundler drops this whole
