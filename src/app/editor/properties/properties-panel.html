@@ -90,6 +90,9 @@
         }
       </fieldset>
     }
+    @if (codeElement(element); as code) {
+      <app-code-props [element]="code" />
+    }
     @if (textElement(element); as text) {
       <app-text-format [element]="text" />
     }

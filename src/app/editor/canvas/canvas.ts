@@ -8,6 +8,7 @@ import { TEXT_SHORTCUTS, textShortcutId } from '../text/text-shortcuts';
 import { LiveAnnouncer } from '../../shared';
 import { EditorActions } from '../editor-actions';
 import { ShortcutRegistry } from '../shortcut-registry';
+import { CodeTools } from '../code-tools';
 import { CANVAS_SHORTCUTS, canvasShortcutId, type ShortcutContext } from '../shortcuts';
 import {
   HANDLES,
@@ -70,6 +71,7 @@ export class Canvas {
   private readonly announcer = inject(LiveAnnouncer);
   private readonly registry = inject(ShortcutRegistry);
   private readonly textEditing = inject(TextEditing);
+  private readonly codeTools = inject(CodeTools);
 
   private readonly viewportEl = viewChild.required<ElementRef<HTMLElement>>('area');
 
@@ -209,6 +211,23 @@ export class Canvas {
     this.announcer.announce(this.interact() ? 'Interact mode on: clicks go to the component' : 'Interact mode off');
   }
 
+  /** Opens the code editor for the selected code component (Ctrl+Enter, double-click, the toolbar's Edit code). */
+  editCode(): boolean {
+    const selected = this.store.selectedElements();
+    if (selected.length !== 1 || selected[0].type !== 'code') return false;
+    return this.codeTools.edit(selected[0].id);
+  }
+
+  /** A double-click on the selected code component opens its code (the pointer is captured by the viewport, so it is handled there). */
+  protected onViewportDouble(e: MouseEvent): void {
+    const [only] = this.store.selectedElements();
+    if (this.store.selectedElements().length !== 1 || only.type !== 'code') return;
+    const at = this.stagePoint(e);
+    const box = boundsOf(toBox(only));
+    if (at.x < box.x || at.y < box.y || at.x > box.x + box.w || at.y > box.y + box.h) return;
+    this.editCode();
+  }
+
   /** Starts editing the selected text element in place (Enter, double-click, the panel's Edit text button). */
   editText(): boolean {
     const selected = this.store.selectedElements();
@@ -235,6 +254,10 @@ export class Canvas {
   protected onEditorClosed(byKeyboard: boolean): void {
     this.textEditing.stop();
     if (byKeyboard) this.viewportEl().nativeElement.focus();
+  }
+
+  protected canEditCode(): boolean {
+    return this.interactTarget() !== null && this.codeTools.available();
   }
 
   protected canInteract(): boolean {
@@ -533,6 +556,7 @@ export class Canvas {
         pan: (dx, dy) => this.pan(dx, dy),
         toggleInteract: () => this.toggleInteract(),
         editText: () => this.editText(),
+        editCode: () => this.editCode(),
         hasSelection: this.hasSelection(),
       },
     };
