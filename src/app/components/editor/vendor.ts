@@ -34,16 +34,13 @@ export function externalImports(source: string): string[] {
 
 export type Fetcher = (url: string) => Promise<{ ok: boolean; status: number; headers: { get(name: string): string | null }; blob(): Promise<Blob> }>;
 
-/**
- * Fetches a library from the CDN once, while online, as a JavaScript blob ready for `putAsset`.
- * Refuses a response that is not JavaScript, is too large, or still imports from elsewhere.
- */
-export async function fetchLibrary(name: string, version: string, fetcher: Fetcher): Promise<Result<{ blob: Blob; label: string }, string>> {
-  const url = cdnUrl(name, version);
-  if (!url.ok) return url;
+/** A root-relative module path on the CDN (the stub of a package re-exports its bundle from one); `//host` is not one. */
+const CDN_PATH = /^\/[A-Za-z0-9@._-]+(?:\/[A-Za-z0-9@._~+-]+)*$/;
+
+async function download(url: string, fetcher: Fetcher): Promise<Result<string, string>> {
   let response: Awaited<ReturnType<Fetcher>>;
   try {
-    response = await fetcher(url.value);
+    response = await fetcher(url);
   } catch {
     return err('The library could not be downloaded. You need to be online once to add it.');
   }
@@ -55,6 +52,27 @@ export async function fetchLibrary(name: string, version: string, fetcher: Fetch
   const text = await raw.text();
   if (!/javascript|ecmascript/i.test(response.headers.get('content-type') ?? '') && !/^\s*(?:\/\*|\/\/|import|export|var|const|let|\()/.test(text)) {
     return err('The download is not JavaScript');
+  }
+  return ok(text);
+}
+
+/**
+ * Fetches a library from the CDN once, while online, as a JavaScript blob ready for `putAsset`.
+ * Refuses a response that is not JavaScript, is too large, or still imports from elsewhere.
+ */
+export async function fetchLibrary(name: string, version: string, fetcher: Fetcher): Promise<Result<{ blob: Blob; label: string }, string>> {
+  const url = cdnUrl(name, version);
+  if (!url.ok) return url;
+  const first = await download(url.value, fetcher);
+  if (!first.ok) return first;
+  let text = first.value;
+  // The address of a package answers with a stub that re-exports one bundle file from a path on the
+  // same CDN. Follow that once, to a path on the same host, and keep the bundle.
+  const stub = externalImports(text);
+  if (stub.length === 1 && CDN_PATH.test(stub[0])) {
+    const bundle = await download(new URL(stub[0], url.value).href, fetcher);
+    if (!bundle.ok) return bundle;
+    text = bundle.value;
   }
   const external = externalImports(text);
   if (external.length > 0) return err(`The library imports from the network (${external.slice(0, 2).join(', ')}) and would not work offline. Download a bundled build and add it from a file.`);

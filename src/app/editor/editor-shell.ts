@@ -162,7 +162,10 @@ export class EditorShell {
       const request = this.codeTools.request();
       untracked(() => void this.showTools(request));
     });
-    inject(DestroyRef).onDestroy(() => this.tools?.destroy());
+    inject(DestroyRef).onDestroy(() => {
+      this.toolsAttempt++; // a dialog still loading must not appear after the page is gone
+      this.tools?.destroy();
+    });
     // Leaving the editor must not leave the last edits waiting for the debounce timer.
     inject(DestroyRef).onDestroy(() => void this.autosave.flush());
 

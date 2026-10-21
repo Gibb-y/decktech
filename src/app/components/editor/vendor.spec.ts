@@ -39,6 +39,24 @@ describe('externalImports', () => {
 });
 
 describe('fetchLibrary', () => {
+  it('follows the stub a package address answers with, once, to a path on the CDN', async () => {
+    const calls: string[] = [];
+    const result = await fetchLibrary('chart.js', '4.4.0', async (url) => {
+      calls.push(url);
+      return response(calls.length === 1 ? 'export * from "/chart.js@4.4.0/es2022/chart.bundle.mjs";' : 'export const chart = 1;');
+    });
+    expect(calls).toEqual(['https://esm.sh/chart.js@4.4.0?bundle&target=es2022', 'https://esm.sh/chart.js@4.4.0/es2022/chart.bundle.mjs']);
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it('does not follow a stub to another host, or a bundle that itself imports from the network', async () => {
+    expect(await fetchLibrary('x', '1', async () => response('export * from "//evil.example/x.js";'))).toMatchObject({ ok: false });
+    const calls: string[] = [];
+    const nested = await fetchLibrary('x', '1', async (url) => (calls.push(url), response('export * from "/x@1/a.mjs";')));
+    expect(nested).toMatchObject({ ok: false, error: expect.stringMatching(/imports from the network/) });
+    expect(calls).toHaveLength(2);
+  });
+
   it('returns the module as a JavaScript blob labelled with name and version', async () => {
     const calls: string[] = [];
     const result = await fetchLibrary('d3', '7.9.0', async (url) => (calls.push(url), response('export const x = 1;')));

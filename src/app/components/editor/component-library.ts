@@ -60,6 +60,7 @@ export class ComponentLibrary {
 
   /** Saves `def` (with the refs of its assets taken from the open deck, or `extraAssets` for ones not added to it yet) under its id; resolves to whether it worked. */
   async save(def: ComponentDef, extraAssets: Record<string, AssetRef> = {}): Promise<boolean> {
+    this.error.set(null);
     if (!this.repository) return this.fail('The library is not available in this session');
     const deckAssets = { ...extraAssets, ...this.store.deck().assets };
     const assets: Record<string, AssetRef> = {};
@@ -76,6 +77,7 @@ export class ComponentLibrary {
   }
 
   async remove(id: string): Promise<boolean> {
+    this.error.set(null);
     if (!this.repository) return this.fail('The library is not available in this session');
     const result = await this.repository.deleteComponent(id);
     if (!result.ok) return this.fail(result.error.message);
@@ -86,6 +88,7 @@ export class ComponentLibrary {
 
   /** Inserts a built-in or saved component into the current slide and selects it. */
   insert(entry: { def: ComponentDef; assets?: Record<string, AssetRef> }): boolean {
+    this.error.set(null);
     try {
       const { command, element } = insertCommands(this.store.deck(), this.store.currentSlideId(), { def: entry.def, assets: entry.assets ?? {} });
       this.store.execute(command);

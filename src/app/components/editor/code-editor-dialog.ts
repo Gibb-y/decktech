@@ -181,6 +181,9 @@ const CHECKLIST = [
           }
         </ul>
       }
+      @if (library.error(); as message) {
+        <p class="errors" role="alert">{{ message }}</p>
+      }
       @if (error(); as message) {
         <p class="errors" role="alert">{{ message }}</p>
       }
@@ -208,7 +211,7 @@ export class CodeEditorDialog implements OnInit {
 
   protected readonly store = inject(DeckStore);
   protected readonly hostConsole = inject(HostConsole);
-  private readonly library = inject(ComponentLibrary);
+  protected readonly library = inject(ComponentLibrary);
   private readonly repository = inject(DeckRepository, { optional: true });
   private readonly announcer = inject(LiveAnnouncer);
   private readonly stateStore = inject(ComponentStateStore);
@@ -303,6 +306,7 @@ export class CodeEditorDialog implements OnInit {
     this.permissions.set([...def.permissions]);
     this.libs.set([...def.libs]);
     this.previewDef.set(def);
+    this.library.error.set(null);
     // The preview keeps its own state, and starts without any, so an old run does not colour this one.
     this.stateStore.save(untracked(this.deckId), PREVIEW_ID, {});
     this.hostConsole.clear();
@@ -415,6 +419,7 @@ export class CodeEditorDialog implements OnInit {
       this.announcer.announce(`Cannot save yet: ${this.problems()[0]}`);
       return;
     }
+    if (!this.dirty()) return void this.closed.emit();
     const draft = this.draft();
     const deckAssets = this.store.deck().assets;
     const commands: Command[] = Object.entries(this.newAssets())

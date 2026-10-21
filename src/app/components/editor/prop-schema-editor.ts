@@ -83,9 +83,9 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
           </label>
           @switch (spec.type) {
             @case ('number') {
-              <label>Default <input type="number" [value]="spec.default" (input)="edit(i, { default: num($event) ?? 0 })" /></label>
-              <label>Smallest <input type="number" [value]="spec.min ?? ''" (input)="edit(i, { min: num($event) })" /></label>
-              <label>Largest <input type="number" [value]="spec.max ?? ''" (input)="edit(i, { max: num($event) })" /></label>
+              <label>Default <input type="number" [value]="spec.default" (change)="edit(i, { default: num($event) ?? 0 })" /></label>
+              <label>Smallest <input type="number" [value]="spec.min ?? ''" (change)="edit(i, { min: num($event) })" /></label>
+              <label>Largest <input type="number" [value]="spec.max ?? ''" (change)="edit(i, { max: num($event) })" /></label>
             }
             @case ('boolean') {
               <label class="check"><input type="checkbox" [checked]="spec.default === true" (change)="edit(i, { default: checked($event) })" /> On by default</label>
@@ -93,7 +93,7 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
             @case ('select') {
               <label class="wide">
                 Choices (one per line, <code>value: label</code>)
-                <textarea rows="3" [value]="optionsText(spec)" (input)="edit(i, { options: options($event) })"></textarea>
+                <textarea rows="3" [value]="optionsText(spec)" (change)="edit(i, { options: options($event) })"></textarea>
               </label>
               <label>
                 Default
@@ -168,6 +168,7 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
 })
 export class PropSchemaEditor {
   readonly specs = input.required<readonly PropSpec[]>();
+  /** Fires per edit. Number boxes and the choices box report on `change` (when the field is left), because their text is normalised and writing it back while typing would eat half-typed values such as "-" or "red:". */
   readonly changed = output<PropSpec[]>();
   protected readonly types = PROP_TYPES;
 

@@ -213,6 +213,7 @@ describe('CodeEditorDialog', () => {
       await settle(d.fixture);
       const max = d.root.querySelectorAll<HTMLInputElement>('app-prop-schema-editor input[type="number"]')[2]; // Largest of "start"
       type(max, '-5');
+      max.dispatchEvent(new Event('change'));
       await settle(d.fixture);
       expect(d.root.querySelector('ul.errors')?.textContent).toMatch(/default|min/);
       expect(button(d.root, 'Done').getAttribute('aria-disabled')).toBe('true');
