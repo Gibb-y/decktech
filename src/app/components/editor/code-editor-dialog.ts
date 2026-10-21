@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked, type OnInit } from '@angular/core';
 import { validateComponent, type AssetRef, type CodeEl, type ComponentDef, type Permission, type PropSpec } from '../../core/model';
 import { DeckRepository } from '../../core/persistence';
 import { AddAsset, Batch, CommandError, DeckStore, SetComponentDef, SetComponentSource, componentUses, deepEqual, type Command } from '../../core/store';
@@ -201,7 +201,7 @@ const CHECKLIST = [
   `,
   styleUrl: './tools-dialog.css',
 })
-export class CodeEditorDialog {
+export class CodeEditorDialog implements OnInit {
   /** The code element being edited. */
   readonly elementId = input.required<string>();
   readonly closed = output<void>();
@@ -245,7 +245,7 @@ export class CodeEditorDialog {
   protected readonly npmName = signal('');
   protected readonly npmVersion = signal('');
 
-  protected readonly initial: ComponentDef;
+  protected initial!: ComponentDef;
   protected readonly draft = computed<ComponentDef>(() => ({
     id: this.initial.id,
     name: this.name().trim(),
@@ -257,8 +257,10 @@ export class CodeEditorDialog {
   }));
   protected readonly dirty = computed(() => !deepEqual(this.draft(), { ...this.initial, name: this.initial.name.trim() }));
   protected readonly problems = computed(() => {
+    const found = this.name().trim() === '' ? ['name: must not be empty'] : [];
     const result = validateComponent(this.draft(), [...Object.keys(this.store.deck().assets), ...Object.keys(this.newAssets())]);
-    return result.ok ? [] : result.error.map((p) => `${p.path.replace(/^component\.?/, '') || 'component'}: ${p.message}`);
+    if (!result.ok) found.push(...result.error.map((p) => `${p.path.replace(/^component\.?/, '') || 'component'}: ${p.message}`));
+    return found;
   });
   protected readonly uses = computed(() => componentUses(this.store.deck(), this.initial.id));
   protected readonly deckId = computed(() => this.store.deck().id);
@@ -287,7 +289,8 @@ export class CodeEditorDialog {
   });
   protected readonly consoleEntries = computed(() => this.hostConsole.entries().filter((e) => e.componentId === this.initial.id));
 
-  constructor() {
+  /** Inputs are not available in the constructor: the draft starts here. */
+  ngOnInit(): void {
     const element = untracked(this.element);
     const def = element ? untracked(this.store.deck).components.find((c) => c.id === element.componentId) : undefined;
     if (!def) throw new Error('The code component to edit does not exist');
@@ -301,7 +304,9 @@ export class CodeEditorDialog {
     // The preview keeps its own state, and starts without any, so an old run does not colour this one.
     this.stateStore.save(untracked(this.deckId), PREVIEW_ID, {});
     this.hostConsole.clear();
+  }
 
+  constructor() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     effect(() => {
       const next = this.draft();
@@ -337,7 +342,8 @@ export class CodeEditorDialog {
     else return;
     event.preventDefault();
     this.tab.set(TABS[next].id);
-    queueMicrotask(() => (event.currentTarget as HTMLElement).querySelector<HTMLElement>(`#tab-${TABS[next].id}`)?.focus());
+    const list = event.currentTarget as HTMLElement;
+    queueMicrotask(() => list.querySelector<HTMLElement>(`#tab-${TABS[next].id}`)?.focus());
   }
 
   protected togglePermission(id: Permission, event: Event): void {
