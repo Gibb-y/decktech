@@ -13,6 +13,9 @@
 | Code component | An element backed by user-provided HTML, CSS and JavaScript, running in a sandboxed iframe. |
 | Component definition (`ComponentDef`) | The source and metadata of a code component; shared by one or more code elements. |
 | Component API (`deck`) | The JavaScript API injected into every code component frame. |
+| Detach | `DetachComponent`: gives one code element its own copy of a shared component definition (fresh id, name "<name> (copy)") so that editing either no longer touches the other. |
+| Component library | The built-in example components plus the components the author saved (store `components`, `ComponentLibrary`), reusable across decks; inserting copies the definition into the deck. |
+| Vendored library | A JavaScript module stored as an asset of the deck, listed in a definition's `libs` and imported by its asset id through the frame's import map, so the component works offline. |
 | Prop / property schema | Typed, declared inputs of a code component; generates its form in the properties panel. |
 | Host | The DeckTech Angular application, as opposed to the sandboxed frame. |
 | Sandbox | An `<iframe sandbox="allow-scripts">` with an opaque origin and restrictive CSP. |

@@ -58,7 +58,7 @@ sequenceDiagram
 
 Text elements follow the same gesture, with a different editor: clicking the selected text element (or Enter, or typing) starts the in-place ProseMirror editor, which loads its own chunk on first use. Typing changes nothing in the deck; leaving the text (blur, Escape, selecting something else) commits one `SetText` if the content changed, so the whole edit is one undo step (5.4, "Rich text editing").
 
-`Insert → Code component` is `InsertActions.insert('code')`: it adds a starter `ComponentDef` with a fresh id and a code element in one `AddCodeElement` command and selects the element; the code editor itself is a later issue.
+`Insert → Code component` is `InsertActions.insert('code')`: it adds a starter `ComponentDef` with a fresh id and a code element in one `AddCodeElement` command and selects the element; the code editor opens on the selected element (Ctrl+Enter, double-click, "Edit code…") as `CodeEditorDialog`, described in 5.3. The `SetComponentSource{id, html, css, js}` of the diagram is one part of the `Batch` that "Done" executes (it also carries the name, prop schema, permissions and libraries of the draft), so all of it is one undo step.
 
 Reloading the frame on each change (rather than hot-patching) keeps semantics identical to presentation. Component state that the author wants to keep across reloads can use `deck.state` (see 8.3). In the diagram the "ready" / "init" pair is the handshake of 5.3: the frame posts `ready { apiVersion }`, the supervisor answers with a transferred `MessagePort`, and `init` (props, theme, mode, size, saved state, libraries) goes over that port, which is the only channel from then on.
 

@@ -233,6 +233,7 @@ describe('CodeEditorDialog', () => {
       expect(consent.textContent).toContain('Allow Network?');
       expect(consent.textContent).toContain('stays blocked');
       expect(network(d).checked).toBe(false);
+      expect(document.activeElement?.id).toBe('consent-allow'); // the question takes the focus
       button(d.root, 'Allow').click();
       await settle(d.fixture);
       expect(network(d).checked).toBe(true);
@@ -370,6 +371,7 @@ describe('CodeEditorDialog', () => {
       await settle(d.fixture);
       expect(d.closed).not.toHaveBeenCalled();
       expect(d.root.querySelector('[role="alertdialog"]')?.textContent).toContain('Discard your changes');
+      expect(document.activeElement?.id).toBe('discard-keep');
       button(d.root, 'Keep editing').click();
       await settle(d.fixture);
       expect(d.root.querySelector('[role="alertdialog"]')).toBeNull();

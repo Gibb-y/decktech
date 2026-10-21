@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked, type OnInit } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal, untracked, type OnInit } from '@angular/core';
 import { validateComponent, type AssetRef, type CodeEl, type ComponentDef, type Permission, type PropSpec } from '../../core/model';
 import { DeckRepository } from '../../core/persistence';
 import { AddAsset, Batch, CommandError, DeckStore, SetComponentDef, SetComponentSource, componentUses, deepEqual, type Command } from '../../core/store';
@@ -122,7 +122,7 @@ const CHECKLIST = [
               <div class="consent" role="alertdialog" aria-labelledby="consent-title" aria-describedby="consent-text">
                 <p id="consent-title"><strong>Allow {{ asked.label }}?</strong></p>
                 <p id="consent-text">{{ asked.consent }}</p>
-                <button type="button" (click)="grant()">Allow</button>
+                <button type="button" id="consent-allow" (click)="grant()">Allow</button>
                 <button type="button" (click)="pending.set(null)">Cancel</button>
               </div>
             }
@@ -188,7 +188,7 @@ const CHECKLIST = [
         <div class="consent" role="alertdialog" aria-labelledby="discard-text">
           <p id="discard-text">Discard your changes to this component?</p>
           <button type="button" (click)="closed.emit()">Discard</button>
-          <button type="button" (click)="confirmDiscard.set(false)">Keep editing</button>
+          <button type="button" id="discard-keep" (click)="confirmDiscard.set(false)">Keep editing</button>
         </div>
       }
       <footer>
@@ -212,6 +212,8 @@ export class CodeEditorDialog implements OnInit {
   private readonly repository = inject(DeckRepository, { optional: true });
   private readonly announcer = inject(LiveAnnouncer);
   private readonly stateStore = inject(ComponentStateStore);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly tabs = TABS;
   protected readonly codeTabs = TABS.slice(0, 3) as { id: 'html' | 'css' | 'js'; label: string }[];
@@ -352,6 +354,12 @@ export class CodeEditorDialog implements OnInit {
     // Granting shows what it means first; the box only stays ticked once the author agrees.
     box.checked = false;
     this.pending.set(PERMISSIONS.find((p) => p.id === id) ?? null);
+    this.focusIn('#consent-allow');
+  }
+
+  /** A message that asks a question takes the focus, so keyboard and screen reader users answer it rather than miss it. */
+  private focusIn(selector: string): void {
+    afterNextRender(() => this.host.querySelector<HTMLElement>(selector)?.focus(), { injector: this.injector });
   }
 
   protected grant(): void {
@@ -428,7 +436,10 @@ export class CodeEditorDialog implements OnInit {
   }
 
   protected cancel(): void {
-    if (this.dirty()) this.confirmDiscard.set(true);
+    if (this.dirty()) {
+      this.confirmDiscard.set(true);
+      this.focusIn('#discard-keep');
+    }
     else this.closed.emit();
   }
 

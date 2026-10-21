@@ -69,3 +69,13 @@ Both are exercised by tests in `src/app/editor/editor-chrome.spec.ts` that drive
 
 - **Q1** (title and bullet list from a blank deck): Enter in the sorter adds a slide; `/`, "title", Enter inserts a title and puts the focus in its text field; the title is typed; `/`, "bullet", Enter does the same for the list. The test counts the key presses (fewer than 30) and checks the result on the slide. A person who knows the shortcuts needs well under 30 s; someone who does not has the toolbar buttons, the `/` filter and the `?` help. The manual stopwatch check with a first-time user is recorded on the pull request.
 - **Q2** (titled image, keyboard only): the same flow with "image" as the second item. The file chooser is the browser's own dialog, so the test hands the file to `InsertActions.insertImage` where the dialog would return it, then types the alt text into the field that has the focus. AXE runs on the editor page, the insert menu, the shortcut help, the sorter and the properties panel (jsdom has no layout, so colour contrast is checked by hand).
+
+## 10.5 Q3 (an interactive chart with a vendored library, offline)
+
+The pieces of Q3 are covered by unit tests, each at the seam where the real browser is replaced by jsdom:
+
+- **Vendoring** (`code-editor-dialog.spec.ts`, `vendor.spec.ts`): a library file is checked (JavaScript, at most 5 MiB, no imports from the network), stored as an asset, listed with its import name, added to the deck's assets and the definition's `libs` in one undo step on "Done"; the npm route builds its address only from a validated package name and version and refuses a response that is not self-contained.
+- **Running offline** (`runtime.spec.ts`, `builtin-components.spec.ts`): the runtime builds the import map from the library bytes the host hands over (no network, no host change), and the built-in bar chart component runs in the real runtime from its own source.
+- **No host changes**: nothing outside `components/editor` knows about a particular library.
+
+Not covered here: loading a real library such as Chart.js in a real browser with the network switched off (jsdom has no blob modules or import maps); that belongs to the browser tests of DT-19.
