@@ -17,6 +17,8 @@ interface Item {
   type: ElementType;
   /** Hidden element shown in the editor only; dimmed and kept out of the accessibility tree. */
   ghost: boolean;
+  /** Being edited in place: kept in the layout but not painted, because the editor draws it. */
+  concealed: boolean;
 }
 
 /**
@@ -38,7 +40,7 @@ interface Item {
       @for (item of items(); track item.id) {
         @switch (item.type) {
           @case ('text') {
-            <app-text-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
+            <app-text-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [style.visibility]="item.concealed ? 'hidden' : null" [attr.aria-hidden]="item.ghost ? 'true' : null" />
           }
           @case ('image') {
             <app-image-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
@@ -86,6 +88,8 @@ export class SlideRenderer {
   /** Highest step reached; elements with a larger `step` are omitted. Defaults to all revealed. */
   readonly step = input<number>(ALL_STEPS);
   readonly stage = input<Stage>(DEFAULT_STAGE);
+  /** Id of a text element the editor is drawing in its place (edit mode only). */
+  readonly concealedId = input<string | null>(null);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly assets = inject(AssetUrls);
@@ -106,7 +110,7 @@ export class SlideRenderer {
     const mode = this.mode();
     const step = this.step();
     return this.slide().elements.flatMap((element) =>
-      isElementShown(element, mode, step) ? [{ id: element.id, type: element.type, ghost: element.hidden === true }] : [],
+      isElementShown(element, mode, step) ? [{ id: element.id, type: element.type, ghost: element.hidden === true, concealed: element.id === this.concealedId() }] : [],
     );
   });
 
