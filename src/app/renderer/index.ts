@@ -11,3 +11,5 @@ export * from './text-element';
 export * from './theme';
 export * from './visibility';
 export * from './rich-view';
+export * from './code-host-events';
+export * from './frame-registry';

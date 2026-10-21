@@ -35,7 +35,6 @@ describe('App', () => {
   });
 
   it.each([
-    ['/deck/dk_1/present', 'Presentation'],
     ['/deck/dk_1/presenter-view', 'Presenter view'],
   ])('routes %s to %s with the deck id', async (url, heading) => {
     const harness = await RouterTestingHarness.create();
@@ -43,6 +42,14 @@ describe('App', () => {
     const page = harness.routeNativeElement!;
     expect(page.querySelector('h1')?.textContent).toBe(heading);
     expect(page.textContent).toContain('dk_1');
+  });
+
+  it('routes /deck/:id/present to the presentation page, which says it is opening the deck', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/deck/dk_1/present');
+    const page = harness.routeNativeElement!;
+    expect(page.querySelector('h1')?.textContent).toBe('Presentation');
+    expect(page.textContent).toContain('Opening deck');
   });
 
   it('opens the editor route, headed "Editor" until the deck is open', async () => {

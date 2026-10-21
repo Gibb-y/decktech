@@ -2,10 +2,8 @@ import { Component, DestroyRef, ElementRef, computed, effect, inject, input, sig
 import { DOCUMENT } from '@angular/common';
 import { ErrorService } from '../../core/errors';
 import type { CodeEl, ComponentDef } from '../../core/model';
-import { ElementView, themeVars, type RenderMode } from '../../renderer';
-import { CodeHostEvents } from './code-host-events';
+import { CodeHostEvents, ElementView, FrameRegistry, PRELOAD_DISTANCE, themeVars, type RenderMode } from '../../renderer';
 import { buildDocument } from './document-builder';
-import { FrameRegistry, PRELOAD_DISTANCE } from './frame-registry';
 import { HostApi } from './host-api';
 import { ComponentAssets, ComponentPolicy, ComponentStateStore, HostConsole, LinkGuard, RuntimeSource } from './host-services';
 import { API_VERSION, normalizeOrigin, type HostMessage, type LibPayload } from './protocol';
@@ -294,8 +292,10 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
       const size = this.size();
       untracked(() => this.supervisor?.send({ type: 'size', size }));
     });
+    // Through a computed so a change to another component's step does not repeat this one's.
+    const stepIndex = computed(() => this.events.stepIndexes().get(this.elementId()));
     effect(() => {
-      const index = this.events.stepIndexes().get(this.elementId());
+      const index = stepIndex();
       if (index !== undefined) untracked(() => this.supervisor?.send({ type: 'step', index }));
     });
   }

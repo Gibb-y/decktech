@@ -79,3 +79,11 @@ The pieces of Q3 are covered by unit tests, each at the seam where the real brow
 - **No host changes**: nothing outside `components/editor` knows about a particular library.
 
 Not covered here: loading a real library such as Chart.js in a real browser with the network switched off (jsdom has no blob modules or import maps); that belongs to the browser tests of DT-19.
+
+## 10.6 Q6 and Q10 (presenting offline, instant slide change)
+
+Both are exercised by `src/app/presenter/presentation-view.spec.ts`, again at the seam where the browser is replaced by jsdom:
+
+- **Q10**: a code view on the next slide is created while the current slide is shown (hidden, `distance` 1); pressing next reuses that same instance (`created` and `destroyed` counters do not move, the DOM node is the same) and the DOM is updated in a few milliseconds, asserted below 100 ms. This proves the *mechanism* (nothing is rebuilt on advance) and a bound on the host's own work. The 100 ms of the scenario also includes the browser painting the slide and the frame already running, which jsdom cannot measure; the stub view stands in for the sandboxed frame, whose own start-up is covered by `code-element-renderer.spec.ts`. A measurement in a real browser belongs to the browser tests of DT-19.
+- **Q6**: with `fetch`, `XMLHttpRequest`, `sendBeacon`, `WebSocket` and `EventSource` replaced by counters, a deck with code elements is walked through every key; all counters stay 0. The criterion's "e2e with the network switched off" (Playwright, offline context) is not run here: the repository has no browser test setup yet, so it is left to DT-19.
+

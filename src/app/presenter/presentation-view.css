@@ -1,0 +1,135 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: block;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+:host:focus {
+  outline: none;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* Every slide kept in the page sits in the same cell; only the shown one (and one that is leaving) is visible. */
+.layer {
+  grid-area: 1 / 1;
+  /* The widest slide-shaped box that fits the screen; the renderer scales the stage to this width. */
+  width: min(100vw, calc(100dvh * var(--ratio)));
+  visibility: hidden;
+}
+
+.layer.current,
+.layer.leaving {
+  visibility: visible;
+}
+
+.layer.current {
+  z-index: 2;
+}
+
+.layer.leaving {
+  z-index: 1;
+}
+
+.layer.current[data-transition='fade'] {
+  animation: deck-fade var(--duration) ease-out both;
+}
+
+.layer.current[data-transition='slide'] {
+  animation: deck-slide var(--duration) ease-out both;
+}
+
+.layer.current[data-transition='zoom'] {
+  animation: deck-zoom var(--duration) ease-out both;
+}
+
+@keyframes deck-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes deck-slide {
+  from {
+    opacity: 0;
+    transform: translateX(6%);
+  }
+}
+
+@keyframes deck-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer.current {
+    animation: none !important;
+  }
+}
+
+.controls {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.85);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.controls.visible,
+.controls:focus-within {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controls {
+    transition: none;
+  }
+}
+
+.controls button {
+  font: inherit;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid #fff;
+  border-radius: 0.25rem;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+}
+
+.controls button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.controls button:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+.position {
+  min-width: 7rem;
+  text-align: center;
+}

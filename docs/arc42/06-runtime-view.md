@@ -115,6 +115,9 @@ sequenceDiagram
 
 The `Preloader` creates the next slide's frames while the current slide is shown, so advancing is instant. Frames of slides more than one away are destroyed.
 
+Built (DT-14): `StepEngine`, the `Preloader` rule and `PresentationView` as in 5.5 ("Presentation behaviour"). In the diagram `next()` is answered by the position alone: the view writes the component's internal step to `CodeHostEvents.stepIndexes` and the frame is told through `deck.onStep`; there is no acknowledgement round trip, the component's `deck.steps(n)` count is what the engine plans with. Not built: the `PresenterView` window and its `BroadcastChannel` state (`state{slide, step}` in the diagram). The engine's position (`slide`, `step`) is what that message will carry.
+
+
 ## 6.4 Opening a foreign deck
 
 ```mermaid

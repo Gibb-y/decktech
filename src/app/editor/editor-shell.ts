@@ -1,5 +1,5 @@
 import { Component, DestroyRef, ElementRef, ViewContainerRef, effect, inject, input, signal, untracked, type ComponentRef, type OutputEmitterRef } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AutosaveService } from '../core/persistence';
 import { DeckStore } from '../core/store';
 import { Canvas } from './canvas';
@@ -39,7 +39,7 @@ function isTextEntry(target: EventTarget | null): boolean {
       <a routerLink="/">← Your decks</a>
       <h1 tabindex="-1">{{ heading() }}</h1>
       @if (state().status === 'ready') {
-        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" />
+        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (present)="present()" />
       }
     </header>
     @switch (state().status) {
@@ -142,6 +142,7 @@ export class EditorShell {
   protected readonly store = inject(DeckStore);
   private readonly autosave = inject(AutosaveService);
   private readonly registry = inject(ShortcutRegistry);
+  private readonly router = inject(Router);
   private readonly insert = inject(InsertActions);
   private readonly actions = inject(EditorActions);
   protected readonly codeTools = inject(CodeTools);
@@ -187,6 +188,14 @@ export class EditorShell {
         description: 'Show the keyboard shortcuts',
         run: () => (ready() ? this.dialog.set('help') : false),
       }),
+      this.registry.register({
+        id: 'global.present',
+        scope: 'global',
+        key: 'F5',
+        keys: 'F5',
+        description: 'Present from the current slide',
+        run: () => (ready() ? this.present() : false),
+      }),
     ];
     inject(DestroyRef).onDestroy(() => unregister.forEach((u) => u()));
   }
@@ -221,6 +230,11 @@ export class EditorShell {
     event.preventDefault();
     this.actions.deselect();
     viewport.focus();
+  }
+
+  /** Starts the presentation on the slide being edited (the route is lazy; the browser enters fullscreen there). */
+  protected present(): void {
+    void this.router.navigate(['/deck', this.id(), 'present'], { queryParams: { slide: this.store.currentSlideIndex() + 1 } });
   }
 
   protected onInsert(kind: InsertKind): void {

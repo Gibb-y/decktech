@@ -24,4 +24,4 @@ Code elements must be drawn by the one `SlideRenderer` (editor, presenter), but 
 - (+) The renderer stays free of the sandbox; nothing is loaded for decks without code.
 - (+) One place defines the sandbox flags, so a lint rule can guard them.
 - (-) The user module only runs after the handshake (a few milliseconds, one round trip), and `deck.ready` inside it fires at once.
-- (-) Every consumer of `SlideRenderer` that wants live code (the presenter, later) must pass `components` and `deckId`.
+- (-) Every consumer of `SlideRenderer` that wants live code (the presenter, since DT-14) must pass `components` and `deckId`.

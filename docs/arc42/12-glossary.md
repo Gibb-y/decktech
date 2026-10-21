@@ -24,7 +24,9 @@
 | Component state | `deck.state` of one code element: a small JSON key/value store kept by the host per deck and element, not part of the deck. |
 | Runtime (`deck-runtime.js`) | The static script inlined into every frame that defines `deck` and talks to the bridge. |
 | Step (fragment) | A sub-state of a slide revealed by successive "next" actions. |
-| Step engine | Logic that orders steps from elements and components and decides when to change slides. |
+| Step engine | `StepEngine`: logic that orders steps from elements (one per distinct `step` value) and then from the internal steps of components, and decides when to change slides. |
+| Preloader | The rule `slidesToMount`: which slides the presentation keeps in the page so the next slide's code components are already running. |
+| Presentation view | `PresentationView`: the fullscreen audience view, as opposed to the presenter view. |
 | Presenter view | Second-window view with current/next slide, notes and timer. |
 | Command | A reversible editing operation producing forward and inverse patches. |
 | Migration | A pure function upgrading a deck document from schema version N to N+1; chained by `migrate` before validation. |
