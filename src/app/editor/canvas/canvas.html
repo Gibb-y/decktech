@@ -30,6 +30,7 @@
   </div>
   <div class="group" role="group" aria-label="Code component">
     <button type="button" [attr.aria-pressed]="interact()" [attr.aria-disabled]="canInteract() ? null : 'true'" (click)="toggleInteract()">Interact</button>
+    <button type="button" aria-keyshortcuts="Control+Enter" [attr.aria-disabled]="canEditCode() ? null : 'true'" (click)="editCode()">Edit code</button>
   </div>
 </div>
 
@@ -42,6 +43,7 @@
   aria-describedby="canvas-help"
   tabindex="0"
   (pointerdown)="onViewportDown($event)"
+  (dblclick)="onViewportDouble($event)"
   (pointermove)="onPointerMove($event)"
   (pointerup)="onPointerUp($event)"
   (pointercancel)="onPointerCancel()"

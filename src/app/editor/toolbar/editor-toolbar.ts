@@ -34,6 +34,7 @@ import { ThemeActions, builtInThemeId } from '../theme-actions';
           }
         </select>
       </label>
+      <button type="button" aria-haspopup="dialog" (click)="components.emit()">Components…</button>
       <button type="button" (click)="themes.pickFont()">Add font…</button>
       <button type="button" aria-haspopup="dialog" (click)="help.emit()">Keyboard shortcuts <kbd aria-hidden="true">?</kbd></button>
     </div>
@@ -106,4 +107,5 @@ export class EditorToolbar {
 
   readonly insert = output<void>();
   readonly help = output<void>();
+  readonly components = output<void>();
 }

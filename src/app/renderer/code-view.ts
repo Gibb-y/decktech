@@ -10,3 +10,14 @@ import { InjectionToken, type Type } from '@angular/core';
 export type CodeViewLoader = () => Promise<Type<unknown>>;
 
 export const CODE_ELEMENT_VIEW = new InjectionToken<CodeViewLoader>('Code element view');
+
+/**
+ * Loads the dialogs for code components (code editor, component library). The editor may not import
+ * the component feature (4.4) and the dialogs bring CodeMirror, so the app provides a loader and the
+ * editor shell draws the result with `NgComponentOutlet`. The component must have the inputs
+ * `view` (`'edit'` or `'library'`) and `elementId` (the code element being edited, or `null`) and an
+ * output `closed`. Without a provider the editor offers no code tools.
+ */
+export type ComponentToolsLoader = () => Promise<Type<unknown>>;
+
+export const COMPONENT_TOOLS = new InjectionToken<ComponentToolsLoader>('Component tools');

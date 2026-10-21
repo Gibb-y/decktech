@@ -57,7 +57,7 @@ flowchart TB
 | Editor window ↔ presenter-view window | `BroadcastChannel` | Syncs current slide, step and timer. No server required. |
 | App ↔ storage | IndexedDB (via a thin repository abstraction) | Decks, assets (blobs), component library. |
 | App ↔ disk | File System Access API where available, otherwise download/`<input type=file>` | `.deck` is a ZIP. |
-| App ↔ internet | `fetch`, only through the sandbox policy | Disabled for code components unless the deck opts in. |
+| App ↔ internet | `fetch`, only through the sandbox policy | Disabled for code components unless the deck opts in. The one request the host itself makes is "Add library": the author asks for an npm package and it is fetched once from the esm.sh CDN while online (8.6). |
 
 ## 3.3 Scope boundary
 

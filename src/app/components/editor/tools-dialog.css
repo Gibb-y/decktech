@@ -1,0 +1,269 @@
+/* Shared by the code editor dialog and the component library dialog. */
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #111;
+}
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.5);
+}
+.dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(80rem, calc(100vw - 2rem));
+  height: min(52rem, calc(100vh - 2rem));
+  padding: 0.75rem 1rem;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #5a5a5a;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.dialog.narrow {
+  width: min(44rem, calc(100vw - 2rem));
+  height: auto;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+.dialog:focus {
+  outline: none;
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+h3 {
+  margin: 0.25rem 0;
+  font-size: 1rem;
+}
+.note,
+.hint,
+.muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #404040;
+}
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36rem;
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+@media (max-width: 70rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+}
+.work {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.5rem;
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+[role='tablist'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid #c3c6cc;
+}
+[role='tab'] {
+  border-radius: 0.25rem 0.25rem 0 0;
+  border-bottom: 0;
+}
+[role='tab'][aria-selected='true'] {
+  background: #0b3d91;
+  color: #fff;
+  border-color: #0b3d91;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 12rem;
+  gap: 0.25rem;
+}
+.panel[hidden] {
+  display: none;
+}
+.panel app-code-mirror {
+  flex: 1 1 auto;
+}
+.scroll {
+  overflow-y: auto;
+}
+.preview {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  border: 1px solid #5a5a5a;
+  background: #fff;
+}
+.stage {
+  position: relative;
+  transform-origin: top left;
+}
+.console {
+  min-height: 5rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  padding: 0.35rem 0.5rem;
+  background: #1c1c1c;
+  color: #f2f2f2;
+  font: 0.8rem ui-monospace, Consolas, monospace;
+  border-radius: 0.25rem;
+}
+.console .error,
+.console .host {
+  color: #ffb4a9;
+}
+.console .warn {
+  color: #ffe08a;
+}
+.console .muted {
+  color: #d0d0d0;
+}
+.level {
+  opacity: 0.8;
+}
+.errors,
+.risk,
+.consent {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid #8a1c14;
+  background: #fde8e6;
+  color: #5c0f0a;
+  font-size: 0.9rem;
+}
+.errors {
+  padding-left: 1.75rem;
+}
+.risk {
+  border-color: #7a5200;
+  background: #fff4d6;
+  color: #3d2a00;
+}
+.risk p,
+.risk ul {
+  margin: 0.15rem 0;
+}
+.consent {
+  border-color: #0b3d91;
+  background: #e7efff;
+  color: #0a2a63;
+}
+.status {
+  margin: 0.25rem 0;
+}
+.hints {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+}
+fieldset {
+  margin: 0;
+  border: 1px solid #c3c6cc;
+  border-radius: 0.25rem;
+}
+label {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.libs {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+.libs li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  word-break: break-all;
+}
+.row {
+  margin: 0.5rem 0;
+}
+footer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.spacer {
+  flex: 1 1 auto;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+input,
+select,
+textarea {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #5a5a5a;
+  border-radius: 0.25rem;
+  background: #fff;
+  color: #111;
+}
+input[type='checkbox'] {
+  padding: 0;
+}
+button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #5a5a5a;
+  border-radius: 0.25rem;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+}
+button.primary {
+  background: #0b3d91;
+  border-color: #0b3d91;
+  color: #fff;
+}
+button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+:is(button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+code {
+  font: 0.85em ui-monospace, Consolas, monospace;
+}

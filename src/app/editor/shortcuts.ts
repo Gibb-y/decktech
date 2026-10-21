@@ -14,6 +14,8 @@ export interface ShortcutContext {
     toggleInteract(): void;
     /** Starts editing the selected text element in place; `false` when the selection is not one text element. */
     editText(): boolean;
+    /** Opens the code editor for the selected code component; `false` when the selection is not one. */
+    editCode(): boolean;
     readonly hasSelection: boolean;
   };
 }
@@ -98,6 +100,7 @@ export const CANVAS_SHORTCUTS: readonly Shortcut[] = [
   { key: ['-', '_'], keys: '-', description: 'Zoom out', run: ({ view }) => view.zoomOut() },
   { key: '0', ctrl: true, keys: 'Ctrl+0', description: 'Fit the slide in the window', run: ({ view }) => view.fit() },
   { key: '1', ctrl: true, keys: 'Ctrl+1', description: 'Zoom to 100%', run: ({ view }) => view.actualSize() },
+  { key: 'Enter', ctrl: true, keys: 'Ctrl+Enter', description: 'Edit the code of the selected code component', run: ({ view }) => view.editCode() },
   {
     key: 'Enter',
     keys: 'Enter',

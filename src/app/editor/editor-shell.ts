@@ -1,8 +1,9 @@
-import { Component, DestroyRef, ElementRef, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, ElementRef, ViewContainerRef, effect, inject, input, signal, untracked, type ComponentRef, type OutputEmitterRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AutosaveService } from '../core/persistence';
 import { DeckStore } from '../core/store';
 import { Canvas } from './canvas';
+import { CodeTools, type CodeToolsRequest } from './code-tools';
 import { EditorActions } from './editor-actions';
 import { InsertActions, type InsertKind } from './insert-actions';
 import { NotesPane } from './notes-pane';
@@ -38,7 +39,7 @@ function isTextEntry(target: EventTarget | null): boolean {
       <a routerLink="/">← Your decks</a>
       <h1 tabindex="-1">{{ heading() }}</h1>
       @if (state().status === 'ready') {
-        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" />
+        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" />
       }
     </header>
     @switch (state().status) {
@@ -143,6 +144,10 @@ export class EditorShell {
   private readonly registry = inject(ShortcutRegistry);
   private readonly insert = inject(InsertActions);
   private readonly actions = inject(EditorActions);
+  protected readonly codeTools = inject(CodeTools);
+  private readonly container = inject(ViewContainerRef);
+  private tools: ComponentRef<unknown> | null = null;
+  private toolsAttempt = 0;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   protected readonly state = signal<ShellState>({ status: 'loading' });
   protected readonly dialog = signal<Dialog>(null);
@@ -152,6 +157,14 @@ export class EditorShell {
     effect(() => {
       const id = this.id();
       untracked(() => void this.open(id));
+    });
+    effect(() => {
+      const request = this.codeTools.request();
+      untracked(() => void this.showTools(request));
+    });
+    inject(DestroyRef).onDestroy(() => {
+      this.toolsAttempt++; // a dialog still loading must not appear after the page is gone
+      this.tools?.destroy();
     });
     // Leaving the editor must not leave the last edits waiting for the debounce timer.
     inject(DestroyRef).onDestroy(() => void this.autosave.flush());
@@ -190,7 +203,7 @@ export class EditorShell {
 
   protected onDocumentKeydown(event: KeyboardEvent): void {
     // A key the canvas or sorter already used and a dialog's own keys are not ours.
-    if (event.defaultPrevented || this.dialog() !== null) return;
+    if (event.defaultPrevented || this.dialog() !== null || this.codeTools.request() !== null) return;
     if (event.key === 'Escape') return this.leaveToCanvas(event);
     // Typing in a field is not ours either.
     if (isTextEntry(event.target) && !event.ctrlKey && !event.metaKey) return;
@@ -216,10 +229,35 @@ export class EditorShell {
     else this.insert.insert(kind);
   }
 
+  /** Shows the code editor or the library (loaded on first use), or removes the one shown. */
+  private async showTools(request: CodeToolsRequest | null): Promise<void> {
+    const attempt = ++this.toolsAttempt;
+    this.tools?.destroy();
+    this.tools = null;
+    if (!request) return;
+    let type: Awaited<NonNullable<ReturnType<CodeTools['load']>>> | null | undefined;
+    try {
+      type = await this.codeTools.load();
+    } catch {
+      type = null;
+    }
+    if (attempt !== this.toolsAttempt) return; // closed, or asked for something else, while loading
+    if (!type) {
+      this.codeTools.close();
+      return;
+    }
+    const ref = this.container.createComponent(type);
+    ref.setInput('view', request.view);
+    ref.setInput('elementId', request.view === 'edit' ? request.elementId : null);
+    (ref.instance as { closed: OutputEmitterRef<void> }).closed.subscribe(() => this.codeTools.close());
+    this.tools = ref;
+  }
+
   private async open(id: string): Promise<void> {
     const attempt = ++this.opening;
     this.state.set({ status: 'loading' });
     this.dialog.set(null);
+    this.codeTools.close();
     let result: Awaited<ReturnType<AutosaveService['open']>>;
     try {
       result = await this.autosave.open(id);

@@ -3,7 +3,7 @@ import { ELEMENT_BASE_KEYS, ELEMENT_SCHEMAS, ELEMENT_TYPES, type FieldSpec } fro
 import { ID_PATTERN } from './ids';
 import { err, ok, type Result } from './result';
 import { validateRichText } from './rich-text';
-import type { Deck, Theme } from './types';
+import type { ComponentDef, Deck, Theme } from './types';
 
 export interface ValidationError {
   /** Location of the problem, e.g. `slides[2].elements[0].w`. */
@@ -95,6 +95,13 @@ export function validateTheme(input: unknown, assetIds: Iterable<string>): Resul
   return v.errors.length === 0 ? ok(input as Theme) : err(v.errors);
 }
 
+/** Validates one component definition the way `validateDeck` does, for commands that edit it. `files` and `libs` must be among `assetIds`. */
+export function validateComponent(input: unknown, assetIds: Iterable<string>): Result<ComponentDef, ValidationError[]> {
+  const v = new Validator(DEFAULT_VALIDATION_OPTIONS);
+  v.componentOnly(input, assetIds);
+  return v.errors.length === 0 ? ok(input as ComponentDef) : err(v.errors);
+}
+
 class Validator {
   readonly errors: ValidationError[] = [];
 
@@ -142,6 +149,12 @@ class Validator {
   /** A theme on its own (`SetTheme`); font assets must be among `assetIds`. */
   themeOnly(input: unknown, assetIds: Iterable<string>): void {
     this.theme('theme', input);
+    this.resolve(this.assetRefs, new Set(assetIds), 'asset');
+  }
+
+  /** A component on its own (`SetComponentDef`). */
+  componentOnly(input: unknown, assetIds: Iterable<string>): void {
+    this.component('component', input);
     this.resolve(this.assetRefs, new Set(assetIds), 'asset');
   }
 

@@ -11,6 +11,7 @@ import {
   REQUIRED_FONT_KEYS,
   themeRefs,
   validateTheme,
+  validateComponent,
   type AssetRef,
   type CodeEl,
   type ComponentDef,
@@ -602,6 +603,12 @@ export class SetText implements Command {
 
 // ------------------------------------------------------------ components
 
+/** Throws a `CommandError` listing why `def` would not validate in `deck`. */
+export function checkComponent(deck: Deck, def: ComponentDef): void {
+  const result = validateComponent(def, Object.keys(deck.assets));
+  if (!result.ok) throw new CommandError(`Invalid component: ${result.error.map((p) => `${p.path} ${p.message}`).join('; ')}`);
+}
+
 /** Edits the sources of a component definition; omitted sources stay as they are. */
 export class SetComponentSource implements Command {
   readonly name = 'SetComponentSource';
@@ -617,7 +624,10 @@ export class SetComponentSource implements Command {
     const current = deck.components[index];
     const { html = current.html, css = current.css, js = current.js } = this.source;
     if (html === current.html && css === current.css && js === current.js) return resultOf(deck, deck);
-    const components = deck.components.map((c, i) => (i === index ? { ...c, html, css, js } : c));
+    const next = { ...current, html, css, js };
+    // A source past the size limit would make the saved deck fail `validateDeck` on the next load.
+    checkComponent(deck, next);
+    const components = deck.components.map((c, i) => (i === index ? next : c));
     return resultOf(deck, { ...deck, components });
   }
 }
@@ -647,6 +657,7 @@ export class AddCodeElement implements Command {
     if (existing && !deepEqual(existing, this.component)) {
       throw new CommandError(`Component "${this.component.id}" already exists with a different definition`);
     }
+    if (!existing) checkComponent(deck, this.component); // e.g. a library entry whose assets this deck lacks
     const withComponent = existing ? deck : { ...deck, components: [...deck.components, this.component] };
     const slide = withComponent.slides[index];
     return resultOf(deck, replaceSlide(withComponent, index, { ...slide, elements: [...slide.elements, this.element] }));
