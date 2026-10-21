@@ -3,6 +3,7 @@ export * from './element-schema';
 export * from './factory';
 export * from './ids';
 export * from './result';
+export * from './rich-text';
 export * from './types';
 export * from './validate';
 export * from './contrast';

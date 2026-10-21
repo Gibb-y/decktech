@@ -19,6 +19,8 @@ export type FieldSpec = { optional?: boolean } & (
   /** Id in `Deck.components`. */
   | { kind: 'component' }
   | { kind: 'table' }
+  /** Restricted ProseMirror JSON, see `rich-text.ts`. */
+  | { kind: 'rich' }
   | { kind: 'props' }
 );
 
@@ -36,6 +38,7 @@ export const ELEMENT_SCHEMAS: Record<ElementType, ElementSchema> = {
   text: {
     fields: {
       text: { kind: 'string', long: true },
+      rich: { kind: 'rich', optional: true },
       font: { kind: 'font', optional: true },
       fontSize: { kind: 'number', min: 0 },
       color: { kind: 'color' },

@@ -2,6 +2,7 @@ import { MAX_STAGE_SIZE, SCHEMA_VERSION, STAGE_HEIGHT, STAGE_WIDTH } from './con
 import { ELEMENT_BASE_KEYS, ELEMENT_SCHEMAS, ELEMENT_TYPES, type FieldSpec } from './element-schema';
 import { ID_PATTERN } from './ids';
 import { err, ok, type Result } from './result';
+import { validateRichText } from './rich-text';
 import type { Deck, Theme } from './types';
 
 export interface ValidationError {
@@ -103,6 +104,7 @@ class Validator {
   private readonly elementIds = new Set<string>();
   private readonly themeColors = new Set<string>();
   private readonly themeFonts = new Set<string>();
+  private readonly themeSizes = new Set<string>();
   private readonly layoutRefs: Ref[] = [];
   private readonly componentRefs: Ref[] = [];
   private readonly assetRefs: Ref[] = [];
@@ -166,7 +168,9 @@ class Validator {
       if (this.string(p, x, MAX_SHORT_STRING)) this.themeFonts.add(key);
     });
     for (const key of ['typeScale', 'spacing'] as const) {
-      this.map(`${path}.${key}`, t[key], (p, x) => this.number(p, x, { min: 0, max: MAX_COORDINATE }));
+      this.map(`${path}.${key}`, t[key], (p, x, name) => {
+        if (this.number(p, x, { min: 0, max: MAX_COORDINATE }) && key === 'typeScale') this.themeSizes.add(name);
+      });
     }
     if (t['fontFaces'] !== undefined) {
       this.array(`${path}.fontFaces`, t['fontFaces'], this.limits.maxArrayLength)?.forEach((face, i) => {
@@ -395,6 +399,9 @@ class Validator {
         break;
       case 'table':
         this.table(path, value);
+        break;
+      case 'rich':
+        for (const problem of validateRichText(value, path, { colors: this.themeColors, sizes: this.themeSizes })) this.fail(problem.path, problem.message);
         break;
       case 'props': {
         const p = this.record(path, value);

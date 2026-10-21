@@ -1,5 +1,6 @@
 // Deck document model. See docs/arc42/05-building-block-view.md §5.2 and ADR-009 / ADR-010.
 // All geometry is in logical stage units (1920x1080 by default).
+import type { RichDoc } from './rich-text';
 
 /** Reference to a named colour in `Theme.colors` (arc42 §8.7). */
 export interface ColorToken {
@@ -117,7 +118,10 @@ export interface ElementBase {
 
 export interface TextEl extends ElementBase {
   type: 'text';
+  /** Plain text. With `rich` it is only the mirror of that document (kept in sync by `SetText`). */
   text: string;
+  /** Formatted content (ProseMirror JSON, ADR-004); the text element renders this instead of `text` when present. */
+  rich?: RichDoc;
   /** Key into `Theme.fonts`; the theme body font when omitted. */
   font?: string;
   fontSize: number;

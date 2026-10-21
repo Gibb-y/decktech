@@ -1,14 +1,17 @@
 import { ELEMENT_SCHEMAS } from './element-schema';
+import { richTokenRefs, type RichDoc } from './rich-text';
 import type { Color, Deck, Fill } from './types';
 
 export interface ThemeRefs {
   colors: Set<string>;
   fonts: Set<string>;
+  /** Keys of `Theme.typeScale` named by text size marks in rich text. */
+  sizes: Set<string>;
 }
 
 /** Every theme colour token and font key the deck's slides, layouts and elements point at. */
 export function themeRefs(deck: Deck): ThemeRefs {
-  const refs: ThemeRefs = { colors: new Set(), fonts: new Set() };
+  const refs: ThemeRefs = { colors: new Set(), fonts: new Set(), sizes: new Set() };
   const color = (c: Color | undefined): void => {
     if (c !== undefined && typeof c === 'object' && c !== null) refs.colors.add(c.token);
   };
@@ -27,6 +30,11 @@ export function themeRefs(deck: Deck): ThemeRefs {
         if (spec.kind === 'color') color(value as Color);
         else if (spec.kind === 'fill') fill(value as Fill);
         else if (spec.kind === 'font') refs.fonts.add(value as string);
+        else if (spec.kind === 'rich') {
+          const rich = richTokenRefs(value as RichDoc);
+          rich.colors.forEach((t) => refs.colors.add(t));
+          rich.sizes.forEach((t) => refs.sizes.add(t));
+        }
       }
     }
   }
