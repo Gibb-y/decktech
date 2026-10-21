@@ -103,6 +103,8 @@ export class SlideRenderer {
   readonly components = input<readonly ComponentDef[]>([]);
   /** Id of the deck, which scopes the persisted state of code components. */
   readonly deckId = input<string>('');
+  /** How many slides this one is from the slide shown; code frames farther than one away are destroyed. */
+  readonly distance = input<number>(0);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly assets = inject(AssetUrls);
@@ -129,7 +131,7 @@ export class SlideRenderer {
       if (!isElementShown(element, mode, step)) return [];
       const item: Item = { id: element.id, type: element.type, ghost: element.hidden === true, concealed: element.id === this.concealedId() };
       if (element.type === 'code') {
-        item.inputs = { elements: this.elementMap(), elementId: element.id, theme: this.theme(), mode, components: this.components(), deckId: this.deckId(), ghost: item.ghost };
+        item.inputs = { elements: this.elementMap(), elementId: element.id, theme: this.theme(), mode, components: this.components(), deckId: this.deckId(), ghost: item.ghost, distance: this.distance() };
       }
       return [item];
     });

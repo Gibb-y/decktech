@@ -3,6 +3,7 @@ export * from './code-element-renderer';
 export * from './code-host-events';
 export * from './document-builder';
 export * from './examples';
+export * from './frame-registry';
 export * from './host-api';
 export * from './host-services';
 export * from './props';

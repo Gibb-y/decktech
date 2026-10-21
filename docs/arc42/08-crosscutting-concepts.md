@@ -178,7 +178,8 @@ Theme tokens (colors, font families, type scale, spacing) are defined once per d
 
 ## 8.9 Error handling and logging
 
-- `HostConsole` (`components/host`) collects what components log and the errors they raise, plus the supervisor's reasons for ending a frame, tagged by component id, newest 200 only. The console panel of the code editor (a later issue) reads it; there is no remote telemetry. A general `ErrorService` for host errors does not exist yet.
+- `ErrorService` (`core/errors`) collects errors of the host and of code components, tagged by component id (`source` is `host` for the supervisor's reasons for ending a frame, `component` for what the component raised), newest 200, messages cut at 2000 characters. Nothing leaves the browser: there is no remote telemetry. Autosave failures keep their own banner (6.5) and are not routed through it yet.
+- `HostConsole` (`components/host`) collects what components log and the errors they raise, plus the supervisor's reasons, tagged by component id, newest 200 only. The console panel of the code editor (a later issue) reads it.
 - Failures never lose data: `AutosaveService.flush()` runs before risky operations (opening another deck; import will use it too) and migrations keep the previous version in a rolling backup store (`BackupSink`, see 8.1 and 8.5). A failed write keeps the changes pending and visible in the banner (6.5).
 
 ## 8.10 Testing strategy
