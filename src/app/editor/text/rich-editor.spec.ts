@@ -18,11 +18,12 @@ interface Harness {
   blurs: (Element | null)[];
   escapes: number;
   links: number;
+  limits: number;
 }
 
 function open(initial: RichDoc = doc(para(text('Hello world')))): Harness {
   const host = document.body.appendChild(document.createElement('div'));
-  const h: Harness = { host, formats: [], blurs: [], escapes: 0, links: 0 } as unknown as Harness;
+  const h: Harness = { host, formats: [], blurs: [], escapes: 0, links: 0, limits: 0 } as unknown as Harness;
   const options: RichEditorOptions = {
     label: 'Edit text',
     tokens,
@@ -30,6 +31,7 @@ function open(initial: RichDoc = doc(para(text('Hello world')))): Harness {
     onBlur: (to) => h.blurs.push(to),
     onEscape: () => void h.escapes++,
     onLink: () => void h.links++,
+    onLimit: () => void h.limits++,
   };
   h.editor = new RichEditor(host, initial, options);
   return h;
@@ -357,5 +359,26 @@ describe('keyboard', () => {
     const target = document.body.appendChild(document.createElement('button'));
     h.editor.view.dom.dispatchEvent(new FocusEvent('blur', { relatedTarget: target }));
     expect(h.blurs).toEqual([target]);
+  });
+});
+
+describe('limits of the stored format', () => {
+  it('refuses to nest lists deeper than the format allows, so what is shown can always be saved', () => {
+    const h = open(doc(para(text('a'))));
+    h.editor.run('bullet');
+    for (let i = 0; i < 12; i++) {
+      h.editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      h.editor.run('indent');
+    }
+    expect(problems(h.editor.json())).toEqual([]);
+    expect(h.limits).toBeGreaterThan(0);
+  });
+
+  it('refuses a paste that would make the text too large', () => {
+    const h = open(doc(para()));
+    paste(h, '', 'x'.repeat(200_001));
+    expect(problems(h.editor.json())).toEqual([]);
+    expect(h.limits).toBe(1);
+    expect(h.editor.changed).toBe(false);
   });
 });

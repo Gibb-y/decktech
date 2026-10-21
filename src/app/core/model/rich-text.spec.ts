@@ -176,9 +176,13 @@ describe('plain text conversion', () => {
     expect(richPlainText(rich)).toBe('Intro\n- one\n- two\nOutro');
   });
 
-  it('makes heading text one heading paragraph per line', () => {
+  it('makes heading text one heading, with line breaks, as the renderer outputs it', () => {
     const rich = plainToRich('Big\nidea', true);
-    expect(rich.content.map((n) => [n.type, n.attrs])).toEqual([['heading', { level: 2 }], ['heading', { level: 2 }]]);
+    expect(rich.content).toEqual([{ type: 'heading', attrs: { level: 2 }, content: [text('Big'), { type: 'hard_break' }, text('idea')] }]);
+    expect(richPlainText(rich)).toBe('Big\nidea');
+    expect(problems(rich)).toEqual([]);
+    expect(plainToRich('', true).content).toEqual([{ type: 'heading', attrs: { level: 2 } }]);
+    expect(plainToRich('Title\n- one\n- two', true).content).toHaveLength(1);
   });
 
   it('gives an empty paragraph for empty text, so the result is always valid', () => {
@@ -194,14 +198,14 @@ describe('plain text conversion', () => {
   });
 
   it('mirrors a rich document as plain text with markers and indentation', () => {
-    expect(richPlainText(RICH)).toBe('Plan\nBold link code\n- one\n  1. nested\n- two');
+    expect(richPlainText(RICH)).toBe('Plan\nBold link\ncode\n- one\n  1. nested\n- two');
   });
 
-  it('numbers ordered lists and joins line breaks with a space', () => {
+  it('numbers ordered lists and writes line breaks as new lines', () => {
     const rich = doc(
       { type: 'ordered_list', content: [{ type: 'list_item', content: [para(text('a'))] }, { type: 'list_item', content: [para(text('b'), { type: 'hard_break' }, text('c'))] }] },
     ) as RichDoc;
-    expect(richPlainText(rich)).toBe('1. a\n2. b c');
+    expect(richPlainText(rich)).toBe('1. a\n2. b\nc');
   });
 
   it('parses plain text the way the renderer always has', () => {

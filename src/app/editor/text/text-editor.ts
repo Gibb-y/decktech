@@ -4,7 +4,7 @@ import { CommandError, DeckStore, SetText } from '../../core/store';
 import { RICH_TEXT_CSS, textStyle, themeVars } from '../../renderer';
 import { LiveAnnouncer } from '../../shared';
 import type { RichCommand, RichFormat } from './rich-format';
-import { KEEPS_TEXT_EDITING, TextEditing, type TextEditorHandle } from './text-editing';
+import { KEEPS_TEXT_EDITING, TextEditing, leftTheWindow, type TextEditorHandle } from './text-editing';
 
 /** The document an edit starts from: the stored rich content, or the plain text converted. */
 export function startingDoc(element: TextEl): RichDoc {
@@ -69,6 +69,8 @@ export class TextEditor implements OnInit {
   });
 
   private done = false;
+  /** A commit was refused once and the editor kept open; the next attempt to leave discards the text. */
+  private refused = false;
   private editor: import('./rich-editor').RichEditor | null = null;
   private handle: TextEditorHandle | null = null;
   /** Captured when the edit begins: the element may change or vanish while it runs. */
@@ -94,8 +96,11 @@ export class TextEditor implements OnInit {
       tokens: { colors: Object.keys(theme.colors), sizes: Object.keys(theme.typeScale) },
       onFormat: (format: RichFormat) => this.editing.format.set(format),
       onBlur: (to) => {
-        if (!to?.closest(`[${KEEPS_TEXT_EDITING}]`)) this.finish(false, true);
+        // Focus going into the panel's format group, or the whole window losing focus, does not end the edit.
+        if (to?.closest(`[${KEEPS_TEXT_EDITING}]`) || leftTheWindow(to)) return;
+        this.finish(false, true);
       },
+      onLimit: () => this.announcer.announce('The text is too long or too deeply nested to add more'),
       onEscape: () => this.finish(true, true),
       onLink: () => this.editing.requestLink(),
     });
@@ -115,25 +120,29 @@ export class TextEditor implements OnInit {
   /** Commits once and closes. `emit` is false when the component is already being torn down. */
   private finish(byKeyboard: boolean, emit: boolean): void {
     if (this.done) return;
-    this.done = true;
     const editor = this.editor;
-    if (this.handle) this.editing.detach(this.handle);
-    if (editor) {
-      const changed = editor.changed;
-      const doc = editor.json();
-      editor.destroy();
-      if (changed) this.commit(doc);
+    if (editor?.changed && !this.commit(editor.json()) && emit && !this.refused) {
+      // The deck refused the text: stay in the editor so nothing typed is lost; leaving again discards it.
+      this.refused = true;
+      editor.focus();
+      return;
     }
+    this.done = true;
+    if (this.handle) this.editing.detach(this.handle);
+    editor?.destroy();
     if (emit) this.closed.emit(byKeyboard);
   }
 
-  private commit(doc: RichDoc): void {
+  /** Whether the text was saved (or needed no saving). */
+  private commit(doc: RichDoc): boolean {
     try {
       this.store.execute(new SetText(this.elementId, doc));
       this.announcer.announce('Text updated');
+      return true;
     } catch (e) {
       if (!(e instanceof CommandError)) throw e;
-      this.announcer.announce(`The text could not be saved: ${e.message}`);
+      this.announcer.announce(`The text could not be saved: ${e.message}. Leave the text again to discard it.`);
+      return false;
     }
   }
 }

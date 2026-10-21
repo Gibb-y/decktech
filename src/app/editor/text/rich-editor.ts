@@ -3,9 +3,9 @@ import { history, redo, undo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { Fragment, Slice, type MarkType, type Node as PmNode } from 'prosemirror-model';
 import { liftListItem, sinkListItem, splitListItem, wrapInList } from 'prosemirror-schema-list';
-import { EditorState, Selection, type Command, type Transaction } from 'prosemirror-state';
+import { EditorState, Plugin, Selection, type Command, type Transaction } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { emptyRichDoc, isSafeHref, validateRichText, type RichDoc, type RichTokens } from '../../core/model';
+import { RICH_LIMITS, emptyRichDoc, isSafeHref, validateRichText, type RichDoc, type RichTokens } from '../../core/model';
 import type { RichCommand, RichFormat } from './rich-format';
 import { richSchema as schema } from './rich-schema';
 
@@ -19,6 +19,31 @@ export interface RichEditorOptions {
   onEscape(): void;
   /** Ctrl+K: the host asks for an address. */
   onLink(): void;
+  /** A change was refused because the document would exceed the limits of the stored format. */
+  onLimit(): void;
+}
+
+/**
+ * Whether a document stays inside the limits `validateRichText` enforces (nodes, characters, list
+ * nesting), so what the editor accepts can always be saved.
+ */
+function withinLimits(doc: PmNode): boolean {
+  let nodes = 0;
+  let characters = 0;
+  const walk = (node: PmNode, listDepth: number): boolean => {
+    const list = node.type === schema.nodes['bullet_list'] || node.type === schema.nodes['ordered_list'];
+    const depth = listDepth + (list ? 1 : 0);
+    if (depth > RICH_LIMITS.maxDepth) return false;
+    let ok = true;
+    node.forEach((child) => {
+      if (!ok) return;
+      if (++nodes > RICH_LIMITS.maxNodes) ok = false;
+      else if (child.isText && (characters += child.nodeSize) > RICH_LIMITS.maxText) ok = false;
+      else ok = walk(child, depth);
+    });
+    return ok;
+  };
+  return walk(doc, 0);
 }
 
 const isMark = (type: MarkType) => (state: EditorState): boolean => {
@@ -58,6 +83,13 @@ export class RichEditor {
     const state = EditorState.create({
       doc: pmDoc,
       plugins: [
+        new Plugin({
+          filterTransaction: (tr) => {
+            if (!tr.docChanged || withinLimits(tr.doc)) return true;
+            options.onLimit();
+            return false;
+          },
+        }),
         history(),
         keymap({
           'Mod-b': markKey(schema.marks['bold']),

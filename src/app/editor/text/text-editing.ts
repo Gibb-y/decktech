@@ -14,6 +14,9 @@ export interface TextEditorHandle {
 /** Attribute that marks controls (the properties panel's format group) that may take focus without ending the edit. */
 export const KEEPS_TEXT_EDITING = 'data-keeps-text-editing';
 
+/** A blur without a new focus target while the document has lost focus is the window being left (Alt+Tab), not the text. */
+export const leftTheWindow = (to: Element | null): boolean => to === null && !document.hasFocus();
+
 /** How an edit begins: where the caret goes (client coordinates of the click) and text typed to start it. */
 export interface StartOptions {
   at?: { x: number; y: number };

@@ -134,6 +134,13 @@ describe('SetProps and rich text', () => {
     expect('rich' in next).toBe(false);
   });
 
+  it('keeps the rich document when the form writes the same text back', () => {
+    const { deck, el } = setup();
+    const formatted = new SetText(el.id, rich(para('Rich'))).do(deck).deck;
+    const next = new SetProps([el.id], { text: textOf(formatted, el.id).text, fontSize: 50 }).do(formatted).deck;
+    expect(textOf(next, el.id).rich).toBe(textOf(formatted, el.id).rich);
+  });
+
   it('keeps the rich document for changes that are not the text', () => {
     const { deck, el } = setup();
     const formatted = new SetText(el.id, rich(para('Rich'))).do(deck).deck;

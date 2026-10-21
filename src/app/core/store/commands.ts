@@ -19,6 +19,7 @@ import {
   type Fill,
   type RichDoc,
   type Slide,
+  type TextEl,
   type Theme,
 } from '../model';
 import {
@@ -456,8 +457,8 @@ export class SetProps implements Command {
           if (value === undefined) delete next[key];
           else next[key] = value;
         }
-        // Plain text edited on its own would leave a stale `rich` document that the renderer prefers.
-        if (next && e.type === 'text' && Object.hasOwn(this.changes, 'text')) delete next['rich'];
+        // Different plain text would leave a stale `rich` document that the renderer prefers.
+        if (next && e.type === 'text' && next['text'] !== e.text) delete next['rich'];
         return (next as Element | undefined) ?? e;
       }),
     );
@@ -590,8 +591,10 @@ export class SetText implements Command {
       updateElements(deck, [this.elementId], (e) => {
         if (e.type !== 'text') throw new CommandError(`Element "${e.id}" is a ${e.type} element, not text`);
         if (e.text === text && (rich === undefined ? e.rich === undefined : deepEqual(e.rich, rich))) return e;
-        const { rich: _previous, ...rest } = e;
-        return rich ? { ...rest, text, rich } : { ...rest, text };
+        const next: TextEl = { ...e, text };
+        if (rich) next.rich = rich;
+        else delete next.rich;
+        return next;
       }),
     );
   }

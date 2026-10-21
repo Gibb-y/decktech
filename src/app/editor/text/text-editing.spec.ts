@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { createElement, type RichDoc, type TextEl } from '../../core/model';
-import { DeleteElements, SetText } from '../../core/store';
+import { CommandError, DeleteElements, SetText } from '../../core/store';
 import { openEditor, press, runAxe, settle, type Editor } from '../editor-test-setup';
 import { TextEditing } from './text-editing';
 
@@ -258,6 +258,57 @@ describe('editing text in place', () => {
     const e = await openEditor({ prepare: (d) => void ((d.slides[0].elements[0] as TextEl).font = 'heading') });
     await startEditing(e);
     expect(surface(e)!.querySelector('h2')?.textContent).toBe('Welcome');
+  });
+});
+
+describe('leaving the text', () => {
+  it('survives the window losing focus (Alt+Tab) and ends when focus really goes elsewhere', async () => {
+    const e = await openEditor();
+    await startEditing(e);
+    await typeText(e, 'Away');
+    const focus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    await blur(e);
+    expect(e.root.querySelector('app-text-editor')).toBeTruthy();
+    focus.mockReturnValue(true);
+    await blur(e);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+    expect(first(e).text).toBe('Away');
+    focus.mockRestore();
+  });
+
+  it('ends when focus moves from the format controls to another field, and not when it goes back to the text', async () => {
+    const e = await openEditor();
+    await startEditing(e);
+    await typeText(e, 'Panel');
+    const size = panel(e).querySelector<HTMLElement>('#rt-size')!;
+    size.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: surface(e) }));
+    size.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: panel(e).querySelector('#rt-color') }));
+    await settle(e.fixture);
+    expect(e.root.querySelector('app-text-editor')).toBeTruthy();
+    size.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: panel(e).querySelector('#prop-x') }));
+    await settle(e.fixture);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+    expect(first(e).text).toBe('Panel');
+  });
+
+  it('stays open when the deck refuses the text, and discards it on the next attempt to leave', async () => {
+    const e = await openEditor();
+    await startEditing(e);
+    await typeText(e, 'Refused');
+    const execute = vi.spyOn(e.store, 'execute').mockImplementation(() => {
+      throw new CommandError('nope');
+    });
+    press(surface(e)!, 'Escape');
+    await settle(e.fixture);
+    expect(e.root.querySelector('app-text-editor')).toBeTruthy();
+    expect(surface(e)!.textContent).toBe('Refused');
+    await new Promise((r) => setTimeout(r, 80));
+    expect(e.announcer.message()).toMatch(/could not be saved: nope/);
+    press(surface(e)!, 'Escape');
+    await settle(e.fixture);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+    execute.mockRestore();
+    expect(first(e).text).toBe('Welcome');
   });
 });
 

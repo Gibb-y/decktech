@@ -216,11 +216,17 @@ const paragraph = (text: string): RichNode => (text === '' ? { type: 'paragraph'
  * With `heading` the lines become heading paragraphs, matching how the renderer outputs title text.
  */
 export function plainToRich(text: string, heading = false): RichDoc {
+  if (heading) {
+    // The renderer outputs title text as one heading however many lines it has; keep it one heading.
+    const lines = parsePlainText(text).flatMap((block) => (block.kind === 'list' ? block.items.map((item) => item.trim()) : [block.text]));
+    const inline = lines.flatMap<RichNode>((line, i) => (i === 0 ? [{ type: 'text', text: line }] : [{ type: 'hard_break' }, { type: 'text', text: line }]));
+    return { type: 'doc', content: [{ type: 'heading', attrs: { level: 2 }, ...(inline.length > 0 ? { content: inline } : {}) }] };
+  }
   const content = parsePlainText(text).flatMap<RichNode>((block) => {
     if (block.kind === 'list') {
       return [{ type: 'bullet_list', content: block.items.map((item) => ({ type: 'list_item', content: [paragraph(item.trim())] })) }];
     }
-    return [heading ? { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: block.text }] } : paragraph(block.text)];
+    return [paragraph(block.text)];
   });
   return { type: 'doc', content: content.length > 0 ? content : [{ type: 'paragraph' }] };
 }
@@ -233,7 +239,7 @@ export function plainToRich(text: string, heading = false): RichDoc {
 export function richPlainText(doc: RichDoc): string {
   const lines: string[] = [];
   const inline = (node: RichNode): string =>
-    node.type === 'hard_break' ? ' ' : (node.text ?? '');
+    node.type === 'hard_break' ? '\n' : (node.text ?? '');
   const paragraphText = (node: RichNode): string => (node.content ?? []).map(inline).join('');
   const walk = (node: RichNode, indent: string, marker: string | null): void => {
     switch (node.type) {

@@ -2,7 +2,7 @@ import { Component, ElementRef, computed, effect, inject, input, signal, untrack
 import type { TextEl } from '../../core/model';
 import { DeckStore } from '../../core/store';
 import type { RichCommand } from './rich-format';
-import { TextEditing } from './text-editing';
+import { TextEditing, leftTheWindow } from './text-editing';
 
 const BLOCKS: readonly { value: string; label: string; command: RichCommand }[] = [
   { value: 'paragraph', label: 'Paragraph', command: 'paragraph' },
@@ -29,7 +29,7 @@ function normalizeHref(value: string): string {
     <fieldset [disabled]="element().locked === true">
       <legend>Rich text</legend>
       @if (active()) {
-        <div class="controls" role="group" aria-label="Text format" data-keeps-text-editing (mousedown)="keepFocus($event)">
+        <div class="controls" role="group" aria-label="Text format" data-keeps-text-editing (mousedown)="keepFocus($event)" (focusout)="onFocusOut($event)">
           <div class="row" role="group" aria-label="Character style">
             <button type="button" [attr.aria-pressed]="format()?.bold" (click)="run('bold')"><b>Bold</b></button>
             <button type="button" [attr.aria-pressed]="format()?.italic" (click)="run('italic')"><i>Italic</i></button>
@@ -187,6 +187,13 @@ export class TextFormat {
   /** Pointer presses on a button must not move focus out of the text, or the edit would end. */
   protected keepFocus(event: MouseEvent): void {
     if ((event.target as HTMLElement).closest('button')) event.preventDefault();
+  }
+
+  /** Focus leaving the group for anywhere but the text or the group itself ends the edit (it commits as it closes). */
+  protected onFocusOut(event: FocusEvent): void {
+    const to = event.relatedTarget as Element | null;
+    if (to?.closest('[data-keeps-text-editing], app-text-editor') || leftTheWindow(to)) return;
+    this.editing.stop();
   }
 
   protected setBlock(event: Event): void {
