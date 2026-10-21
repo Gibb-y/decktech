@@ -3,6 +3,7 @@ import { openDB } from 'idb';
 import { deepFreeze, DECK_V0 } from '../migrations/fixtures';
 import { SCHEMA_VERSION, createDeck, type Deck } from '../model';
 import type { DeckRepository } from './deck-repository';
+import type { LibraryComponent } from './library';
 import { MAX_BACKUPS_PER_DECK } from './backups';
 import { DB_VERSION, IndexedDbDeckRepository } from './indexeddb-deck-repository';
 import { InMemoryDeckRepository } from './memory-deck-repository';
@@ -358,6 +359,54 @@ describe.each(factories)('DeckRepository: %s', (_name, make) => {
 
       expectOk(await h.repo.markExported(deck.id, 2));
       expect(expectOk(await h.repo.listUnexported())).toEqual([]);
+    });
+  });
+
+  describe('component library', () => {
+    const HASH = 'e'.repeat(64);
+    const entry = (id: string, savedAt: number, withLib = false): LibraryComponent => ({
+      def: { id, name: `Component ${id}`, html: '<p></p>', css: '', js: '', propSchema: [], permissions: [], files: [], libs: withLib ? [HASH] : [] },
+      assets: withLib ? { [HASH]: { blobKey: HASH, hash: HASH, mime: 'text/javascript', size: 3 } } : {},
+      savedAt,
+    });
+
+    it('starts empty, stores entries oldest first and replaces one with the same id', async () => {
+      expect(expectOk(await h.repo.listComponents())).toEqual([]);
+      expectOk(await h.repo.putComponent(entry('cp_b', 20)));
+      expectOk(await h.repo.putComponent(entry('cp_a', 10, true)));
+      expect(expectOk(await h.repo.listComponents()).map((c) => c.def.id)).toEqual(['cp_a', 'cp_b']);
+      expectOk(await h.repo.putComponent({ ...entry('cp_a', 30), def: { ...entry('cp_a', 30).def, name: 'Renamed' } }));
+      const listed = expectOk(await h.repo.listComponents());
+      expect(listed.map((c) => c.def.name)).toEqual(['Component cp_b', 'Renamed']);
+    });
+
+    it('stores copies, so later changes to the argument or the result do not leak in', async () => {
+      const original = entry('cp_a', 1);
+      expectOk(await h.repo.putComponent(original));
+      original.def.name = 'mutated';
+      const [listed] = expectOk(await h.repo.listComponents());
+      expect(listed.def.name).toBe('Component cp_a');
+      listed.def.name = 'mutated too';
+      expect(expectOk(await h.repo.listComponents())[0].def.name).toBe('Component cp_a');
+    });
+
+    it('deletes by id and ignores an unknown id', async () => {
+      expectOk(await h.repo.putComponent(entry('cp_a', 1)));
+      expectOk(await h.repo.deleteComponent('cp_nope'));
+      expectOk(await h.repo.deleteComponent('cp_a'));
+      expect(expectOk(await h.repo.listComponents())).toEqual([]);
+    });
+
+    it.each<[string, (e: LibraryComponent) => unknown, RegExp]>([
+      ['an invalid definition', (e) => ({ ...e, def: { ...e.def, permissions: ['camera'] } }), /permissions/],
+      ['a library asset without a ref', (e) => ({ ...e, assets: {}, def: { ...e.def, libs: [HASH] } }), /unknown asset/],
+      ['a ref whose key differs from its hash', (e) => ({ ...e, assets: { [HASH]: { blobKey: 'x', hash: HASH, mime: 'text/javascript', size: 1 } }, def: { ...e.def, libs: [HASH] } }), /no valid ref/],
+      ['a non-numeric savedAt', (e) => ({ ...e, savedAt: 'now' }), /savedAt/],
+      ['null', () => null, /not an object/],
+    ])('refuses %s as invalid', async (_name, make, message) => {
+      const result = await h.repo.putComponent(make(entry('cp_a', 1)) as LibraryComponent);
+      expect(result).toMatchObject({ ok: false, error: { kind: 'invalid', message: expect.stringMatching(message) } });
+      expect(expectOk(await h.repo.listComponents())).toEqual([]);
     });
   });
 });

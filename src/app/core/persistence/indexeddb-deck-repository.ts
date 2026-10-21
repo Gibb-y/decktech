@@ -12,6 +12,7 @@ import {
   type StoredBackup,
   type UnexportedDeck,
 } from './deck-repository';
+import { checkLibraryEntry, validLibraryEntries, type LibraryComponent } from './library';
 import { toPersistenceError, type PersistenceError } from './errors';
 
 export const DB_NAME = 'decktech';
@@ -42,8 +43,8 @@ type BackupRecord = StoredBackup;
 interface DeckTechDB extends DBSchema {
   decks: { key: string; value: DeckRecord };
   assets: { key: string; value: AssetRecord };
-  /** Reserved for the component library (DT-17); created now so it needs no schema upgrade later. */
-  components: { key: string; value: { id: string } };
+  /** The component library: `{ id, entry }` per saved component. */
+  components: { key: string; value: { id: string; entry: LibraryComponent } };
   meta: { key: string; value: MetaRecord };
   backups: { key: number; value: BackupRecord; indexes: { byDeck: string } };
 }
@@ -258,6 +259,29 @@ export class IndexedDbDeckRepository extends DeckRepository implements BackupSin
       const record = isAssetId(id) ? await db.get('assets', id) : undefined;
       if (!record) return err({ kind: 'not-found', message: `asset "${id}" does not exist` });
       return ok(new Blob([record.data], { type: record.mime }));
+    });
+  }
+
+  listComponents(): Promise<Result<LibraryComponent[], PersistenceError>> {
+    return this.guard(async (db) => {
+      const records = await db.getAll('components');
+      return ok(validLibraryEntries(records).sort((a, b) => a.savedAt - b.savedAt));
+    });
+  }
+
+  async putComponent(entry: LibraryComponent): Promise<Result<void, PersistenceError>> {
+    const checked = checkLibraryEntry(entry);
+    if (!checked.ok) return checked;
+    return this.guard(async (db) => {
+      await db.put('components', { id: entry.def.id, entry: structuredClone(entry) });
+      return ok(undefined);
+    });
+  }
+
+  deleteComponent(id: string): Promise<Result<void, PersistenceError>> {
+    return this.guard(async (db) => {
+      await db.delete('components', id);
+      return ok(undefined);
     });
   }
 

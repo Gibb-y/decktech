@@ -1,6 +1,7 @@
 import type { MigrationError, MigrationOutcome } from '../migrations';
 import type { AssetRef, Deck, Result } from '../model';
 import type { PersistenceError } from './errors';
+import type { LibraryComponent } from './library';
 
 /** What the library needs to list a deck without reading its body. */
 export interface DeckSummary {
@@ -80,4 +81,11 @@ export abstract class DeckRepository {
 
   /** Pre-migration backups of a deck, oldest first. */
   abstract listBackups(deckId: string): Promise<Result<StoredBackup[], PersistenceError>>;
+
+  /** The component library (5.3), oldest first: components saved for reuse across decks. */
+  abstract listComponents(): Promise<Result<LibraryComponent[], PersistenceError>>;
+  /** Adds the component or replaces the one with the same definition id. An invalid entry is an `invalid` error. */
+  abstract putComponent(entry: LibraryComponent): Promise<Result<void, PersistenceError>>;
+  /** Removes a component from the library; an unknown id is not an error. */
+  abstract deleteComponent(id: string): Promise<Result<void, PersistenceError>>;
 }

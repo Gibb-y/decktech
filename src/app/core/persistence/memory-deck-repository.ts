@@ -11,6 +11,7 @@ import {
   type StoredBackup,
   type UnexportedDeck,
 } from './deck-repository';
+import { checkLibraryEntry, validLibraryEntries, type LibraryComponent } from './library';
 import { toPersistenceError, type PersistenceError } from './errors';
 
 interface StoredDeck {
@@ -33,6 +34,7 @@ export class InMemoryDeckRepository extends DeckRepository implements BackupSink
   private readonly assets = new Map<string, StoredBlob>();
   private readonly unexported = new Map<string, number>();
   private readonly backups: StoredBackup[] = [];
+  private readonly library = new Map<string, { id: string; entry: LibraryComponent }>();
   private nextSeq = 1;
 
   constructor(private readonly now: () => number = () => Date.now()) {
@@ -117,6 +119,22 @@ export class InMemoryDeckRepository extends DeckRepository implements BackupSink
     const stored = isAssetId(id) ? this.assets.get(id) : undefined;
     if (!stored) return err({ kind: 'not-found', message: `asset "${id}" does not exist` });
     return ok(new Blob([stored.data.slice(0)], { type: stored.mime }));
+  }
+
+  async listComponents(): Promise<Result<LibraryComponent[], PersistenceError>> {
+    return ok(validLibraryEntries([...this.library.values()]).sort((a, b) => a.savedAt - b.savedAt));
+  }
+
+  async putComponent(entry: LibraryComponent): Promise<Result<void, PersistenceError>> {
+    const checked = checkLibraryEntry(entry);
+    if (!checked.ok) return checked;
+    this.library.set(entry.def.id, { id: entry.def.id, entry: structuredClone(entry) });
+    return ok(undefined);
+  }
+
+  async deleteComponent(id: string): Promise<Result<void, PersistenceError>> {
+    this.library.delete(id);
+    return ok(undefined);
   }
 
   async listUnexported(): Promise<Result<UnexportedDeck[], PersistenceError>> {
