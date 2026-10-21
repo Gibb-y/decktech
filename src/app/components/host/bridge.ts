@@ -31,6 +31,7 @@ export class HostBridge {
   private accepted = 0;
   private dropped = 0;
   private rejected = 0;
+  private beats = 0;
   private closed = false;
 
   constructor(
@@ -75,15 +76,20 @@ export class HostBridge {
       this.accepted = 0;
       this.dropped = 0;
       this.rejected = 0;
+      this.beats = 0;
     }
-    if (this.accepted >= BRIDGE_LIMITS.messagesPerWindow) {
+    // Heartbeats have a small budget of their own, so a chatty component cannot make the
+    // watchdog think it has stopped.
+    const beat = typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'heartbeat' && this.beats < BRIDGE_LIMITS.heartbeatsPerWindow;
+    if (beat) this.beats++;
+    if (!beat && this.accepted >= BRIDGE_LIMITS.messagesPerWindow) {
       this.dropped++;
       if (this.dropped === 1) this.options.onRejected?.('rate limit exceeded; messages are dropped');
       if (this.dropped >= BRIDGE_LIMITS.floodDrops) this.close('flood');
       return;
     }
     // Rate limit first: parsing a hostile message is the cost we are limiting.
-    this.accepted++;
+    if (!beat) this.accepted++;
     const parsed = parseFrameMessage(data);
     if (!parsed.ok) {
       this.options.onRejected?.(parsed.error);

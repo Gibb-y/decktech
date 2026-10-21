@@ -7,7 +7,7 @@ import type { BridgePort } from './bridge';
 import { CodeElementRenderer } from './code-element-renderer';
 import { CodeHostEvents } from './code-host-events';
 import { COUNTER_COMPONENT } from './examples';
-import { ComponentPolicy, ComponentStateStore, HostConsole, LinkGuard, RuntimeSource } from './host-services';
+import { ComponentAssets, ComponentPolicy, ComponentStateStore, HostConsole, LinkGuard, RuntimeSource } from './host-services';
 import type { JsonValue } from './protocol';
 import { SANDBOX_CHANNEL } from './supervisor';
 
@@ -70,6 +70,7 @@ async function harness(options: { mode?: RenderMode; def?: Partial<ComponentDef>
           ports.push(port);
           return { port1: port, port2: { port: ports.length } };
         } },
+      { provide: ComponentAssets, useValue: { read: async () => ({ mime: 'image/png', data: new ArrayBuffer(4) }) } },
       { provide: LinkGuard, useValue: { open: vi.fn() } },
       ...(options.origins ? [{ provide: ComponentPolicy, useValue: { networkOrigins: () => options.origins } }] : []),
     ],
@@ -328,6 +329,28 @@ describe('CodeElementRenderer', () => {
       expect(h.store.saves).toEqual([{ deckId: 'dk_test', elementId: h.element.id, state: { n: 12 } }]);
     });
 
+    it('lets the component read the asset chosen in an asset prop', async () => {
+      const asset = 'b'.repeat(64);
+      const h = await harness({ def: { propSchema: [{ key: 'image', type: 'asset', label: 'Image', default: '' }] } });
+      await h.update({ props: { image: asset } });
+      const port = h.handshake();
+      await h.settle();
+      port.receive({ type: 'asset-request', id: 1, assetId: asset });
+      port.receive({ type: 'asset-request', id: 2, assetId: 'c'.repeat(64) });
+      await h.settle();
+      const answer = (id: number) => port.sent.find((m) => m.type === 'asset' && m.id === id);
+      expect(answer(1).data).toBeInstanceOf(ArrayBuffer);
+      expect(answer(2).data).toBeNull();
+    });
+
+    it('starts a rebuilt frame at the step the presenter is on', async () => {
+      const h = await harness();
+      TestBed.inject(CodeHostEvents).stepIndexes.set(new Map([[h.element.id, 3]]));
+      const port = h.handshake();
+      await h.settle();
+      expect(port.sent.find((m) => m.type === 'init').step).toBe(3);
+    });
+
     it('writes pending state when the element goes away', async () => {
       const h = await harness();
       const port = h.handshake();
@@ -407,6 +430,14 @@ describe('CodeElementRenderer', () => {
       expect(root(h).querySelector('[role="alert"]')).toBeNull();
     });
 
+    it('takes the frame out of the page when it has failed', async () => {
+      const h = await harness();
+      h.handshake();
+      navigateAway(h);
+      await h.settle();
+      expect(h.frames()).toEqual([]);
+    });
+
     it('is neutral and offers nothing while presenting', async () => {
       const h = await harness();
       h.handshake();
@@ -415,6 +446,16 @@ describe('CodeElementRenderer', () => {
       const notice = root(h).querySelector('[role="status"]')!;
       expect(notice.textContent?.trim()).toBe('This component is unavailable.');
       expect(root(h).querySelector('button')).toBeNull();
+    });
+
+    it('can load the runtime again with the reload button', async () => {
+      let attempts = 0;
+      const h = await harness({ mode: 'edit', runtime: () => (++attempts === 1 ? Promise.reject(new Error('offline')) : Promise.resolve('/*runtime*/')) });
+      expect(h.frames()).toEqual([]);
+      (root(h).querySelector('[role="alert"] button') as HTMLButtonElement).click();
+      await h.settle();
+      expect(h.frames()).toHaveLength(1);
+      expect(root(h).querySelector('[role="alert"]')).toBeNull();
     });
 
     it('shows why the runtime is missing', async () => {

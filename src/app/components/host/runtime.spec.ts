@@ -157,6 +157,17 @@ describe('deck-runtime.js', () => {
     expect(frame.window.deck.size).toEqual({ w: 10, h: 20 });
   });
 
+  it('tells a component that registers onStep late which step it is on', async () => {
+    const frame = await boot();
+    frame.connect();
+    frame.host(init({ step: 2 }));
+    const steps: unknown[] = [];
+    frame.window.deck.onStep((i: unknown) => steps.push(i));
+    await Promise.resolve();
+    frame.host({ type: 'step', index: 4 });
+    expect(steps).toEqual([2, 4]);
+  });
+
   it('keeps state locally and tells the host, in a form the host accepts', async () => {
     const frame = await boot();
     frame.connect();
@@ -312,6 +323,13 @@ describe('deck-runtime.js', () => {
       expect(click(frame, '#rel').defaultPrevented).toBe(true);
       const links = frame.toHost.filter((m) => m.type === 'link').map((m) => m.url);
       expect(links).toEqual(['https://example.com/p?q=1', 'https://example.com/p?q=1', 'mailto:me@example.com', 'https://app.example/other']);
+    });
+
+    it('routes links in SVG too', async () => {
+      const frame = await boot({ html: '<svg><a id="svg" href="https://example.com/s"><text>x</text></a></svg>' });
+      frame.connect();
+      expect(click(frame, '#svg').defaultPrevented).toBe(true);
+      expect(frame.toHost.filter((m) => m.type === 'link')).toEqual([{ type: 'link', url: 'https://example.com/s' }]);
     });
 
     it('leaves in-page anchors alone', async () => {

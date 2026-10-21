@@ -34,6 +34,8 @@ export const BRIDGE_LIMITS = {
   /** Messages accepted per window; the rest are dropped. */
   messagesPerWindow: 200,
   windowMs: 1000,
+  /** Heartbeats accepted per window on top of the message budget. */
+  heartbeatsPerWindow: 20,
   /** Dropped messages in one window that end the frame (a flood, not a busy component). */
   floodDrops: 1000,
   /** Malformed or unknown messages in one window that end the frame. */
@@ -84,6 +86,8 @@ export type HostMessage =
       size: { w: number; h: number };
       state: Record<string, JsonValue>;
       libs: LibPayload[];
+      /** The internal step the component should show (0 when none was requested). */
+      step?: number;
       permissions: { network: boolean };
     }
   | { type: 'props'; props: Record<string, unknown> }

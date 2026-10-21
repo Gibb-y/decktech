@@ -26,6 +26,7 @@
   var fetchRequests = new Map();
   var nextId = 1;
   var fetchEnabled = false;
+  var currentStep = 0;
 
   function post(message, transfer) {
     if (!port) return;
@@ -148,6 +149,7 @@
     onStep: function (callback) {
       if (typeof callback !== 'function') throw new TypeError('deck.onStep needs a function');
       stepCallbacks.push(callback);
+      if (currentStep > 0) queueMicrotask(function () { callOne(callback, currentStep); });
     },
     state: {
       get: function (key) {
@@ -228,6 +230,7 @@
     deck.mode = data.mode === 'present' ? 'present' : 'edit';
     deck.size = { w: Number(data.size && data.size.w) || 0, h: Number(data.size && data.size.h) || 0 };
     applyTheme(data.theme);
+    currentStep = Number(data.step) > 0 ? Number(data.step) : 0;
     Object.keys(data.state || {}).forEach(function (key) { state.set(key, data.state[key]); });
     context = { props: data.props || {}, theme: data.theme || {}, mode: deck.mode, size: deck.size };
     if (data.permissions && data.permissions.network === true) {
@@ -258,6 +261,7 @@
         deck.size = { w: Number(data.size && data.size.w) || 0, h: Number(data.size && data.size.h) || 0 };
         break;
       case 'step':
+        currentStep = data.index;
         callAll(stepCallbacks, data.index);
         break;
       case 'asset': {
@@ -309,7 +313,10 @@
       var href = node.getAttribute('href') || '';
       if (href.charAt(0) === '#') return;
       event.preventDefault();
-      if (/^(https?:|mailto:)/i.test(node.href)) post({ type: 'link', url: node.href });
+      // `node.href` is an object for SVG anchors; resolve the attribute instead.
+      var target;
+      try { target = new URL(href, document.baseURI).href; } catch (e) { return; }
+      if (/^(https?:|mailto:)/i.test(target)) post({ type: 'link', url: target });
     },
     true,
   );

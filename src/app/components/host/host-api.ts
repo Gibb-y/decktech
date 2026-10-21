@@ -18,7 +18,7 @@ export interface HostApiDeps {
   state: Record<string, JsonValue>;
   saveState(state: Record<string, JsonValue>): void;
   /** Asset ids the component may read (its `files` and `libs`). */
-  allowedAssets: ReadonlySet<string>;
+  allowedAssets: Pick<ReadonlySet<string>, 'has'>;
   readAsset(assetId: string): Promise<{ mime: string; data: ArrayBuffer } | null>;
   /** Origins `deck.fetch` may reach; empty means the capability is off. */
   networkOrigins: readonly string[];

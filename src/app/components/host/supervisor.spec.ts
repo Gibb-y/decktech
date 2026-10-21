@@ -177,7 +177,7 @@ describe('SandboxSupervisor', () => {
   it('fails a frame that floods the bridge and one that sends garbage', () => {
     const flooding = setup();
     flooding.ready();
-    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + BRIDGE_LIMITS.floodDrops; i++) flooding.port.receive({ type: 'heartbeat' });
+    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + BRIDGE_LIMITS.floodDrops; i++) flooding.port.receive({ type: 'steps', count: 1 });
     expect(flooding.states.at(-1)).toEqual({ status: 'failed', reason: 'The component sent too many messages' });
     expect(flooding.port.closed).toBe(true);
     vi.useRealTimers();

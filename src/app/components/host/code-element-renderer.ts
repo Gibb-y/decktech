@@ -148,6 +148,12 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
     const def = this.definition();
     return def ? resolveProps(def, this.element()?.props ?? {}) : {};
   }, { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) });
+  /** Asset ids chosen in the properties panel (props of type `asset`); the component may read those too. */
+  private readonly assetProps = computed(() => {
+    const def = this.definition();
+    const props = this.props();
+    return new Set(def ? def.propSchema.flatMap((spec) => (spec.type === 'asset' && typeof props[spec.key] === 'string' ? [props[spec.key] as string] : [])) : []);
+  });
   private readonly vars = computed(() => themeVars(this.theme()), { equal: sameRecord });
   private readonly size = computed(() => ({ w: this.frame().w, h: this.frame().h }), { equal: (a, b) => a.w === b.w && a.h === b.h });
   /** Libraries and files are read when the frame starts, so a change to them needs a new frame. */
@@ -188,16 +194,14 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
 
   constructor() {
     super();
-    this.runtimeSource.load().then(
-      (text) => this.runtime.set(text),
-      (error: unknown) => this.runtimeError.set(error instanceof Error ? error.message : 'The component runtime could not be loaded'),
-    );
+    this.loadRuntime();
 
     effect((onCleanup) => {
       const slot = this.slot()?.nativeElement;
       const srcdoc = this.srcdoc();
       this.reloads();
       this.assetKey();
+      this.frameMode();
       if (!slot || srcdoc === null) return;
       untracked(() => this.start(slot, srcdoc));
       onCleanup(() => this.stop(slot));
@@ -225,7 +229,16 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   }
 
   protected reload(): void {
+    if (this.runtime() === null) this.loadRuntime();
     this.reloads.update((count) => count + 1);
+  }
+
+  private loadRuntime(): void {
+    this.runtimeError.set(null);
+    this.runtimeSource.load().then(
+      (text) => this.runtime.set(text),
+      (error: unknown) => this.runtimeError.set(error instanceof Error ? error.message : 'The component runtime could not be loaded'),
+    );
   }
 
   private start(slot: HTMLElement, srcdoc: string): void {
@@ -247,6 +260,8 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
       onState: (state) => {
         this.supervisorState.set(state);
         if (state.reason) note('host', state.reason);
+        // The supervisor has given up on a failed frame; it must not keep running behind the notice.
+        if (state.status === 'failed') frame.remove();
       },
       onRejected: (reason) => note('host', `Message refused: ${reason}`),
       createApi: (send) =>
@@ -255,7 +270,7 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
           mode,
           state: this.stateStore.load(deckId, element.id),
           saveState: (state) => this.stateStore.save(deckId, element.id, state),
-          allowedAssets: new Set([...def.files, ...def.libs]),
+          allowedAssets: { has: (assetId) => def.files.includes(assetId) || def.libs.includes(assetId) || this.assetProps().has(assetId) },
           readAsset: (assetId) => this.assets.read(assetId),
           networkOrigins: origins,
           onHeartbeat: () => undefined,
@@ -296,6 +311,7 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
       size: untracked(this.size),
       state: this.stateStore.load(deckId, elementId),
       libs,
+      step: this.events.stepIndexes().get(elementId) ?? 0,
       permissions: { network },
     };
     return { message, transfer: libs.map((lib) => lib.data) };

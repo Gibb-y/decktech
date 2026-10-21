@@ -66,7 +66,7 @@ describe('HostBridge', () => {
 
   it('drops messages over the rate limit and reports it once', () => {
     const { port, received, rejected, closed } = setup();
-    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + 50; i++) port.receive({ type: 'heartbeat' });
+    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + 50; i++) port.receive({ type: 'steps', count: 1 });
     expect(received).toHaveLength(BRIDGE_LIMITS.messagesPerWindow);
     expect(rejected.filter((r) => /rate limit/.test(r))).toHaveLength(1);
     expect(closed).toEqual([]);
@@ -74,15 +74,24 @@ describe('HostBridge', () => {
 
   it('accepts messages again in the next window', () => {
     const { port, received, advance } = setup();
-    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + 10; i++) port.receive({ type: 'heartbeat' });
+    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + 10; i++) port.receive({ type: 'steps', count: 1 });
     advance(BRIDGE_LIMITS.windowMs);
     port.receive({ type: 'heartbeat' });
     expect(received).toHaveLength(BRIDGE_LIMITS.messagesPerWindow + 1);
   });
 
+  it('keeps accepting a few heartbeats while the message budget is spent', () => {
+    const { port, received } = setup();
+    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + 10; i++) port.receive({ type: 'steps', count: 1 });
+    port.receive({ type: 'heartbeat' });
+    expect(received.at(-1)).toEqual({ type: 'heartbeat' });
+    for (let i = 0; i < BRIDGE_LIMITS.heartbeatsPerWindow + 5; i++) port.receive({ type: 'heartbeat' });
+    expect(received.filter((m) => m.type === 'heartbeat')).toHaveLength(BRIDGE_LIMITS.heartbeatsPerWindow);
+  });
+
   it('cuts off a flooding frame', () => {
     const { port, bridge, received, closed } = setup();
-    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + BRIDGE_LIMITS.floodDrops + 5; i++) port.receive({ type: 'heartbeat' });
+    for (let i = 0; i < BRIDGE_LIMITS.messagesPerWindow + BRIDGE_LIMITS.floodDrops + 5; i++) port.receive({ type: 'steps', count: 1 });
     expect(closed).toEqual(['flood']);
     expect(bridge.isClosed).toBe(true);
     expect(port.closed).toBe(true);

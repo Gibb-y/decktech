@@ -68,9 +68,15 @@ export class RuntimeSource {
 @Service()
 export class LinkGuard {
   private readonly view = inject(DOCUMENT).defaultView;
+  private lastPrompt = 0;
 
   /** Returns whether the link was opened. The caller has checked that the address is safe. */
   open(url: string): boolean {
+    // One prompt at a time and not more than one a second: a component must not be able to
+    // stack blocking dialogs on the host page.
+    const now = Date.now();
+    if (now - this.lastPrompt < 1000) return false;
+    this.lastPrompt = now;
     if (!this.view || !this.view.confirm(`A component wants to open this address in a new tab:\n\n${url}\n\nOpen it?`)) return false;
     this.view.open(url, '_blank', 'noopener,noreferrer');
     return true;
