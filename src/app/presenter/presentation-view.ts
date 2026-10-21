@@ -120,6 +120,7 @@ export class PresentationView {
   private done = false;
   private touch: { x: number; y: number } | null = null;
   private swiped = false;
+  private endPresses = false;
   private leaveTimer: ReturnType<typeof setTimeout> | undefined;
   private controlsTimer: ReturnType<typeof setTimeout> | undefined;
   private handledNavigation = this.events.navigation()?.seq ?? 0;
@@ -222,7 +223,13 @@ export class PresentationView {
 
   protected advance(): void {
     this.note.set(null);
-    if (!this.engine.next()) this.note.set('End of the presentation. Press Escape to leave.');
+    // Alternating a trailing no-break space makes a repeated message a change the live region announces again.
+    if (!this.engine.next()) this.note.set(`End of the presentation. Press Escape to leave.${(this.endPresses = !this.endPresses) ? ' ' : ''}`);
+  }
+
+  /** The Next button; at the end it is `aria-disabled` and does nothing. */
+  protected onNextButton(): void {
+    if (!this.atEnd()) this.advance();
   }
 
   protected previous(): void {
@@ -239,7 +246,7 @@ export class PresentationView {
 
   protected onFullscreenChange(): void {
     if (this.document.fullscreenElement === this.host) this.fullscreenEntered = true;
-    else if (this.fullscreenEntered) {
+    else if (this.fullscreenEntered && !this.document.fullscreenElement) {
       // The browser took us out (Escape, F11): that is the end of the presentation.
       this.fullscreenEntered = false;
       this.exit();

@@ -213,9 +213,21 @@ describe('PresentationView', () => {
       await p.settle();
       expect(p.shownText()).toEqual(['three']);
       expect(p.status()).toContain('End of the presentation');
+      const raw = () => p.root.querySelector('[role="status"]')!.textContent;
+      const first = raw();
+      p.key('ArrowRight');
+      await p.settle();
+      expect(raw()).not.toBe(first);
+      expect(p.status()).toContain('End of the presentation');
+      // The disabled Next button does nothing, not even the note.
       p.key('ArrowLeft');
       await p.settle();
       expect(p.status()).toBe('Slide 2 of 3');
+      p.key('End');
+      await p.settle();
+      p.root.querySelectorAll<HTMLButtonElement>('.controls button')[1].click();
+      await p.settle();
+      expect(p.status()).toBe('Slide 3 of 3');
     });
   });
 
@@ -276,6 +288,15 @@ describe('PresentationView', () => {
       expect(p.exited).not.toHaveBeenCalled();
       p.key('Escape');
       expect(p.exited).toHaveBeenCalledTimes(1);
+      expect(fullscreen.exitFullscreen).not.toHaveBeenCalled();
+    });
+
+    it('is not ended by another element taking fullscreen', async () => {
+      const fullscreen = stubFullscreen(() => Promise.resolve());
+      const p = await present({ slides: threePlain() });
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => document.body });
+      document.dispatchEvent(new Event('fullscreenchange'));
+      expect(p.exited).not.toHaveBeenCalled();
       expect(fullscreen.exitFullscreen).not.toHaveBeenCalled();
     });
 
