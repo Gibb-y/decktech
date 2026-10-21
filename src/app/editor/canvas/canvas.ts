@@ -4,6 +4,7 @@ import { DeckStore, MoveElements, ResizeElements, SetProps, type ElementGeometry
 import { SlideRenderer } from '../../renderer';
 import { TextEditing } from '../text/text-editing';
 import { TextEditor } from '../text/text-editor';
+import { TEXT_SHORTCUTS, textShortcutId } from '../text/text-shortcuts';
 import { LiveAnnouncer } from '../../shared';
 import { EditorActions } from '../editor-actions';
 import { ShortcutRegistry } from '../shortcut-registry';
@@ -169,7 +170,10 @@ export class Canvas {
     const unregister = CANVAS_SHORTCUTS.map((s) =>
       this.registry.register({ ...s, id: canvasShortcutId(s), scope: 'canvas', run: (event) => s.run(this.contextFor(), event.shiftKey) }),
     );
-    destroyRef.onDestroy(() => unregister.forEach((u) => u()));
+    const unregisterText = TEXT_SHORTCUTS.map((s) =>
+      this.registry.register({ ...s, id: textShortcutId(s), scope: 'text', run: () => s.run(this.textEditing) }),
+    );
+    destroyRef.onDestroy(() => [...unregister, ...unregisterText].forEach((u) => u()));
   }
 
   // ----------------------------------------------------------- view actions
