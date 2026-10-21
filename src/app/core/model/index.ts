@@ -9,5 +9,6 @@ export * from './validate';
 export * from './contrast';
 export * from './layouts';
 export * from './placeholders';
+export * from './props';
 export * from './theme-refs';
 export * from './themes';
