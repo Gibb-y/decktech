@@ -32,10 +32,14 @@
               </div>
             }
             @case ('textarea') {
-              <div class="field">
-                <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                <textarea rows="5" [id]="'prop-' + field.key" [formField]="form.texts[field.key]"></textarea>
-              </div>
+              @if (hasRich(element)) {
+                <p class="note">Formatted text. Edit it on the slide (double-click, or press Enter); this plain-text field would remove the formatting.</p>
+              } @else {
+                <div class="field">
+                  <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                  <textarea rows="5" [id]="'prop-' + field.key" [formField]="form.texts[field.key]"></textarea>
+                </div>
+              }
             }
             @case ('checkbox') {
               <div class="field check">
@@ -85,6 +89,9 @@
           }
         }
       </fieldset>
+    }
+    @if (textElement(element); as text) {
+      <app-text-format [element]="text" />
     }
   } @else if (selected().length > 1) {
     <h2>Properties</h2>

@@ -1,12 +1,13 @@
 import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { FormField, form, validate } from '@angular/forms/signals';
-import { ELEMENT_SCHEMAS, type Color, type Element, type Fill } from '../../core/model';
+import { ELEMENT_SCHEMAS, type Color, type Element, type Fill, type TextEl } from '../../core/model';
 import { CommandError, DeckStore, SetProps, SetSlideBackground, type Command } from '../../core/store';
 import { LiveAnnouncer } from '../../shared';
 import { describeElement } from '../describe';
 import { InsertActions } from '../insert-actions';
 import { ReadingOrder } from '../reading-order';
 import { SlideActions } from '../slide-actions';
+import { TextFormat } from '../text/text-format';
 import { ColorControl } from './color-control';
 import { BASE_FIELDS, fieldsOf, sectionsOf, typeFields, type FieldDef } from './field-defs';
 import { FillControl } from './fill-control';
@@ -28,7 +29,7 @@ const NUMBER_FIELDS: readonly FieldDef[] = [
  */
 @Component({
   selector: 'app-properties-panel',
-  imports: [ColorControl, FillControl, ReadingOrder, FormField],
+  imports: [ColorControl, FillControl, ReadingOrder, FormField, TextFormat],
   templateUrl: './properties-panel.html',
   styleUrl: './properties-panel.css',
 })
@@ -101,6 +102,14 @@ export class PropertiesPanel {
   protected setColorOrFill(element: Element, key: string, value: Color | Fill | undefined): void {
     if (element.locked) return;
     this.setProps(element, { [key]: value });
+  }
+
+  protected textElement(element: Element): TextEl | null {
+    return element.type === 'text' ? element : null;
+  }
+
+  protected hasRich(element: Element): boolean {
+    return element.type === 'text' && element.rich !== undefined;
   }
 
   protected valueOf(element: Element, key: string): unknown {

@@ -53,6 +53,27 @@ export function findViolations(files) {
   return violations;
 }
 
+/** The rich text editor (ProseMirror) lives in one lazy chunk (arc42 §8.4): only these files may import it. */
+const EDITOR_CHUNK = ['editor/text/rich-editor.ts', 'editor/text/rich-schema.ts'];
+const PROSEMIRROR = /\bfrom\s*(['"])prosemirror-/;
+const STATIC_CHUNK_IMPORT = /^\s*import\b[^;]*\bfrom\s*(['"])(\.{1,2}\/)+(text\/)?rich-(editor|schema)\1/;
+
+/** @param {{ path: string, text: string }[]} files */
+export function findChunkViolations(files) {
+  const violations = [];
+  for (const { path, text } of files) {
+    if (path.endsWith('.spec.ts') || EDITOR_CHUNK.includes(path)) continue;
+    text.split('\n').forEach((line, index) => {
+      if (PROSEMIRROR.test(line)) {
+        violations.push({ file: path, line: index + 1, message: 'ProseMirror may only be imported by the lazy editor chunk (editor/text/rich-editor.ts, rich-schema.ts)' });
+      } else if (STATIC_CHUNK_IMPORT.test(line)) {
+        violations.push({ file: path, line: index + 1, message: 'the editor chunk must be loaded with import(), not a static import' });
+      }
+    });
+  }
+  return violations;
+}
+
 function collect(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
@@ -68,7 +89,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     path: relative(root, full).split(sep).join('/'),
     text: readFileSync(full, 'utf8'),
   }));
-  const violations = findViolations(files);
+  const violations = [...findViolations(files), ...findChunkViolations(files)];
   for (const v of violations) console.error(`${v.file}:${v.line}: ${v.message}`);
   if (violations.length > 0) {
     console.error(`${violations.length} dependency rule violation(s)`);

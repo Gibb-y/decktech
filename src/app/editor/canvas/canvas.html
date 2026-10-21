@@ -52,7 +52,7 @@
   (keyup)="onKeyUp($event)"
 >
   <div class="page" [style.left.px]="viewport().panX" [style.top.px]="viewport().panY" [style.width.px]="stage().width * viewport().zoom">
-    <app-slide-renderer [slide]="slide()" [theme]="theme()" [layout]="layout()" [stage]="stage()" mode="edit" />
+    <app-slide-renderer [slide]="slide()" [theme]="theme()" [layout]="layout()" [stage]="stage()" mode="edit" [concealedId]="editingElement()?.id ?? null" />
     <div
       class="overlay"
       [style.width.px]="stage().width"
@@ -68,7 +68,11 @@
           [class.interacting]="isInteracting(element)"
           [style]="hitStyle(element)"
           (pointerdown)="onElementDown(element, $event)"
+          (dblclick)="onElementDoubleClick(element)"
         ></div>
+      }
+      @if (editingElement(); as editing) {
+        <app-text-editor [element]="editing" [theme]="theme()" (closed)="onEditorClosed($event)" />
       }
       @for (guide of guides(); track guide.axis + guide.position) {
         <div class="guide" [class.vertical]="guide.axis === 'x'" [class.horizontal]="guide.axis === 'y'" [style.left.px]="guide.axis === 'x' ? guide.position : null" [style.top.px]="guide.axis === 'y' ? guide.position : null"></div>

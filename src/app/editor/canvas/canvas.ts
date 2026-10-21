@@ -1,7 +1,9 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, linkedSignal, signal, viewChild } from '@angular/core';
-import type { Deck, Element } from '../../core/model';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, linkedSignal, signal, untracked, viewChild } from '@angular/core';
+import type { Deck, Element, TextEl } from '../../core/model';
 import { DeckStore, MoveElements, ResizeElements, SetProps, type ElementGeometry } from '../../core/store';
 import { SlideRenderer } from '../../renderer';
+import { TextEditing } from '../text/text-editing';
+import { TextEditor } from '../text/text-editor';
 import { LiveAnnouncer } from '../../shared';
 import { EditorActions } from '../editor-actions';
 import { ShortcutRegistry } from '../shortcut-registry';
@@ -57,7 +59,7 @@ let gestureCounter = 0;
  */
 @Component({
   selector: 'app-canvas',
-  imports: [SlideRenderer],
+  imports: [SlideRenderer, TextEditor],
   templateUrl: './canvas.html',
   styleUrl: './canvas.css',
 })
@@ -66,6 +68,7 @@ export class Canvas {
   protected readonly actions = inject(EditorActions);
   private readonly announcer = inject(LiveAnnouncer);
   private readonly registry = inject(ShortcutRegistry);
+  private readonly textEditing = inject(TextEditing);
 
   private readonly viewportEl = viewChild.required<ElementRef<HTMLElement>>('area');
 
@@ -129,6 +132,13 @@ export class Canvas {
     return { ...bounds, rotation: 0, locked, resizable: !locked && selected.every((e) => !e.rotation), rotatable: false };
   });
 
+  /** The text element being edited in place, if it is still on the slide and the only thing selected. */
+  protected readonly editingElement = computed<TextEl | null>(() => {
+    const id = this.textEditing.editingId();
+    const only = this.store.selectedElements();
+    return id !== null && only.length === 1 && only[0].id === id && only[0].type === 'text' ? only[0] : null;
+  });
+
   protected readonly guides = signal<Guide[]>([]);
   protected readonly marquee = signal<Rect | null>(null);
   protected readonly panning = signal(false);
@@ -151,6 +161,11 @@ export class Canvas {
       destroyRef.onDestroy(() => observer.disconnect());
     });
     destroyRef.onDestroy(() => this.endGesture());
+    destroyRef.onDestroy(() => this.textEditing.stop());
+    // Selecting something else, or the element going away, ends the edit (the editor commits as it closes).
+    effect(() => {
+      if (this.textEditing.editingId() !== null && this.editingElement() === null) untracked(() => this.textEditing.stop());
+    });
     const unregister = CANVAS_SHORTCUTS.map((s) =>
       this.registry.register({ ...s, id: canvasShortcutId(s), scope: 'canvas', run: (event) => s.run(this.contextFor(), event.shiftKey) }),
     );
@@ -186,6 +201,29 @@ export class Canvas {
     if (this.interactTarget() === null) return void this.announcer.announce('Select one code component to interact with it');
     this.interact.update((on) => !on);
     this.announcer.announce(this.interact() ? 'Interact mode on: clicks go to the component' : 'Interact mode off');
+  }
+
+  /** Starts editing the selected text element in place (Enter, double-click, the panel's Edit text button). */
+  editText(): boolean {
+    const selected = this.store.selectedElements();
+    if (selected.length !== 1 || selected[0].type !== 'text') return false;
+    if (selected[0].locked) {
+      this.announcer.announce('This element is locked. Unlock it to edit the text');
+      return true;
+    }
+    this.textEditing.start(selected[0].id);
+    return true;
+  }
+
+  protected onElementDoubleClick(element: Element): void {
+    if (element.type !== 'text') return;
+    this.store.select([element.id]);
+    this.editText();
+  }
+
+  protected onEditorClosed(byKeyboard: boolean): void {
+    this.textEditing.stop();
+    if (byKeyboard) this.viewportEl().nativeElement.focus();
   }
 
   protected canInteract(): boolean {
@@ -472,6 +510,7 @@ export class Canvas {
         actualSize: () => this.actualSize(),
         pan: (dx, dy) => this.pan(dx, dy),
         toggleInteract: () => this.toggleInteract(),
+        editText: () => this.editText(),
         hasSelection: this.hasSelection(),
       },
     };

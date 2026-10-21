@@ -96,6 +96,7 @@ function controlFor(key: string, spec: FieldSpec): FieldDef | undefined {
     case 'asset':
     case 'component':
     case 'table':
+    case 'rich':
     case 'props':
       return undefined;
   }

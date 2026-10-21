@@ -18,7 +18,7 @@ function context(hasSelection = true) {
     redo: vi.fn(),
     reorder: vi.fn(),
   };
-  const view = { zoomIn: vi.fn(), zoomOut: vi.fn(), fit: vi.fn(), actualSize: vi.fn(), pan: vi.fn(), toggleInteract: vi.fn(), hasSelection };
+  const view = { zoomIn: vi.fn(), zoomOut: vi.fn(), fit: vi.fn(), actualSize: vi.fn(), pan: vi.fn(), toggleInteract: vi.fn(), editText: vi.fn().mockReturnValue(false), hasSelection };
   return { actions, view, ctx: { actions, view } as unknown as ShortcutContext };
 }
 
