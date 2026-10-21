@@ -1,15 +1,19 @@
-import { Component, ElementRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
+import { ErrorService } from '../../core/errors';
 import type { CodeEl, ComponentDef } from '../../core/model';
 import { ElementView, themeVars, type RenderMode } from '../../renderer';
 import { CodeHostEvents } from './code-host-events';
 import { buildDocument } from './document-builder';
+import { FrameRegistry, PRELOAD_DISTANCE } from './frame-registry';
 import { HostApi } from './host-api';
 import { ComponentAssets, ComponentPolicy, ComponentStateStore, HostConsole, LinkGuard, RuntimeSource } from './host-services';
 import { API_VERSION, normalizeOrigin, type HostMessage, type LibPayload } from './protocol';
 import { resolveProps } from './props';
 import { createSandboxFrame } from './sandbox';
 import { SANDBOX_CHANNEL, SandboxSupervisor, type SupervisorState } from './supervisor';
+
+let instances = 0;
 
 const sameRecord = (a: Record<string, string>, b: Record<string, string>): boolean => {
   const keys = Object.keys(a);
@@ -21,23 +25,39 @@ const sameRecord = (a: Record<string, string>, b: Record<string, string>): boole
  * `CODE_ELEMENT_VIEW`. In `edit` and `present` mode it creates one frame per element from the
  * component definition and keeps it in step with the deck: a change to the source, libraries or
  * permissions builds a new frame (6.2), a change to props, theme or size is sent to the running
- * one. Thumbnails get a labelled placeholder and no frame (R3). A frame that fails or stops
- * answering is replaced by a message: with the reason and a reload button in the editor, neutral
- * when presenting (6.5).
+ * one. Thumbnails get the component's snapshot, or a labelled placeholder, and no frame (R3). A
+ * frame exists only while it can be seen: it is destroyed when its slide is more than
+ * `PRELOAD_DISTANCE` away from the one shown and, in the editor, while it is scrolled out of view,
+ * and is made again (from the saved `deck.state`) when it comes back. A frame that fails or stops
+ * answering is replaced by a message: with the reason, "Reload component" and "Skip component" in
+ * the editor, neutral when presenting, where a silent frame is destroyed (6.5, Q8).
  */
 @Component({
   selector: 'app-code-element',
   template: `
     @if (definition(); as def) {
       @if (mode() === 'thumbnail') {
-        <div class="placeholder" role="img" [attr.aria-label]="'Code component: ' + def.name">{{ def.name }}</div>
+        @if (snapshotUrl(); as url) {
+          <img class="snapshot" [src]="url" [alt]="'Code component: ' + def.name" />
+        } @else {
+          <div class="placeholder" role="img" [attr.aria-label]="'Code component: ' + def.name">{{ def.name }}</div>
+        }
       } @else {
-        <div #slot class="slot"></div>
+        @if (hasFrame()) {
+          <div #slot class="slot"></div>
+        } @else if (!problem()) {
+          <div class="placeholder" role="img" [attr.aria-label]="'Code component paused: ' + def.name">{{ def.name }}</div>
+        }
         @if (problem(); as text) {
           <div class="notice" [attr.role]="mode() === 'edit' ? 'alert' : 'status'">
             @if (mode() === 'edit') {
               <p>{{ text }}</p>
-              <button type="button" (click)="reload()">Reload component</button>
+              <div class="actions">
+                <button type="button" (click)="reload()">Reload component</button>
+                @if (hasFrame()) {
+                  <button type="button" (click)="skip()">Skip component</button>
+                }
+              </div>
             } @else {
               <p>This component is unavailable.</p>
             }
@@ -96,6 +116,16 @@ const sameRecord = (a: Record<string, string>, b: Record<string, string>): boole
       font: inherit;
       padding: 4px 16px;
     }
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+    .snapshot {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
     .script-error {
       position: absolute;
       left: 0;
@@ -121,6 +151,8 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   readonly components = input<readonly ComponentDef[]>([]);
   readonly deckId = input<string>('');
   readonly ghost = input<boolean>(false);
+  /** How many slides this one is from the slide shown (0 = shown). Farther than `PRELOAD_DISTANCE`: no frame. */
+  readonly distance = input<number>(0);
 
   private readonly document = inject(DOCUMENT);
   private readonly runtimeSource = inject(RuntimeSource);
@@ -131,6 +163,10 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   private readonly hostConsole = inject(HostConsole);
   private readonly events = inject(CodeHostEvents);
   private readonly channel = inject(SANDBOX_CHANNEL, { optional: true });
+  private readonly errors = inject(ErrorService);
+  private readonly registry = inject(FrameRegistry);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly instanceKey = `code#${++instances}`;
 
   private readonly slot = viewChild<ElementRef<HTMLElement>>('slot');
   private readonly runtime = signal<string | null>(null);
@@ -138,6 +174,8 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   private readonly reloads = signal(0);
   private readonly supervisorState = signal<SupervisorState>({ status: 'starting' });
   protected readonly scriptError = signal<string | null>(null);
+  private readonly inView = signal(true);
+  private readonly skipped = signal(false);
 
   protected readonly definition = computed(() => {
     const el = this.element();
@@ -182,12 +220,27 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
     return buildDocument({ def, runtime, themeVars: untracked(this.vars), networkOrigins: this.origins() });
   });
 
+  /** A frame is wanted only near the shown slide and, in the editor, while it is on screen. */
+  private readonly wanted = computed(() => this.distance() <= PRELOAD_DISTANCE && (this.mode() !== 'edit' || this.inView()));
+
+  /** When presenting, a silent or throwing frame is destroyed for a neutral placeholder; so is a skipped one. */
+  protected readonly hasFrame = computed(() => {
+    if (!this.wanted() || this.skipped()) return false;
+    return !(this.mode() === 'present' && (this.supervisorState().status === 'unresponsive' || this.scriptError() !== null));
+  });
+
   protected readonly problem = computed(() => {
     const runtimeError = this.runtimeError();
     if (runtimeError) return runtimeError;
+    if (!this.wanted()) return null;
+    if (this.skipped()) return 'The component was skipped.';
+    if (this.mode() === 'present' && this.scriptError() !== null) return 'The component raised an error.';
     const state = this.supervisorState();
     return state.status === 'failed' || state.status === 'unresponsive' ? (state.reason ?? 'The component stopped.') : null;
   });
+
+  /** An object URL for the component's snapshot (thumbnails), revoked when it changes. */
+  protected readonly snapshotUrl = signal<string | null>(null);
 
   private supervisor: SandboxSupervisor | null = null;
   private sentProps: Record<string, unknown> = {};
@@ -195,6 +248,16 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   constructor() {
     super();
     this.loadRuntime();
+    this.observeVisibility();
+
+    effect((onCleanup) => {
+      if (this.mode() !== 'thumbnail') return;
+      const blob = this.events.snapshots().get(this.elementId());
+      if (!blob || typeof URL.createObjectURL !== 'function') return this.snapshotUrl.set(null);
+      const url = URL.createObjectURL(blob);
+      this.snapshotUrl.set(url);
+      onCleanup(() => URL.revokeObjectURL(url));
+    });
 
     effect((onCleanup) => {
       const slot = this.slot()?.nativeElement;
@@ -230,7 +293,28 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
 
   protected reload(): void {
     if (this.runtime() === null) this.loadRuntime();
+    this.skipped.set(false);
     this.reloads.update((count) => count + 1);
+  }
+
+  /** The author gives up on a stuck component: its frame goes, the notice stays. */
+  protected skip(): void {
+    this.skipped.set(true);
+  }
+
+  /** In the editor a frame scrolled out of view is not kept alive (R3). */
+  private observeVisibility(): void {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver((entries) => {
+      const last = entries[entries.length - 1];
+      if (last) this.inView.set(last.isIntersecting);
+    });
+    observer.observe(this.host.nativeElement);
+    inject(DestroyRef).onDestroy(() => observer.disconnect());
+  }
+
+  private report(source: 'host' | 'component', message: string): void {
+    this.errors.report(source, message, untracked(this.definition)?.id);
   }
 
   private loadRuntime(): void {
@@ -259,7 +343,10 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
       createChannel: this.channel ?? undefined,
       onState: (state) => {
         this.supervisorState.set(state);
-        if (state.reason) note('host', state.reason);
+        if (state.reason) {
+          note('host', state.reason);
+          this.report('host', state.reason);
+        }
         // The supervisor has given up on a failed frame; it must not keep running behind the notice.
         if (state.status === 'failed') frame.remove();
       },
@@ -279,6 +366,7 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
           onLog: (level, args) => note(level, ...args),
           onError: (message) => {
             note('error', message);
+            this.report('component', message);
             this.scriptError.set(message);
           },
           onSnapshot: (blob) => this.events.setSnapshot(element.id, blob),
@@ -287,12 +375,14 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
       createInit: () => this.createInit(def, element.id, deckId, mode, origins.length > 0),
     });
     slot.replaceChildren(frame);
+    this.registry.register(this.instanceKey);
   }
 
   private stop(slot: HTMLElement): void {
     this.supervisor?.destroy();
     this.supervisor = null;
     slot.replaceChildren();
+    this.registry.release(this.instanceKey);
     this.events.release(untracked(this.elementId));
   }
 

@@ -1,5 +1,7 @@
 import { Service, signal } from '@angular/core';
 
+const SNAPSHOT_CAPACITY = 25;
+
 export type NavigateRequest = { action: 'next' | 'prev' } | { action: 'goTo'; slideId: string };
 
 /**
@@ -29,13 +31,22 @@ export class CodeHostEvents {
   }
 
   setSnapshot(elementId: string, blob: Blob): void {
-    this.snapshots.update((map) => new Map(map).set(elementId, blob));
+    this.snapshots.update((map) => {
+      const next = new Map(map);
+      next.delete(elementId);
+      next.set(elementId, blob);
+      // Oldest first: a long session with many components keeps memory bounded.
+      while (next.size > SNAPSHOT_CAPACITY) next.delete(next.keys().next().value as string);
+      return next;
+    });
   }
 
-  /** Forgets what a component that is gone declared. */
+  /**
+   * Forgets what a frame that is gone declared. The snapshot stays: it is what the thumbnail
+   * shows while the frame does not exist.
+   */
   release(elementId: string): void {
     this.stepCounts.update((map) => without(map, elementId));
-    this.snapshots.update((map) => without(map, elementId));
   }
 }
 

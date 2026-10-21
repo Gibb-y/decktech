@@ -2,11 +2,13 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import axe from 'axe-core';
 import { createDeck, createElement, createSlide, type CodeEl, type ComponentDef, type Slide } from '../../core/model';
 import { DeckRepository, InMemoryDeckRepository } from '../../core/persistence';
+import { ErrorService } from '../../core/errors';
 import { CODE_ELEMENT_VIEW, SlideRenderer, type RenderMode } from '../../renderer';
 import type { BridgePort } from './bridge';
 import { CodeElementRenderer } from './code-element-renderer';
 import { CodeHostEvents } from './code-host-events';
 import { COUNTER_COMPONENT } from './examples';
+import { FrameRegistry } from './frame-registry';
 import { ComponentAssets, ComponentPolicy, ComponentStateStore, HostConsole, LinkGuard, RuntimeSource } from './host-services';
 import type { JsonValue } from './protocol';
 import { SANDBOX_CHANNEL } from './supervisor';
@@ -461,6 +463,235 @@ describe('CodeElementRenderer', () => {
     it('shows why the runtime is missing', async () => {
       const h = await harness({ mode: 'edit', runtime: () => Promise.reject(new Error('deck-runtime.js could not be loaded (404)')) });
       expect(root(h).textContent).toContain('deck-runtime.js could not be loaded (404)');
+    });
+  });
+
+  describe('lifecycle and watchdog (DT-12)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    const live = () => TestBed.inject(FrameRegistry);
+    const detect = async (h: Harness) => {
+      h.fixture.detectChanges();
+      await h.fixture.whenStable();
+      h.fixture.detectChanges();
+    };
+
+    it('replaces a component that hangs (while(true){}) by a placeholder within 5 s when presenting', async () => {
+      const h = await harness();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      h.handshake();
+      expect(h.frames()).toHaveLength(1);
+      vi.advanceTimersByTime(4900);
+      await detect(h);
+      expect(h.frames()).toHaveLength(1);
+      vi.advanceTimersByTime(200);
+      await detect(h);
+      expect(h.frames()).toEqual([]);
+      expect(live().count()).toBe(0);
+      expect(root(h).querySelector('[role="status"]')?.textContent?.trim()).toBe('This component is unavailable.');
+      expect(root(h).querySelector('button')).toBeNull();
+      const [entry] = TestBed.inject(ErrorService).entries();
+      expect(entry).toMatchObject({ source: 'host', componentId: h.def.id, message: 'The component stopped responding' });
+    });
+
+    it('offers reload and skip in the editor, and skipping destroys the frame', async () => {
+      const h = await harness({ mode: 'edit' });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      h.handshake();
+      vi.advanceTimersByTime(5100);
+      await detect(h);
+      const labels = Array.from(root(h).querySelectorAll('[role="alert"] button')).map((b) => b.textContent?.trim());
+      expect(labels).toEqual(['Reload component', 'Skip component']);
+      expect(h.frames()).toHaveLength(1);
+      (root(h).querySelectorAll('[role="alert"] button')[1] as HTMLButtonElement).click();
+      await detect(h);
+      expect(h.frames()).toEqual([]);
+      expect(live().count()).toBe(0);
+      expect(root(h).querySelector('[role="alert"]')?.textContent).toContain('The component was skipped.');
+      expect(Array.from(root(h).querySelectorAll('[role="alert"] button')).map((b) => b.textContent?.trim())).toEqual(['Reload component']);
+      (root(h).querySelector('[role="alert"] button') as HTMLButtonElement).click();
+      await detect(h);
+      expect(h.frames()).toHaveLength(1);
+      expect(root(h).querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it('shows an overlay in the editor and a neutral placeholder when presenting for a throwing component', async () => {
+      const edit = await harness({ mode: 'edit' });
+      edit.handshake().receive({ type: 'error', message: 'boom' });
+      await edit.settle();
+      expect(root(edit).textContent).toContain('Script error: boom');
+      expect(edit.frames()).toHaveLength(1);
+      expect(TestBed.inject(ErrorService).entries().map((e) => [e.source, e.componentId, e.message])).toEqual([['component', edit.def.id, 'boom']]);
+      TestBed.resetTestingModule();
+
+      const present = await harness();
+      present.handshake().receive({ type: 'error', message: 'boom' });
+      await present.settle();
+      expect(present.frames()).toEqual([]);
+      expect(root(present).querySelector('[role="status"]')?.textContent?.trim()).toBe('This component is unavailable.');
+      expect(root(present).textContent).not.toContain('boom');
+      expect(TestBed.inject(ErrorService).entries()).toHaveLength(1);
+    });
+
+    it.each([
+      [0, 1],
+      [1, 1],
+      [2, 0],
+      [5, 0],
+    ])('keeps a frame for a slide %i away: %i frame(s)', async (distance, frames) => {
+      const h = await harness();
+      h.fixture.componentRef.setInput('distance', distance);
+      await h.settle();
+      expect(h.frames()).toHaveLength(frames);
+      expect(live().count()).toBe(frames);
+    });
+
+    it('destroys frames as the shown slide moves away and makes them again when it returns', async () => {
+      const h = await harness();
+      expect(live().count()).toBe(1);
+      h.fixture.componentRef.setInput('distance', 3);
+      await h.settle();
+      expect(live().count()).toBe(0);
+      expect(root(h).querySelector('[role="alert"], [role="status"]')).toBeNull();
+      expect(root(h).querySelector('[aria-label="Code component paused: Counter"]')).not.toBeNull();
+      h.fixture.componentRef.setInput('distance', 1);
+      await h.settle();
+      expect(live().count()).toBe(1);
+      expect(h.frames()).toHaveLength(1);
+    });
+
+    it('forgets an earlier failure when the frame is destroyed off-screen', async () => {
+      const h = await harness({ mode: 'edit' });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      h.handshake();
+      vi.advanceTimersByTime(5100);
+      await detect(h);
+      expect(root(h).querySelector('[role="alert"]')).not.toBeNull();
+      h.fixture.componentRef.setInput('distance', 4);
+      await detect(h);
+      expect(root(h).querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it('destroys an editor frame that is scrolled out of view and restores it', async () => {
+      const observers: ((entries: { isIntersecting: boolean }[]) => void)[] = [];
+      vi.stubGlobal('IntersectionObserver', class {
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+          observers.push(callback);
+        }
+        observe(): void {}
+        disconnect(): void {}
+      });
+      const h = await harness({ mode: 'edit' });
+      expect(live().count()).toBe(1);
+      observers.forEach((notify) => notify([{ isIntersecting: false }]));
+      await h.settle();
+      expect(h.frames()).toEqual([]);
+      expect(live().count()).toBe(0);
+      observers.forEach((notify) => notify([{ isIntersecting: true }]));
+      await h.settle();
+      expect(h.frames()).toHaveLength(1);
+      expect(live().count()).toBe(1);
+    });
+
+    it('does not apply the viewport rule when presenting (the next slide is kept ready)', async () => {
+      const observers: ((entries: { isIntersecting: boolean }[]) => void)[] = [];
+      vi.stubGlobal('IntersectionObserver', class {
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+          observers.push(callback);
+        }
+        observe(): void {}
+        disconnect(): void {}
+      });
+      const h = await harness();
+      h.fixture.componentRef.setInput('distance', 1);
+      observers.forEach((notify) => notify([{ isIntersecting: false }]));
+      await h.settle();
+      expect(h.frames()).toHaveLength(1);
+    });
+
+    it('releases the frame count when the view is destroyed', async () => {
+      const h = await harness();
+      expect(live().count()).toBe(1);
+      h.fixture.destroy();
+      expect(live().count()).toBe(0);
+    });
+
+    it('draws the component snapshot in thumbnails and keeps it after the frame is gone', async () => {
+      const created: Blob[] = [];
+      const revoked: string[] = [];
+      vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+        created.push(blob as Blob);
+        return `blob:snap-${created.length}`;
+      });
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation((url) => void revoked.push(url));
+      const h = await harness({ mode: 'thumbnail' });
+      expect(root(h).querySelector('img')).toBeNull();
+      expect(root(h).querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Code component: Counter');
+      const first = new Blob(['a'], { type: 'image/png' });
+      TestBed.inject(CodeHostEvents).setSnapshot(h.element.id, first);
+      await h.settle();
+      const img = root(h).querySelector('img')!;
+      expect(img.getAttribute('src')).toBe('blob:snap-1');
+      expect(img.getAttribute('alt')).toBe('Code component: Counter');
+      expect(h.frames()).toEqual([]);
+      TestBed.inject(CodeHostEvents).setSnapshot(h.element.id, new Blob(['b'], { type: 'image/png' }));
+      await h.settle();
+      expect(revoked).toEqual(['blob:snap-1']);
+      expect(root(h).querySelector('img')?.getAttribute('src')).toBe('blob:snap-2');
+      h.fixture.destroy();
+      expect(revoked).toEqual(['blob:snap-1', 'blob:snap-2']);
+      vi.restoreAllMocks();
+    });
+
+    it('keeps the snapshot when a live frame ends but caps how many it remembers (25)', () => {
+      const events = TestBed.inject(CodeHostEvents);
+      events.setSnapshot('a', new Blob(['x'], { type: 'image/png' }));
+      events.release('a');
+      expect(events.snapshots().has('a')).toBe(true);
+      for (let i = 0; i < 80; i++) events.setSnapshot(`e${i}`, new Blob(['x'], { type: 'image/png' }));
+      expect(events.snapshots().size).toBe(25);
+      expect(events.snapshots().has('a')).toBe(false);
+      expect(events.snapshots().has('e79')).toBe(true);
+    });
+
+    it('keeps many code components bounded: frames exist only for the slides near the shown one', async () => {
+      const ports: FakePort[] = [];
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: DeckRepository, useValue: new InMemoryDeckRepository() },
+          { provide: CODE_ELEMENT_VIEW, useValue: () => Promise.resolve(CodeElementRenderer) },
+          { provide: RuntimeSource, useValue: { load: () => Promise.resolve('/*runtime*/') } },
+          { provide: SANDBOX_CHANNEL, useValue: () => { const port = new FakePort(); ports.push(port); return { port1: port, port2: {} }; } },
+        ],
+      });
+      const def = structuredClone(COUNTER_COMPONENT);
+      const deck = createDeck();
+      const slideCount = 30;
+      const fixtures = Array.from({ length: slideCount }, () => {
+        const slide = { ...createSlide('layout'), elements: [createElement('code', { x: 0, y: 0, w: 400, h: 300, componentId: def.id }), createElement('code', { x: 500, y: 0, w: 400, h: 300, componentId: def.id })] };
+        const fixture = TestBed.createComponent(SlideRenderer);
+        fixture.componentRef.setInput('slide', slide);
+        fixture.componentRef.setInput('theme', deck.theme);
+        fixture.componentRef.setInput('components', [def]);
+        return fixture;
+      });
+      const show = async (current: number) => {
+        fixtures.forEach((fixture, i) => fixture.componentRef.setInput('distance', Math.abs(i - current)));
+        for (let n = 0; n < 4; n++) {
+          fixtures.forEach((fixture) => fixture.detectChanges());
+          await Promise.all(fixtures.map((fixture) => fixture.whenStable()));
+          await tick();
+        }
+      };
+      await show(0);
+      expect(TestBed.inject(FrameRegistry).count()).toBe(4);
+      for (const current of [1, 15, 29]) {
+        await show(current);
+        expect(TestBed.inject(FrameRegistry).count()).toBe(current === 1 ? 6 : current === 15 ? 6 : 4);
+      }
     });
   });
 
