@@ -1,4 +1,5 @@
 // Shared by the specs that drive the whole editor page; never imported by the application.
+import type { Provider } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import axe from 'axe-core';
@@ -13,6 +14,8 @@ export interface OpenOptions {
   slides?: number;
   /** Change the deck before it is stored. */
   prepare?: (deck: Deck) => void;
+  /** Extra providers for the page (for instance a fake `COMPONENT_TOOLS`). */
+  providers?: Provider[];
 }
 
 /** Opens the editor page on a stored deck and waits until it is ready. */
@@ -25,7 +28,7 @@ export async function openEditor(options: OpenOptions = {}) {
   options.prepare?.(deck);
   await repo.save(deck, null);
   TestBed.configureTestingModule({
-    providers: [{ provide: DeckRepository, useValue: repo }, { provide: STORAGE_MANAGER, useValue: null }, provideRouter([])],
+    providers: [{ provide: DeckRepository, useValue: repo }, { provide: STORAGE_MANAGER, useValue: null }, provideRouter([]), ...(options.providers ?? [])],
   });
   const fixture = TestBed.createComponent(EditorShell);
   fixture.componentRef.setInput('id', deck.id);
