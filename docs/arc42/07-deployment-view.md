@@ -37,7 +37,7 @@ flowchart LR
 | Header | Value (summary) | Purpose |
 |--------|-----------------|---------|
 | `Content-Security-Policy` | `default-src 'self'; frame-src 'self' blob: data:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; ...` | Hardens the host app. Sandbox frames carry their own, stricter CSP. |
-| `Cross-Origin-Opener-Policy` | `same-origin` | Isolates the host browsing context group (also needed to open presenter window safely, with `noopener` where sync is not needed). |
+| `Cross-Origin-Opener-Policy` | `same-origin` | Isolates the host browsing context group (the presenter view is opened with `noopener`: the two windows sync over `BroadcastChannel`, which needs no opener and works under this policy). |
 | `Referrer-Policy` | `no-referrer` | Do not leak deck URLs. |
 | `X-Content-Type-Options` | `nosniff` | Standard. |
 

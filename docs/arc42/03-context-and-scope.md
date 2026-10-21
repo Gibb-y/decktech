@@ -54,7 +54,7 @@ flowchart TB
 | Interface | Technology | Notes |
 |-----------|------------|-------|
 | Host ↔ code component | `postMessage` over a dedicated `MessageChannel` per component | Versioned protocol, see [8.3](08-crosscutting-concepts.md#83-code-component-api). |
-| Editor window ↔ presenter-view window | `BroadcastChannel` | Syncs current slide, step and timer. No server required. |
+| Editor window ↔ presenter-view window | `BroadcastChannel` | Channel `decktech.presenter.<deckId>`; versioned, validated messages (5.5). Syncs current slide, step and timer, and carries the presenter view's navigation and timer commands. No server required. |
 | App ↔ storage | IndexedDB (via a thin repository abstraction) | Decks, assets (blobs), component library. |
 | App ↔ disk | File System Access API where available, otherwise download/`<input type=file>` | `.deck` is a ZIP. |
 | App ↔ internet | `fetch`, only through the sandbox policy | Disabled for code components unless the deck opts in. The one request the host itself makes is "Add library": the author asks for an npm package and it is fetched once from the esm.sh CDN while online (8.6). |
