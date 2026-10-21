@@ -65,10 +65,10 @@
           class="hit"
           [class.selected]="selectedIds().has(element.id)"
           [class.locked]="element.locked"
+          [class.editable]="isEditable(element)"
           [class.interacting]="isInteracting(element)"
           [style]="hitStyle(element)"
           (pointerdown)="onElementDown(element, $event)"
-          (dblclick)="onElementDoubleClick(element)"
         ></div>
       }
       @if (editingElement(); as editing) {

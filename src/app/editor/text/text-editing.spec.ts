@@ -28,10 +28,16 @@ async function untilEditing(e: Editor): Promise<HTMLElement> {
   return surface(e)!;
 }
 
-async function startEditing(e: Editor, how: 'dblclick' | 'enter' = 'dblclick'): Promise<HTMLElement> {
+/** A press and release on the element's overlay without moving, the way a click arrives. */
+function click(e: Editor, target: HTMLElement = hit(e), init: MouseEventInit = {}): void {
+  target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 110, ...init }));
+  e.root.querySelector<HTMLElement>('.viewport')!.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 110, ...init }));
+}
+
+async function startEditing(e: Editor, how: 'click' | 'enter' = 'click'): Promise<HTMLElement> {
   e.store.select([first(e).id]);
   await settle(e.fixture);
-  if (how === 'dblclick') hit(e).dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  if (how === 'click') click(e);
   else press(e.root.querySelector<HTMLElement>('.viewport')!, 'Enter');
   return untilEditing(e);
 }
@@ -50,7 +56,7 @@ async function blur(e: Editor): Promise<void> {
 }
 
 describe('editing text in place', () => {
-  it('starts on double-click, over the element, and hides the rendered text meanwhile', async () => {
+  it('starts when the selected text is clicked, over the element, and hides the rendered text meanwhile', async () => {
     const e = await openEditor();
     const editor = await startEditing(e);
     expect(editor).toBeTruthy();
@@ -62,6 +68,74 @@ describe('editing text in place', () => {
     expect(box.style.left).toBe('100px');
     expect(box.style.top).toBe('100px');
     expect(box.closest('.overlay')).toBeTruthy(); // inside the scaled overlay, so zoom needs no maths
+  });
+
+  it('only selects an unselected text element on the first click, and edits on the next', async () => {
+    const e = await openEditor();
+    click(e);
+    await settle(e.fixture);
+    expect(e.store.selection()).toEqual([first(e).id]);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+    click(e);
+    expect(await untilEditing(e)).toBeTruthy();
+  });
+
+  it('does not start when the press moved (a drag), or with shift held', async () => {
+    const e = await openEditor();
+    e.store.select([first(e).id]);
+    await settle(e.fixture);
+    hit(e).dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 150, clientY: 110 }));
+    const area = e.root.querySelector<HTMLElement>('.viewport')!;
+    area.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 200, clientY: 150 }));
+    area.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 200, clientY: 150 }));
+    await settle(e.fixture);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+    click(e, hit(e), { shiftKey: true });
+    await settle(e.fixture);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+  });
+
+  it('shows a text cursor class on the only selected text element', async () => {
+    const e = await openEditor({ prepare: (d) => d.slides[0].elements.push(createElement('shape')) });
+    expect(hit(e).classList.contains('editable')).toBe(false);
+    e.store.select([first(e).id]);
+    await settle(e.fixture);
+    expect(hit(e).classList.contains('editable')).toBe(true);
+    expect(e.root.querySelectorAll('.hit.editable')).toHaveLength(1);
+    e.store.select(e.store.currentSlide().elements.map((x) => x.id));
+    await settle(e.fixture);
+    expect(e.root.querySelectorAll('.hit.editable')).toHaveLength(0);
+  });
+
+  it('starts editing when a character is typed with the text selected, and keeps that character', async () => {
+    const e = await openEditor();
+    e.store.select([first(e).id]);
+    await settle(e.fixture);
+    const key = press(e.root.querySelector<HTMLElement>('.viewport')!, 'X');
+    expect(key.defaultPrevented).toBe(true);
+    press(e.root.querySelector<HTMLElement>('.viewport')!, 'Y'); // typed before the editor chunk is ready
+    expect(await untilEditing(e)).toBeTruthy();
+    await blur(e);
+    expect(first(e).text).toBe('WelcomeXY');
+    e.store.undo();
+    expect(first(e).text).toBe('Welcome');
+  });
+
+  it('leaves shortcut keys and modified keys alone when text is selected', async () => {
+    const e = await openEditor();
+    e.store.select([first(e).id]);
+    await settle(e.fixture);
+    for (const [k, o] of [['[', {}], ['+', {}], ['c', { ctrlKey: true }], ['Tab', {}], ['ArrowLeft', {}]] as const) press(e.root.querySelector<HTMLElement>('.viewport')!, k, o);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
+  });
+
+  it('does not start typing on a locked or non-text selection', async () => {
+    const e = await openEditor({ prepare: (d) => void (d.slides[0].elements[0].locked = true) });
+    e.store.select([first(e).id]);
+    await settle(e.fixture);
+    expect(press(e.root.querySelector<HTMLElement>('.viewport')!, 'X').defaultPrevented).toBe(false);
+    expect(e.root.querySelector('app-text-editor')).toBeNull();
   });
 
   it('starts on Enter with a text element selected', async () => {
@@ -84,9 +158,22 @@ describe('editing text in place', () => {
     const e = await openEditor({ prepare: (d) => d.slides[0].elements.splice(0, 1, createElement('shape')) });
     e.store.select([e.store.currentSlide().elements[0].id]);
     await settle(e.fixture);
-    hit(e).dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    click(e);
     await settle(e.fixture);
     expect(e.root.querySelector('app-text-editor')).toBeNull();
+  });
+
+  it('uses the stylesheet of the rendered text, so editing looks like presenting', async () => {
+    const e = await openEditor();
+    await startEditing(e);
+    const editor = surface(e)!;
+    expect(editor.classList.contains('rich')).toBe(true);
+    expect(editor.closest('app-text-editor')).toBeTruthy();
+    const box = e.root.querySelector<HTMLElement>('app-text-editor')!;
+    const rendered = e.root.querySelector<HTMLElement>('app-canvas app-slide-renderer app-text-element .text')!;
+    for (const property of ['font-family', 'font-size', 'text-align', 'color']) {
+      expect(box.style.getPropertyValue(property), property).toBe(rendered.style.getPropertyValue(property));
+    }
   });
 
   it('commits one undo step on blur, and undo restores the previous content', async () => {

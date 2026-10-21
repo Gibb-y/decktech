@@ -27,10 +27,9 @@ export const RICH_TEXT_CSS = `
     overflow-wrap: anywhere;
   }
   .rich p, .rich h1, .rich h2, .rich h3, .rich ul, .rich ol { margin: 0; font: inherit; }
-  .rich > * + *, .rich li > * + * { margin-top: 0.3em; }
-  .rich h1 { font-size: 1.5em; font-weight: 700; }
-  .rich h2 { font-size: 1.25em; font-weight: 700; }
-  .rich h3 { font-size: 1.1em; font-weight: 700; }
+  .rich h1 { font-size: 1.25em; }
+  .rich h2 { font-size: 1em; }
+  .rich h3 { font-size: 0.9em; }
   .rich ul, .rich ol { padding-inline-start: 1.2em; }
   .rich li { margin: 0; }
   .rich code { font-family: var(--deck-font-mono, monospace); font-size: 0.9em; }

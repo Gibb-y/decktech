@@ -78,7 +78,8 @@ export class RichEditor {
     });
     this.view = new EditorView(host, {
       state,
-      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label, spellcheck: 'true' },
+      // `rich` gives the surface the stylesheet the renderer uses, so editing looks like presenting.
+      attributes: { class: 'rich', role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label, spellcheck: 'true' },
       dispatchTransaction: (tr: Transaction) => {
         this.view.updateState(this.view.state.apply(tr));
         options.onFormat(this.format());
@@ -118,6 +119,27 @@ export class RichEditor {
   focus(atEnd = false): void {
     if (atEnd) this.view.dispatch(this.view.state.tr.setSelection(Selection.atEnd(this.view.state.doc)));
     this.view.focus();
+  }
+
+  /**
+   * Focuses the surface to begin an edit: the caret goes to the clicked point (else the end), and
+   * text typed to start the edit is inserted there.
+   */
+  begin(start: { at?: { x: number; y: number }; text?: string } | null): void {
+    const { view } = this;
+    let tr = view.state.tr.setSelection(Selection.atEnd(view.state.doc));
+    if (start?.at) {
+      let hit: { pos: number } | null = null;
+      try {
+        hit = view.posAtCoords({ left: start.at.x, top: start.at.y });
+      } catch {
+        // no layout (tests): keep the end
+      }
+      if (hit) tr = tr.setSelection(Selection.near(tr.doc.resolve(hit.pos)));
+    }
+    if (start?.text) tr = tr.insertText(start.text);
+    view.dispatch(tr);
+    view.focus();
   }
 
   destroy(): void {

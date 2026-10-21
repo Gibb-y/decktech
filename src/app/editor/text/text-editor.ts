@@ -19,7 +19,7 @@ export function startingDoc(element: TextEl): RichDoc {
  */
 @Component({
   selector: 'app-text-editor',
-  template: '<div class="rich"></div>',
+  template: '<div></div>',
   encapsulation: ViewEncapsulation.None,
   styles: `
     app-text-editor {
@@ -88,7 +88,7 @@ export class TextEditor implements OnInit {
     const { RichEditor } = await import('./rich-editor');
     if (this.done) return;
     const theme = this.theme();
-    const surface = this.host.querySelector<HTMLElement>('.rich')!;
+    const surface = this.host.firstElementChild as HTMLElement;
     const editor = new RichEditor(surface, startingDoc(start), {
       label: 'Edit text',
       tokens: { colors: Object.keys(theme.colors), sizes: Object.keys(theme.typeScale) },
@@ -108,7 +108,7 @@ export class TextEditor implements OnInit {
       focus: () => editor.focus(),
     };
     this.editing.attach(this.handle);
-    editor.focus(true);
+    editor.begin(this.editing.takeStart());
     this.announcer.announce('Editing text. Press Escape to finish.');
   }
 

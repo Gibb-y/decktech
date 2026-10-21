@@ -14,6 +14,12 @@ export interface TextEditorHandle {
 /** Attribute that marks controls (the properties panel's format group) that may take focus without ending the edit. */
 export const KEEPS_TEXT_EDITING = 'data-keeps-text-editing';
 
+/** How an edit begins: where the caret goes (client coordinates of the click) and text typed to start it. */
+export interface StartOptions {
+  at?: { x: number; y: number };
+  text?: string;
+}
+
 /**
  * State of the in-place text edit (arc42 §8.4): which element is being edited, the format of the
  * selection and a handle on the editor for the properties panel. It holds no ProseMirror, so the
@@ -30,8 +36,23 @@ export class TextEditing {
 
   private handle: TextEditorHandle | null = null;
 
-  start(elementId: string): void {
+  private pending: StartOptions | null = null;
+
+  start(elementId: string, options: StartOptions | null = null): void {
+    this.pending = options;
     this.editingId.set(elementId);
+  }
+
+  /** Keys typed while the editor chunk is still loading join the text the edit starts with. */
+  appendStart(text: string): void {
+    this.pending = { ...this.pending, text: (this.pending?.text ?? '') + text };
+  }
+
+  /** The options the running edit began with; handed out once. */
+  takeStart(): StartOptions | null {
+    const options = this.pending;
+    this.pending = null;
+    return options;
   }
 
   stop(): void {

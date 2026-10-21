@@ -43,7 +43,7 @@ interface Frame extends Box {
 }
 
 type Gesture =
-  | { kind: 'move'; ids: string[]; origin: Point; client: Point; bounds: Rect; targets: SnapTargets; applied: Point; key: string; hold: (() => void) | null; plainClick: string | null }
+  | { kind: 'move'; ids: string[]; origin: Point; client: Point; bounds: Rect; targets: SnapTargets; applied: Point; key: string; hold: (() => void) | null; plainClick: string | null; editOnClick: string | null }
   | { kind: 'resize'; handle: HandleId; start: Box; items: { id: string; box: Box }[]; group: boolean; targets: SnapTargets; key: string; hold: (() => void) | null }
   | { kind: 'rotate'; id: string; center: Point; key: string; hold: (() => void) | null }
   | { kind: 'marquee'; origin: Point; base: readonly string[] }
@@ -219,10 +219,15 @@ export class Canvas {
     return true;
   }
 
-  protected onElementDoubleClick(element: Element): void {
-    if (element.type !== 'text') return;
-    this.store.select([element.id]);
-    this.editText();
+  /** The text element a printable key would start editing: the one selected, unlocked text element. */
+  private typingTarget(): TextEl | null {
+    const selected = this.store.selectedElements();
+    return selected.length === 1 && selected[0].type === 'text' && !selected[0].locked ? selected[0] : null;
+  }
+
+  /** Whether the pointer would put a caret in this element: the only selected, unlocked text element. */
+  protected isEditable(element: Element): boolean {
+    return this.typingTarget()?.id === element.id;
   }
 
   protected onEditorClosed(byKeyboard: boolean): void {
@@ -294,6 +299,8 @@ export class Canvas {
       hold: null,
       // Pressing one of several selected elements without dragging narrows the selection to it.
       plainClick: wasSelected && this.selection().length > 1 ? element.id : null,
+      // A press-and-release on a text element that was already the only selection puts the caret in it.
+      editOnClick: wasSelected && this.selection().length === 1 && element.type === 'text' && !element.locked ? element.id : null,
     });
   }
 
@@ -445,7 +452,9 @@ export class Canvas {
     if (!g) return;
     this.endGesture();
     this.viewportEl().nativeElement.releasePointerCapture?.(e.pointerId ?? 1);
-    if (g.kind === 'move' && g.plainClick) {
+    if (g.kind === 'move' && g.editOnClick && !g.hold) {
+      this.textEditing.start(g.editOnClick, { at: { x: e.clientX, y: e.clientY } });
+    } else if (g.kind === 'move' && g.plainClick) {
       this.store.select([g.plainClick]);
       this.actions.announceSelection();
     } else if (g.kind === 'marquee') {
@@ -497,6 +506,13 @@ export class Canvas {
       return this.cancelGesture();
     }
     if (this.gesture) return;
+    // Typing on a selected text element starts editing it with that character, unless the key is a shortcut.
+    const target = this.typingTarget();
+    if (target && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !this.registry.find(e, 'canvas')) {
+      e.preventDefault();
+      if (this.textEditing.editingId() === target.id) return this.textEditing.appendStart(e.key);
+      return this.textEditing.start(target.id, { text: e.key });
+    }
     this.registry.handle(e, 'canvas');
   }
 
