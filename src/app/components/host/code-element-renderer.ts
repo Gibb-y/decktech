@@ -251,12 +251,21 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
     this.observeVisibility();
 
     effect((onCleanup) => {
-      if (this.mode() !== 'thumbnail') return;
+      if (this.mode() !== 'thumbnail') return this.snapshotUrl.set(null);
       const blob = this.events.snapshots().get(this.elementId());
       if (!blob || typeof URL.createObjectURL !== 'function') return this.snapshotUrl.set(null);
       const url = URL.createObjectURL(blob);
       this.snapshotUrl.set(url);
       onCleanup(() => URL.revokeObjectURL(url));
+    });
+
+    // A frame that is not wanted leaves nothing behind: coming back starts clean (present mode has no Reload).
+    effect(() => {
+      if (this.wanted()) return;
+      untracked(() => {
+        this.scriptError.set(null);
+        this.supervisorState.set({ status: 'starting' });
+      });
     });
 
     effect((onCleanup) => {

@@ -575,6 +575,19 @@ describe('CodeElementRenderer', () => {
       expect(root(h).querySelector('[role="alert"]')).toBeNull();
     });
 
+    it('gives a presenting component a fresh frame after it was away, even if it had thrown', async () => {
+      const h = await harness();
+      h.handshake().receive({ type: 'error', message: 'boom' });
+      await h.settle();
+      expect(h.frames()).toEqual([]);
+      h.fixture.componentRef.setInput('distance', 3);
+      await h.settle();
+      h.fixture.componentRef.setInput('distance', 0);
+      await h.settle();
+      expect(h.frames()).toHaveLength(1);
+      expect(root(h).querySelector('[role="status"]')).toBeNull();
+    });
+
     it('destroys an editor frame that is scrolled out of view and restores it', async () => {
       const observers: ((entries: { isIntersecting: boolean }[]) => void)[] = [];
       vi.stubGlobal('IntersectionObserver', class {
