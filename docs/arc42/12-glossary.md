@@ -16,7 +16,10 @@
 | Prop / property schema | Typed, declared inputs of a code component; generates its form in the properties panel. |
 | Host | The DeckTech Angular application, as opposed to the sandboxed frame. |
 | Sandbox | An `<iframe sandbox="allow-scripts">` with an opaque origin and restrictive CSP. |
-| Bridge | The host-side message handler for a component's `MessagePort`. |
+| Bridge | The host-side message handler for a component's `MessagePort` (`HostBridge`): parses each message into a closed set of types, enforces size and rate limits and cuts off a frame that floods or sends garbage. |
+| Supervisor | `SandboxSupervisor`: the lifecycle of one frame (handshake, port, `init`, heartbeat watchdog, navigation check). |
+| Component state | `deck.state` of one code element: a small JSON key/value store kept by the host per deck and element, not part of the deck. |
+| Runtime (`deck-runtime.js`) | The static script inlined into every frame that defines `deck` and talks to the bridge. |
 | Step (fragment) | A sub-state of a slide revealed by successive "next" actions. |
 | Step engine | Logic that orders steps from elements and components and decides when to change slides. |
 | Presenter view | Second-window view with current/next slide, notes and timer. |

@@ -75,11 +75,40 @@ export function findChunkViolations(files) {
   return violations;
 }
 
+/** The sandbox policy of code components lives in one file (arc42 §8.2, risk R1). */
+const SANDBOX_FILE = 'components/host/sandbox.ts';
+const FORBIDDEN_FLAGS = /allow-(?:same-origin|top-navigation[\w-]*|popups[\w-]*|forms|modals|downloads|presentation|pointer-lock|orientation-lock)/g;
+const IFRAME = /createElement\(\s*['"]iframe['"]\s*\)|<iframe\b|['"]sandbox['"]\s*,/g;
+
+/**
+ * No source may name a dangerous sandbox flag, and frames are only created in `sandbox.ts`, so the
+ * one list there is the only way to get one. The deny-list in `sandbox.ts` itself is the exception.
+ * @param {{ path: string, text: string }[]} files
+ */
+export function findSandboxViolations(files) {
+  const violations = [];
+  for (const { path, text } of files) {
+    if (path.endsWith('.spec.ts')) continue;
+    const blank = (m) => m.replace(/[^\n]/g, ' ');
+    const scanned = path === SANDBOX_FILE ? text.replace(/FORBIDDEN_SANDBOX_TOKENS[^=]*=\s*\[[^\]]*\];/, blank) : text;
+    const lineOf = (index) => scanned.slice(0, index).split('\n').length;
+    for (const m of scanned.matchAll(FORBIDDEN_FLAGS)) {
+      violations.push({ file: path, line: lineOf(m.index), message: `sandbox flag "${m[0]}" must never be used for code components` });
+    }
+    if (path !== SANDBOX_FILE) {
+      for (const m of scanned.matchAll(IFRAME)) {
+        violations.push({ file: path, line: lineOf(m.index), message: 'frames are created by createSandboxFrame (components/host/sandbox.ts) only' });
+      }
+    }
+  }
+  return violations;
+}
+
 function collect(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) collect(full, out);
-    else if (name.endsWith('.ts')) out.push(full);
+    else if (name.endsWith('.ts') || name.endsWith('.html')) out.push(full);
   }
   return out;
 }
@@ -90,7 +119,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     path: relative(root, full).split(sep).join('/'),
     text: readFileSync(full, 'utf8'),
   }));
-  const violations = [...findViolations(files), ...findChunkViolations(files)];
+  const ts = files.filter((f) => f.path.endsWith('.ts'));
+  const violations = [...findViolations(ts), ...findChunkViolations(ts), ...findSandboxViolations(files)];
   for (const v of violations) console.error(`${v.file}:${v.line}: ${v.message}`);
   if (violations.length > 0) {
     console.error(`${violations.length} dependency rule violation(s)`);

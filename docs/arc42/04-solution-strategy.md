@@ -14,7 +14,7 @@
 | Quality goal | Approach |
 |--------------|----------|
 | Ease of authoring | Layouts + themes + templates; command-based editor with undo/redo; keyboard shortcuts; slide sorter drag/drop; autosave; instant live preview of code components. |
-| Expressiveness | Components are real HTML/CSS/JS documents; permitted to use ES modules, canvas, WebGL, Web Audio; deck-scoped asset files can be referenced by relative URL; optional vendored libraries. |
+| Expressiveness | Components are real HTML/CSS/JS documents; permitted to use ES modules, canvas, WebGL, Web Audio; deck-scoped asset files can be read by asset id (`deck.assets.url`); optional vendored libraries. |
 | Security | `sandbox` without `allow-same-origin`, strict CSP on the iframe document, no network by default, capability-based host API, trust prompt on opening foreign decks. |
 | Presentation reliability | No runtime network dependency; thumbnails and components are pre-initialised for next slide; debounced autosave with pre-migration backups; presenter mode uses the already-loaded state. |
 | Portability | Self-contained `.deck` archive with `deck.json` + assets + vendored libs; schema versioning with migrations. |
@@ -49,6 +49,6 @@ src/app/
 
 Dependency rule: `core` depends on nothing; `renderer` depends on `core`; `editor`, `presenter`, `components` depend on `renderer`, `core` and `shared`; `library` depends on `core` and `shared`; `shared` depends on nothing; features never depend on one another directly.
 
-The rule is enforced by `scripts/check-boundaries.mjs` (`npm run lint:boundaries`), a dependency-free script that reads every relative import under `src/app` and fails on an import the table in the script does not allow (and on an unknown top-level folder). There is no CI pipeline yet, so run it (and the tests) locally before opening a PR. It stands in for an ESLint boundaries plugin so that the project needs no linter yet; the allowed-imports table is the single place to change when the rule changes. Files directly in `src/app` (`app.ts`, routes, config) wire the features together and are not restricted.
+The rule is enforced by `scripts/check-boundaries.mjs` (`npm run lint:boundaries`), a dependency-free script that reads every relative import under `src/app` and fails on an import the table in the script does not allow (and on an unknown top-level folder). The same script guards the sandbox of code components (8.2): it fails on a dangerous sandbox flag (`allow-same-origin`, `allow-top-navigation`, `allow-popups`, `allow-forms`, `allow-modals`, ...) in any source or template, and on a frame created anywhere but `components/host/sandbox.ts`. There is no CI pipeline yet, so run it (and the tests) locally before opening a PR. It stands in for an ESLint boundaries plugin so that the project needs no linter yet; the allowed-imports table is the single place to change when the rule changes. Files directly in `src/app` (`app.ts`, routes, config) wire the features together and are not restricted.
 
 Every route in `app.routes.ts` is lazy (`loadComponent`), so the initial bundle holds only the shell, the persistence banner and the shared a11y pieces; a test asserts that no route uses an eager `component`.

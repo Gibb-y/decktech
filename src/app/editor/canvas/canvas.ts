@@ -96,6 +96,8 @@ export class Canvas {
   protected readonly stage = computed(() => this.store.deck().stage);
   protected readonly slide = this.store.currentSlide;
   protected readonly theme = computed(() => this.store.deck().theme);
+  protected readonly components = computed(() => this.store.deck().components);
+  protected readonly deckId = computed(() => this.store.deck().id);
   protected readonly layout = computed(() => this.store.deck().layouts.find((l) => l.id === this.slide().layoutId));
 
   /** Zoom and pan in effect: recomputed from the area while in "fit" mode, else what the user set. */
