@@ -1,6 +1,8 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal } from '@angular/core';
-import { STAGE_HEIGHT, STAGE_WIDTH, type Element, type ElementType, type Fill, type Layout, type Slide, type Stage, type Theme } from '../core/model';
+import { NgComponentOutlet } from '@angular/common';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal, type Type } from '@angular/core';
+import { STAGE_HEIGHT, STAGE_WIDTH, type ComponentDef, type Element, type ElementType, type Fill, type Layout, type Slide, type Stage, type Theme } from '../core/model';
 import { AssetUrls } from './asset-urls';
+import { CODE_ELEMENT_VIEW } from './code-view';
 import { FontFaces } from './font-faces';
 import { ImageElement } from './image-element';
 import { LineElement } from './line-element';
@@ -19,6 +21,8 @@ interface Item {
   ghost: boolean;
   /** Being edited in place: kept in the layout but not painted, because the editor draws it. */
   concealed: boolean;
+  /** Inputs of the code element view (code elements only). */
+  inputs?: Record<string, unknown>;
 }
 
 /**
@@ -48,6 +52,11 @@ interface Item {
           @case ('shape') {
             <app-shape-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
           }
+          @case ('code') {
+            @if (codeView(); as view) {
+              <ng-container [ngComponentOutlet]="view" [ngComponentOutletInputs]="item.inputs ?? {}" />
+            }
+          }
           @case ('line') {
             <app-line-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
           }
@@ -74,7 +83,7 @@ interface Item {
       opacity: 0.35;
     }
   `,
-  imports: [TextElement, ImageElement, ShapeElement, LineElement],
+  imports: [TextElement, ImageElement, ShapeElement, LineElement, NgComponentOutlet],
   host: {
     '[style.aspect-ratio]': 'stage().width + " / " + stage().height',
   },
@@ -90,11 +99,18 @@ export class SlideRenderer {
   readonly stage = input<Stage>(DEFAULT_STAGE);
   /** Id of a text element the editor is drawing in its place (edit mode only). */
   readonly concealedId = input<string | null>(null);
+  /** The deck's component definitions; code elements look their source up here. */
+  readonly components = input<readonly ComponentDef[]>([]);
+  /** Id of the deck, which scopes the persisted state of code components. */
+  readonly deckId = input<string>('');
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly assets = inject(AssetUrls);
   private readonly fonts = inject(FontFaces);
   private readonly containerWidth = signal(0);
+  private readonly loadCodeView = inject(CODE_ELEMENT_VIEW, { optional: true });
+  private codeViewRequested = false;
+  protected readonly codeView = signal<Type<unknown> | null>(null);
 
   /** `containerWidth / stageWidth`, the factor of the stage's `transform: scale(k)`. */
   readonly scale = computed(() => {
@@ -109,9 +125,14 @@ export class SlideRenderer {
   protected readonly items = computed<Item[]>(() => {
     const mode = this.mode();
     const step = this.step();
-    return this.slide().elements.flatMap((element) =>
-      isElementShown(element, mode, step) ? [{ id: element.id, type: element.type, ghost: element.hidden === true, concealed: element.id === this.concealedId() }] : [],
-    );
+    return this.slide().elements.flatMap((element) => {
+      if (!isElementShown(element, mode, step)) return [];
+      const item: Item = { id: element.id, type: element.type, ghost: element.hidden === true, concealed: element.id === this.concealedId() };
+      if (element.type === 'code') {
+        item.inputs = { elements: this.elementMap(), elementId: element.id, theme: this.theme(), mode, components: this.components(), deckId: this.deckId(), ghost: item.ghost };
+      }
+      return [item];
+    });
   });
 
   protected readonly stageStyle = computed(() => {
@@ -128,6 +149,14 @@ export class SlideRenderer {
 
   constructor() {
     effect(() => this.fonts.register(this.theme().fontFaces));
+    effect(() => {
+      if (this.codeViewRequested || !this.loadCodeView || !this.items().some((item) => item.type === 'code')) return;
+      this.codeViewRequested = true;
+      this.loadCodeView().then(
+        (view) => this.codeView.set(view),
+        () => (this.codeViewRequested = false),
+      );
+    });
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const element = this.host.nativeElement;

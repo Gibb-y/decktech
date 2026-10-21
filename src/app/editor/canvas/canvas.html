@@ -52,7 +52,7 @@
   (keyup)="onKeyUp($event)"
 >
   <div class="page" [style.left.px]="viewport().panX" [style.top.px]="viewport().panY" [style.width.px]="stage().width * viewport().zoom">
-    <app-slide-renderer [slide]="slide()" [theme]="theme()" [layout]="layout()" [stage]="stage()" mode="edit" [concealedId]="editingElement()?.id ?? null" />
+    <app-slide-renderer [slide]="slide()" [theme]="theme()" [layout]="layout()" [stage]="stage()" [components]="components()" [deckId]="deckId()" mode="edit" [concealedId]="editingElement()?.id ?? null" />
     <div
       class="overlay"
       [style.width.px]="stage().width"
