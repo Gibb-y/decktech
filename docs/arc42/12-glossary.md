@@ -27,7 +27,7 @@
 | Step engine | `StepEngine`: logic that orders steps from elements (one per distinct `step` value) and then from the internal steps of components, and decides when to change slides. |
 | Preloader | The rule `slidesToMount`: which slides the presentation keeps in the page so the next slide's code components are already running. |
 | Presentation view | `PresentationView`: the fullscreen audience view, as opposed to the presenter view. |
-| Presenter view | Second-window view with current/next slide, notes and timer. |
+| Presenter view | `PresenterView`: second-window view with current/next slide, notes, step indicator and timer, kept in sync with the presentation view over a `BroadcastChannel`. |
 | Command | A reversible editing operation producing forward and inverse patches. |
 | Migration | A pure function upgrading a deck document from schema version N to N+1; chained by `migrate` before validation. |
 | Read-only deck | A deck with a newer `schemaVersion` than the app supports; reported with a reason, never edited or saved back. |

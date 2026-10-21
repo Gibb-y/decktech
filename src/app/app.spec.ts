@@ -36,12 +36,11 @@ describe('App', () => {
 
   it.each([
     ['/deck/dk_1/presenter-view', 'Presenter view'],
-  ])('routes %s to %s with the deck id', async (url, heading) => {
+  ])('routes %s to %s', async (url, heading) => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(url);
     const page = harness.routeNativeElement!;
     expect(page.querySelector('h1')?.textContent).toBe(heading);
-    expect(page.textContent).toContain('dk_1');
   });
 
   it('routes /deck/:id/present to the presentation page, which says it is opening the deck', async () => {

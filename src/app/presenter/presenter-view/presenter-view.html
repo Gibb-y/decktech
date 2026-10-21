@@ -1,0 +1,43 @@
+<h1>Presenter view: {{ deck().title }}</h1>
+@if (!available()) {
+  <p class="notice" role="alert">This browser cannot connect the two windows (no BroadcastChannel), so the presenter view cannot follow the presentation.</p>
+} @else if (state() === null) {
+  <p class="notice" role="status">Waiting for the presentation. Start it from the editor with Present (F5); this window follows it.</p>
+}
+@if (state() !== null && slide(); as current) {
+  <div class="grid">
+    <section class="current" aria-labelledby="pv-current">
+      <h2 id="pv-current">Current slide</h2>
+      <div class="preview" [style.--ratio]="ratio()">
+        <app-slide-renderer mode="thumbnail" [slide]="current" [theme]="deck().theme" [layout]="layout()" [stage]="deck().stage" [step]="elementStep()" [components]="deck().components" [deckId]="deck().id" />
+      </div>
+      <p class="position">{{ position() }}</p>
+    </section>
+    <section class="next" aria-labelledby="pv-next">
+      <h2 id="pv-next">Next slide</h2>
+      @if (nextSlide(); as following) {
+        <div class="preview" [style.--ratio]="ratio()">
+          <app-slide-renderer mode="thumbnail" [slide]="following" [theme]="deck().theme" [layout]="nextLayout()" [stage]="deck().stage" [step]="0" [components]="deck().components" [deckId]="deck().id" />
+        </div>
+      } @else {
+        <p class="end">End of the presentation.</p>
+      }
+    </section>
+    <section class="notes" aria-labelledby="pv-notes">
+      <h2 id="pv-notes">Notes</h2>
+      @if (current.notes.trim()) {
+        <p class="notes-text">{{ current.notes }}</p>
+      } @else {
+        <p class="empty">No notes for this slide.</p>
+      }
+    </section>
+  </div>
+}
+<div class="controls" role="group" aria-label="Presenter controls">
+  <button type="button" [attr.aria-disabled]="state() === null || atStart()" (click)="state() !== null && !atStart() && send({ type: 'command', action: 'prev' })">Previous</button>
+  <button type="button" [attr.aria-disabled]="state() === null || atEnd()" (click)="state() !== null && !atEnd() && send({ type: 'command', action: 'next' })">Next</button>
+  <span class="timer-face" role="timer" aria-label="Elapsed time">{{ elapsed() }}</span>
+  <button type="button" [attr.aria-disabled]="state() === null" (click)="state() !== null && toggleTimer()">{{ running() ? 'Pause timer' : 'Start timer' }}</button>
+  <button type="button" [attr.aria-disabled]="state() === null" (click)="state() !== null && send({ type: 'timer', action: 'reset' })">Reset timer</button>
+</div>
+<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ position() }}</div>

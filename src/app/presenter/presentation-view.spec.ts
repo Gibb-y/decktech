@@ -592,7 +592,7 @@ describe('PresentationView', () => {
       p.root.dispatchEvent(new Event('pointermove'));
       p.fixture.detectChanges();
       expect(controls.classList.contains('visible')).toBe(true);
-      expect(controls.querySelectorAll('button')).toHaveLength(3);
+      expect(controls.querySelectorAll('button')).toHaveLength(4);
     });
   });
 

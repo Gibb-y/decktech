@@ -35,5 +35,6 @@
   <button type="button" [attr.aria-disabled]="atStart()" (click)="previous()">Previous</button>
   <span class="position" aria-hidden="true">{{ position() }}</span>
   <button type="button" [attr.aria-disabled]="atEnd()" (click)="onNextButton()">Next</button>
+  <button type="button" (click)="openPresenterView()">Presenter view</button>
   <button type="button" (click)="exit()">Exit</button>
 </div>
