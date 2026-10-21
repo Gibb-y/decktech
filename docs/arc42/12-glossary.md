@@ -32,6 +32,7 @@
 | Asset id | Lower-case hex SHA-256 of an asset's bytes; also its `blobKey`. Identical content is stored once. |
 | Gesture | One continuous pointer action on the canvas (drag, resize, rotate). It issues many commands with one `coalesceKey`, holds the key open with `beginGesture`, and so is one undo step. |
 | Batch | A command that runs several commands in order as one undo step. |
+| Rich text | The formatted content of a text element, `TextEl.rich`: a restricted ProseMirror JSON document (headings, lists, bold / italic / underline / code, links, theme colour and size). `TextEl.text` keeps its plain-text mirror. Edited in place by the lazy ProseMirror chunk and drawn by the renderer without it. |
 | Interact mode | Canvas mode in which the overlay lets the pointer through to the one selected code element instead of selecting and dragging it. |
 | Section | A named group of slides: `Slide.section` on a slide starts it, and it runs to the next slide that has one. Shown in the slide sorter. |
 | Reading order | The order in which assistive technology and the Tab key visit a slide's elements: the element array, which is also the z-order. Fixed in the reading-order panel. |

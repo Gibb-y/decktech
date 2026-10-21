@@ -56,6 +56,8 @@ sequenceDiagram
     D->>S: execute(SetComponentSource{id, html, css, js})
 ```
 
+Text elements follow the same gesture, with a different editor: double-click (or Enter) on a text element starts the in-place ProseMirror editor, which loads its own chunk on first use. Typing changes nothing in the deck; leaving the text (blur, Escape, selecting something else) commits one `SetText` if the content changed, so the whole edit is one undo step (5.4, "Rich text editing").
+
 `Insert → Code component` is `InsertActions.insert('code')`: it adds a starter `ComponentDef` with a fresh id and a code element in one `AddCodeElement` command and selects the element; the code editor itself is a later issue.
 
 Reloading the frame on each change (rather than hot-patching) keeps semantics identical to presentation. Component state that the author wants to keep across reloads can use `deck.state` (see 8.3).
