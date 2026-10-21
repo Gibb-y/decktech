@@ -176,13 +176,13 @@ export class PresentationView {
       });
     });
 
+    this.timer.apply('start');
     // The presenter view mirrors this window: the position and the clock go out whenever they change,
     // and its commands are applied here, so the engine stays the one source of truth.
     effect((onCleanup) => {
       const connection = this.sync.connect(this.deckId(), (message) => this.onSync(message));
       untracked(() => {
         this.connection = connection;
-        this.timer.apply('start');
         this.broadcast();
       });
       onCleanup(() => {
@@ -301,6 +301,7 @@ export class PresentationView {
   }
 
   private onSync(message: SyncMessage): void {
+    if (this.done) return;
     if (message.type === 'hello') this.broadcast();
     else if (message.type === 'timer') {
       this.timer.apply(message.action);

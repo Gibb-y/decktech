@@ -38,7 +38,7 @@ export class PresenterView {
   readonly deck = input.required<Deck>();
 
   private readonly sync = inject(PresenterSync);
-  private connection: SyncConnection | null = null;
+  private readonly connection = signal<SyncConnection | null>(null);
   protected readonly state = signal<StateMessage | null>(null);
   private readonly deckId = computed(() => this.deck().id);
   private readonly receivedAt = signal(0);
@@ -90,13 +90,13 @@ export class PresenterView {
         this.state.set(message);
       });
       untracked(() => {
-        this.connection = connection;
+        this.connection.set(connection);
         this.state.set(null);
       });
       connection.post({ type: 'hello' });
       onCleanup(() => {
         connection.close();
-        if (this.connection === connection) this.connection = null;
+        if (this.connection() === connection) this.connection.set(null);
       });
     });
 
@@ -108,10 +108,10 @@ export class PresenterView {
     });
   }
 
-  protected readonly available = (): boolean => this.connection?.available ?? false;
+  protected readonly available = (): boolean => this.connection()?.available ?? false;
 
   protected send(message: OutgoingMessage): void {
-    this.connection?.post(message);
+    this.connection()?.post(message);
   }
 
   protected toggleTimer(): void {
