@@ -89,6 +89,10 @@ summary:focus-visible {
   position: absolute;
   cursor: move;
 }
+.hit.editable {
+  /* The only selected text element: a click puts the caret in it (a drag still moves it). */
+  cursor: text;
+}
 .hit.locked {
   cursor: default;
 }

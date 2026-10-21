@@ -1,7 +1,10 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, linkedSignal, signal, viewChild } from '@angular/core';
-import type { Deck, Element } from '../../core/model';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, linkedSignal, signal, untracked, viewChild } from '@angular/core';
+import type { Deck, Element, TextEl } from '../../core/model';
 import { DeckStore, MoveElements, ResizeElements, SetProps, type ElementGeometry } from '../../core/store';
 import { SlideRenderer } from '../../renderer';
+import { TextEditing } from '../text/text-editing';
+import { TextEditor } from '../text/text-editor';
+import { TEXT_SHORTCUTS, textShortcutId } from '../text/text-shortcuts';
 import { LiveAnnouncer } from '../../shared';
 import { EditorActions } from '../editor-actions';
 import { ShortcutRegistry } from '../shortcut-registry';
@@ -40,7 +43,7 @@ interface Frame extends Box {
 }
 
 type Gesture =
-  | { kind: 'move'; ids: string[]; origin: Point; client: Point; bounds: Rect; targets: SnapTargets; applied: Point; key: string; hold: (() => void) | null; plainClick: string | null }
+  | { kind: 'move'; ids: string[]; origin: Point; client: Point; bounds: Rect; targets: SnapTargets; applied: Point; key: string; hold: (() => void) | null; plainClick: string | null; editOnClick: string | null }
   | { kind: 'resize'; handle: HandleId; start: Box; items: { id: string; box: Box }[]; group: boolean; targets: SnapTargets; key: string; hold: (() => void) | null }
   | { kind: 'rotate'; id: string; center: Point; key: string; hold: (() => void) | null }
   | { kind: 'marquee'; origin: Point; base: readonly string[] }
@@ -57,7 +60,7 @@ let gestureCounter = 0;
  */
 @Component({
   selector: 'app-canvas',
-  imports: [SlideRenderer],
+  imports: [SlideRenderer, TextEditor],
   templateUrl: './canvas.html',
   styleUrl: './canvas.css',
 })
@@ -66,6 +69,7 @@ export class Canvas {
   protected readonly actions = inject(EditorActions);
   private readonly announcer = inject(LiveAnnouncer);
   private readonly registry = inject(ShortcutRegistry);
+  private readonly textEditing = inject(TextEditing);
 
   private readonly viewportEl = viewChild.required<ElementRef<HTMLElement>>('area');
 
@@ -129,6 +133,13 @@ export class Canvas {
     return { ...bounds, rotation: 0, locked, resizable: !locked && selected.every((e) => !e.rotation), rotatable: false };
   });
 
+  /** The text element being edited in place, if it is still on the slide and the only thing selected. */
+  protected readonly editingElement = computed<TextEl | null>(() => {
+    const id = this.textEditing.editingId();
+    const only = this.store.selectedElements();
+    return id !== null && only.length === 1 && only[0].id === id && only[0].type === 'text' ? only[0] : null;
+  });
+
   protected readonly guides = signal<Guide[]>([]);
   protected readonly marquee = signal<Rect | null>(null);
   protected readonly panning = signal(false);
@@ -151,10 +162,18 @@ export class Canvas {
       destroyRef.onDestroy(() => observer.disconnect());
     });
     destroyRef.onDestroy(() => this.endGesture());
+    destroyRef.onDestroy(() => this.textEditing.stop());
+    // Selecting something else, or the element going away, ends the edit (the editor commits as it closes).
+    effect(() => {
+      if (this.textEditing.editingId() !== null && this.editingElement() === null) untracked(() => this.textEditing.stop());
+    });
     const unregister = CANVAS_SHORTCUTS.map((s) =>
       this.registry.register({ ...s, id: canvasShortcutId(s), scope: 'canvas', run: (event) => s.run(this.contextFor(), event.shiftKey) }),
     );
-    destroyRef.onDestroy(() => unregister.forEach((u) => u()));
+    const unregisterText = TEXT_SHORTCUTS.map((s) =>
+      this.registry.register({ ...s, id: textShortcutId(s), scope: 'text', run: () => s.run(this.textEditing) }),
+    );
+    destroyRef.onDestroy(() => [...unregister, ...unregisterText].forEach((u) => u()));
   }
 
   // ----------------------------------------------------------- view actions
@@ -186,6 +205,34 @@ export class Canvas {
     if (this.interactTarget() === null) return void this.announcer.announce('Select one code component to interact with it');
     this.interact.update((on) => !on);
     this.announcer.announce(this.interact() ? 'Interact mode on: clicks go to the component' : 'Interact mode off');
+  }
+
+  /** Starts editing the selected text element in place (Enter, double-click, the panel's Edit text button). */
+  editText(): boolean {
+    const selected = this.store.selectedElements();
+    if (selected.length !== 1 || selected[0].type !== 'text') return false;
+    if (selected[0].locked) {
+      this.announcer.announce('This element is locked. Unlock it to edit the text');
+      return true;
+    }
+    this.textEditing.start(selected[0].id);
+    return true;
+  }
+
+  /** The text element a printable key would start editing: the one selected, unlocked text element. */
+  private typingTarget(): TextEl | null {
+    const selected = this.store.selectedElements();
+    return selected.length === 1 && selected[0].type === 'text' && !selected[0].locked ? selected[0] : null;
+  }
+
+  /** Whether the pointer would put a caret in this element: the only selected, unlocked text element. */
+  protected isEditable(element: Element): boolean {
+    return this.typingTarget()?.id === element.id;
+  }
+
+  protected onEditorClosed(byKeyboard: boolean): void {
+    this.textEditing.stop();
+    if (byKeyboard) this.viewportEl().nativeElement.focus();
   }
 
   protected canInteract(): boolean {
@@ -252,6 +299,8 @@ export class Canvas {
       hold: null,
       // Pressing one of several selected elements without dragging narrows the selection to it.
       plainClick: wasSelected && this.selection().length > 1 ? element.id : null,
+      // A press-and-release on a text element that was already the only selection puts the caret in it.
+      editOnClick: wasSelected && this.selection().length === 1 && element.type === 'text' && !element.locked ? element.id : null,
     });
   }
 
@@ -403,7 +452,9 @@ export class Canvas {
     if (!g) return;
     this.endGesture();
     this.viewportEl().nativeElement.releasePointerCapture?.(e.pointerId ?? 1);
-    if (g.kind === 'move' && g.plainClick) {
+    if (g.kind === 'move' && g.editOnClick && !g.hold) {
+      this.textEditing.start(g.editOnClick, { at: { x: e.clientX, y: e.clientY } });
+    } else if (g.kind === 'move' && g.plainClick) {
       this.store.select([g.plainClick]);
       this.actions.announceSelection();
     } else if (g.kind === 'marquee') {
@@ -455,6 +506,13 @@ export class Canvas {
       return this.cancelGesture();
     }
     if (this.gesture) return;
+    // Typing on a selected text element starts editing it with that character, unless the key is a shortcut.
+    const target = this.typingTarget();
+    if (target && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !this.registry.find(e, 'canvas')) {
+      e.preventDefault();
+      if (this.textEditing.editingId() === target.id) return this.textEditing.appendStart(e.key);
+      return this.textEditing.start(target.id, { text: e.key });
+    }
     this.registry.handle(e, 'canvas');
   }
 
@@ -472,6 +530,7 @@ export class Canvas {
         actualSize: () => this.actualSize(),
         pan: (dx, dy) => this.pan(dx, dy),
         toggleInteract: () => this.toggleInteract(),
+        editText: () => this.editText(),
         hasSelection: this.hasSelection(),
       },
     };

@@ -12,6 +12,8 @@ export interface ShortcutContext {
     /** Moves the stage by a screen offset. */
     pan(dx: number, dy: number): void;
     toggleInteract(): void;
+    /** Starts editing the selected text element in place; `false` when the selection is not one text element. */
+    editText(): boolean;
     readonly hasSelection: boolean;
   };
 }
@@ -96,7 +98,14 @@ export const CANVAS_SHORTCUTS: readonly Shortcut[] = [
   { key: ['-', '_'], keys: '-', description: 'Zoom out', run: ({ view }) => view.zoomOut() },
   { key: '0', ctrl: true, keys: 'Ctrl+0', description: 'Fit the slide in the window', run: ({ view }) => view.fit() },
   { key: '1', ctrl: true, keys: 'Ctrl+1', description: 'Zoom to 100%', run: ({ view }) => view.actualSize() },
-  { key: 'Enter', keys: 'Enter', description: 'Toggle interact mode for the selected code component', run: ({ view }) => view.toggleInteract() },
+  {
+    key: 'Enter',
+    keys: 'Enter',
+    description: 'Edit the selected text in place (Escape finishes); for a code component, toggle interact mode',
+    run: ({ view }) => {
+      if (!view.editText()) view.toggleInteract();
+    },
+  },
 ];
 
 /** The shortcut for a key press, or `undefined`. Modifiers must match exactly unless the entry leaves shift open. */

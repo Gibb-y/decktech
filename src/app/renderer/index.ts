@@ -9,3 +9,4 @@ export * from './text-blocks';
 export * from './text-element';
 export * from './theme';
 export * from './visibility';
+export * from './rich-view';

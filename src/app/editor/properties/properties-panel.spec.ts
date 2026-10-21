@@ -52,7 +52,7 @@ describe('PropertiesPanel: sections', () => {
     const e = await open();
     await select(e, 0);
     expect(panel(e).querySelector('h2')?.textContent).toBe('Properties');
-    expect(legends(e)).toEqual(['Position and size', 'Text formatting', 'Arrangement']);
+    expect(legends(e)).toEqual(['Position and size', 'Text formatting', 'Arrangement', 'Rich text']);
     expect(field(e, 'text').tagName).toBe('TEXTAREA');
     expect(field<HTMLSelectElement>(e, 'align').tagName).toBe('SELECT');
     expect(field(e, 'fontSize').type).toBe('number');
@@ -253,6 +253,7 @@ describe('PropertiesPanel: locked elements', () => {
       ['Position and size', true],
       ['Text formatting', true],
       ['Arrangement', false],
+      ['Rich text', true],
     ]);
     await edit(e, field(e, 'locked'), false);
     expect(selected(e)['locked']).toBe(false);

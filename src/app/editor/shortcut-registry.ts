@@ -1,12 +1,13 @@
 import { Service, computed, signal } from '@angular/core';
 
 /** Where a shortcut is live. `global` shortcuts work anywhere in the editor and so may not share a key with any other scope. */
-export type ShortcutScope = 'global' | 'canvas' | 'sorter';
+export type ShortcutScope = 'global' | 'canvas' | 'sorter' | 'text';
 
 export const SCOPE_LABELS: Record<ShortcutScope, string> = {
   global: 'Anywhere in the editor',
   canvas: 'Slide canvas',
   sorter: 'Slide sorter',
+  text: 'While editing text',
 };
 
 export interface KeyLike {

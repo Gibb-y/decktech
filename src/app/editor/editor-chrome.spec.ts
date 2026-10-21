@@ -164,8 +164,8 @@ describe('the keyboard shortcut help', () => {
     const listed = Array.from(root.querySelectorAll('app-shortcut-help dt kbd'), (k) => k.textContent);
     expect(listed).toHaveLength(registry.shortcuts().length);
     const headings = Array.from(root.querySelectorAll('app-shortcut-help h3'), (h) => h.textContent);
-    expect(headings).toEqual(['Anywhere in the editor', 'Slide canvas', 'Slide sorter']);
-    expect(listed).toEqual(expect.arrayContaining(['/', '?', 'Ctrl+D', 'Alt+Arrow up', 'Enter', 'Tab']));
+    expect(headings).toEqual(['Anywhere in the editor', 'Slide canvas', 'Slide sorter', 'While editing text']);
+    expect(listed).toEqual(expect.arrayContaining(['/', '?', 'Ctrl+D', 'Alt+Arrow up', 'Enter', 'Tab', 'Ctrl+B', 'Ctrl+K']));
   });
 
   it('closes with its button and gives focus back', async () => {

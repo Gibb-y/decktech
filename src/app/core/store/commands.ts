@@ -2,6 +2,8 @@ import {
   ELEMENT_BASE_KEYS,
   ELEMENT_SCHEMAS,
   createElement,
+  richPlainText,
+  validateRichText,
   generateId,
   PLACEHOLDER_KINDS,
   reflowToLayout,
@@ -15,7 +17,9 @@ import {
   type Deck,
   type Element,
   type Fill,
+  type RichDoc,
   type Slide,
+  type TextEl,
   type Theme,
 } from '../model';
 import {
@@ -250,6 +254,9 @@ export class SetTheme implements Command {
     for (const font of refs.fonts) {
       if (!Object.hasOwn(theme.fonts, font)) throw new CommandError(`The deck still uses the font "${font}", which the theme lacks`);
     }
+    for (const size of refs.sizes) {
+      if (!Object.hasOwn(theme.typeScale, size)) throw new CommandError(`The deck still uses the text size "${size}", which the theme lacks`);
+    }
     return resultOf(deck, deepEqual(deck.theme, theme) ? deck : { ...deck, theme });
   }
 }
@@ -450,6 +457,8 @@ export class SetProps implements Command {
           if (value === undefined) delete next[key];
           else next[key] = value;
         }
+        // Different plain text would leave a stale `rich` document that the renderer prefers.
+        if (next && e.type === 'text' && next['text'] !== e.text) delete next['rich'];
         return (next as Element | undefined) ?? e;
       }),
     );
@@ -496,6 +505,7 @@ function allowedKeys(element: Element): Set<string> {
   const keys = new Set<string>([...ELEMENT_BASE_KEYS, ...Object.keys(ELEMENT_SCHEMAS[element.type].fields)]);
   keys.delete('id');
   keys.delete('type');
+  keys.delete('rich'); // validated and mirrored into `text` by SetText only
   return keys;
 }
 
@@ -551,21 +561,40 @@ function reorder(elements: readonly Element[], selected: ReadonlySet<string>, mo
   }
 }
 
-/** Commits edited text of a text element (one command per editing session, arc42 §8.4). */
+/**
+ * Commits edited text of a text element (one command per editing session, arc42 §8.4). Plain
+ * text replaces the content and drops any `rich` document; a `RichDoc` is validated against the
+ * deck theme (same rules as on load), stored as a copy, and its plain-text mirror becomes `text`.
+ */
 export class SetText implements Command {
   readonly name = 'SetText';
 
   constructor(
     readonly elementId: string,
-    readonly text: string,
+    readonly content: string | RichDoc,
   ) {}
 
   do(deck: Deck): CommandResult {
+    const content = this.content;
+    let rich: RichDoc | undefined;
+    let text: string;
+    if (typeof content === 'string') {
+      text = content;
+    } else {
+      const problems = validateRichText(content, 'rich', { colors: Object.keys(deck.theme.colors), sizes: Object.keys(deck.theme.typeScale) });
+      if (problems.length > 0) throw new CommandError(`Invalid rich text: ${problems.map((p) => `${p.path} ${p.message}`).join('; ')}`);
+      rich = structuredClone(content);
+      text = richPlainText(rich);
+    }
     return resultOf(
       deck,
       updateElements(deck, [this.elementId], (e) => {
         if (e.type !== 'text') throw new CommandError(`Element "${e.id}" is a ${e.type} element, not text`);
-        return e.text === this.text ? e : { ...e, text: this.text };
+        if (e.text === text && (rich === undefined ? e.rich === undefined : deepEqual(e.rich, rich))) return e;
+        const next: TextEl = { ...e, text };
+        if (rich) next.rich = rich;
+        else delete next.rich;
+        return next;
       }),
     );
   }
