@@ -133,7 +133,8 @@ export function findContrastFailures(tokens, pairs = PAIRS) {
   });
 }
 
-export function findCssProblems(css) {
+export function findCssProblems(source) {
+  const css = source.replace(/\/\*[\s\S]*?\*\//g, '');
   const problems = [];
   const { light, dark, darkMedia, darkAttribute } = tokenSets(css);
   for (const name of Object.keys(darkAttribute)) {
@@ -148,11 +149,11 @@ export function findCssProblems(css) {
   for (const name of ['--control-height', '--control-height-sm', '--control-height-lg']) {
     if (!(parseFloat(light[name]) * 16 >= 24)) problems.push(`${name} is below the 24px minimum target size`);
   }
-  const reduced = declarations(css, ':root', css.indexOf('prefers-reduced-motion'));
+  const reduced = declarations(css, ':root', css.indexOf('@media (prefers-reduced-motion'));
   for (const name of ['--duration-fast', '--duration-base', '--duration-slow']) {
     if (reduced[name] !== '0ms') problems.push(`${name} is not 0ms under prefers-reduced-motion`);
   }
-  if (declarations(css, ':root', css.indexOf('forced-colors'))['--focus'] !== 'Highlight') problems.push('forced-colors mode must set --focus: Highlight');
+  if (declarations(css, ':root:root:root', css.indexOf('@media (forced-colors'))['--focus'] !== 'Highlight') problems.push('forced-colors mode must set --focus: Highlight');
   if (!/:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus\)/.test(css)) problems.push('the :focus-visible rule must draw a 2px outline in var(--focus)');
   return problems;
 }

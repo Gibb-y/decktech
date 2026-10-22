@@ -6,7 +6,7 @@
  * Colour literals are allowed in this file and nowhere else (`npm run lint:tokens`).
  *
  * The dark set appears twice (media query for "follow the system", attribute for the manual choice);
- * `tokens.spec.ts` checks that both copies are identical and that every text pair reaches AA.
+ * `scripts/check-tokens.mjs` (`npm run lint:tokens`) checks that both copies are identical and that every text pair reaches AA.
  */
 
 :root {
@@ -175,7 +175,8 @@
 
 /* High contrast mode: the system palette wins, so only the keywords that must stay visible are set. */
 @media (forced-colors: active) {
-  :root {
+  /* Tripled so it outranks the dark sets above (specificity 0,2,0). */
+  :root:root:root {
     --focus: Highlight;
     --border-control: ButtonText;
     --border: CanvasText;

@@ -10,7 +10,7 @@ export const COLOR_SCHEME_KEY = 'decktech.colorScheme';
 
 /**
  * What a first visit gets. Light until every screen has moved to the design tokens (arc42 8.11); then
- * this becomes `'system'`. `index.html` repeats the value for the no-flash script (a spec keeps them equal).
+ * this becomes `'system'`. `index.html` repeats the value for the no-flash script: change both together.
  */
 export const DEFAULT_COLOR_SCHEME: ColorSchemeMode = 'light';
 
@@ -25,7 +25,9 @@ export function isColorSchemeMode(value: unknown): value is ColorSchemeMode {
  */
 @Service()
 export class ColorScheme {
-  private readonly root = inject(DOCUMENT).documentElement;
+  private readonly document = inject(DOCUMENT);
+  private readonly root = this.document.documentElement;
+  private readonly window = this.document.defaultView;
   private readonly modeState = signal<ColorSchemeMode>(this.stored() ?? DEFAULT_COLOR_SCHEME);
   readonly mode = this.modeState.asReadonly();
 
@@ -38,7 +40,7 @@ export class ColorScheme {
     this.modeState.set(mode);
     this.apply(mode);
     try {
-      this.root.ownerDocument.defaultView?.localStorage.setItem(COLOR_SCHEME_KEY, mode);
+      this.window?.localStorage.setItem(COLOR_SCHEME_KEY, mode);
     } catch {
       // Storage blocked or full: the choice holds for this session only.
     }
@@ -46,7 +48,7 @@ export class ColorScheme {
 
   private stored(): ColorSchemeMode | null {
     try {
-      const value = this.root.ownerDocument.defaultView?.localStorage.getItem(COLOR_SCHEME_KEY);
+      const value = this.window?.localStorage.getItem(COLOR_SCHEME_KEY);
       return isColorSchemeMode(value) ? value : null;
     } catch {
       return null;
@@ -67,7 +69,7 @@ const LABELS: Readonly<Record<ColorSchemeMode, string>> = { system: 'System', li
   template: `
     <label>
       <span class="sr-only">Colour scheme</span>
-      <select [value]="scheme.mode()" (change)="choose($event)">
+      <select (change)="choose($event)">
         @for (mode of modes; track mode) {
           <option [value]="mode" [selected]="mode === scheme.mode()">{{ labels[mode] }}</option>
         }
