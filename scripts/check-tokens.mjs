@@ -158,6 +158,18 @@ export function findCssProblems(source) {
   return problems;
 }
 
+/**
+ * `var(--name)` references in `text` that no token defines. `local` names are custom properties a component
+ * sets itself and are skipped; `--deck-*` belongs to the slide stage (arc42 8.11).
+ */
+export function findUnknownTokens(text, defined, local = []) {
+  const unknown = new Set();
+  for (const m of text.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/var\(\s*(--[\w-]+)/g)) {
+    if (!defined.has(m[1]) && !local.includes(m[1]) && !m[1].startsWith('--deck-')) unknown.add(m[1]);
+  }
+  return [...unknown];
+}
+
 // ---- CLI ----
 
 function collect(dir, out = []) {
@@ -181,7 +193,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
   const { problems: literal, notes } = findLiteralViolations(counts, baseline);
-  const problems = [...literal, ...findCssProblems(readFileSync(join(src, 'styles.css'), 'utf8'))];
+  const tokensCss = readFileSync(join(src, 'styles.css'), 'utf8');
+  const defined = new Set(Object.keys(tokenSets(tokensCss.replace(/\/\*[\s\S]*?\*\//g, '')).light));
+  // The primitives (ui.css and shared/) may only use tokens that exist.
+  const unknown = files
+    .filter((f) => f.path === 'ui.css' || f.path.startsWith('app/shared/'))
+    .flatMap((f) => findUnknownTokens(f.text, defined).map((name) => `${f.path}: var(${name}) is not a token in styles.css`));
+  const problems = [...literal, ...unknown, ...findCssProblems(tokensCss)];
   for (const n of notes) console.log(`note: ${n}`);
   for (const p of problems) console.error(p);
   if (problems.length > 0) {

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { PAIRS, contrast, countLiterals, findContrastFailures, findCssProblems, findLiteralViolations, isChromeFile, tokenSets } from './check-tokens.mjs';
+import { PAIRS, contrast, countLiterals, findContrastFailures, findCssProblems, findLiteralViolations, findUnknownTokens, isChromeFile, tokenSets } from './check-tokens.mjs';
 
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'styles.css'), 'utf8');
 
@@ -78,4 +78,38 @@ describe('colour literals', () => {
     const baseline = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'token-baseline.json'), 'utf8'));
     assert.ok(Object.values(baseline).every((n) => Number.isInteger(n) && n > 0));
   });
+});
+
+const ui = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'ui.css'), 'utf8');
+
+describe('ui.css (shared primitives)', () => {
+  const defined = new Set(Object.keys(tokenSets(css.replace(/\/\*[\s\S]*?\*\//g, '')).light));
+
+  it('only uses tokens that styles.css defines', () => assert.deepEqual(findUnknownTokens(ui, defined), []));
+
+  it('has no colour literals', () => assert.deepEqual(countLiterals([{ path: 'ui.css', text: ui }]), {}));
+
+  it('finds unknown tokens, but not --deck-* or local ones', () => {
+    const text = 'a { color: var(--nope); b: var( --text ); c: var(--deck-color-text); d: var(--mine, 1px); e: var(--nope) }';
+    assert.deepEqual(findUnknownTokens(text, new Set(['--text']), ['--mine']), ['--nope']);
+  });
+
+  for (const state of [':hover', ':active', ':disabled', "[aria-disabled='true']", "[aria-pressed='true']"]) {
+    it(`gives .btn a ${state} state`, () => assert.ok(ui.includes(`.btn${state}`), state));
+  }
+
+  for (const variant of ['.btn-primary', '.btn-quiet', '.btn-danger', '.btn-icon', '.btn-sm', '.btn-lg']) {
+    it(`defines ${variant}`, () => assert.ok(ui.includes(`${variant} {`) || ui.includes(`${variant},`), variant));
+  }
+
+  it('never removes the focus ring (the base layer draws it)', () => {
+    assert.doesNotMatch(ui.replace(/\.input:focus-visible\s*\{[^}]*\}/, ''), /outline\s*:\s*(?:none|0)/);
+  });
+
+  it('keeps icon buttons at least 24px square through the control height tokens', () => {
+    assert.match(ui, /\.btn-icon\s*\{[^}]*width:\s*var\(--control-height\)/);
+    assert.match(ui, /\.btn-icon\.btn-sm\s*\{[^}]*width:\s*var\(--control-height-sm\)/);
+  });
+
+  it('has a forced-colors block', () => assert.match(ui, /@media \(forced-colors: active\)/));
 });
