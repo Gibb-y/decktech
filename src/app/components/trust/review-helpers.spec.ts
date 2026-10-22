@@ -206,3 +206,9 @@ describe('formatForViewing', () => {
     expect(formatForViewing(once, 'css')).toBe(once);
   });
 });
+
+describe('flagsOf, more addresses', () => {
+  it.each(['ws://192.168.0.5/x', 'wss://sock.example.com/x'])('flags %s', (url) => {
+    expect(flagsOf(def({ js: `new WebSocket("${url}")` })).map((f) => f.kind)).toContain('external-url');
+  });
+});

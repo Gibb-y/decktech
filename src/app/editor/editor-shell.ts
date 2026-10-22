@@ -41,7 +41,7 @@ function isTextEntry(target: EventTarget | null): boolean {
       <a routerLink="/">← Your decks</a>
       <h1 tabindex="-1">{{ heading() }}</h1>
       @if (state().status === 'ready') {
-        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (review)="codeTools.review()"(themeEditor)="dialog.set('theme')" (layoutEditor)="dialog.set('layouts')" (present)="present()" />
+        <app-editor-toolbar [canReview]="codeTools.reviewable()" (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (review)="codeTools.review()" (themeEditor)="dialog.set('theme')" (layoutEditor)="dialog.set('layouts')" (present)="present()" />
       }
     </header>
     @switch (state().status) {
@@ -282,7 +282,8 @@ export class EditorShell {
     }
     const ref = this.container.createComponent(type);
     ref.setInput('view', request.view);
-    ref.setInput('elementId', request.view === 'edit' ? request.elementId : null);    (ref.instance as { closed: OutputEmitterRef<void> }).closed.subscribe(() => this.codeTools.close());
+    ref.setInput('elementId', request.view === 'edit' ? request.elementId : null);
+    (ref.instance as { closed: OutputEmitterRef<void> }).closed.subscribe(() => this.codeTools.close());
     this.tools = ref;
   }
 

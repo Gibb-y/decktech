@@ -1,4 +1,4 @@
-import { Component, computed, inject, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { BUILT_IN_THEMES } from '../../core/model';
 import { DeckStore } from '../../core/store';
 import { SlideActions } from '../slide-actions';
@@ -37,7 +37,7 @@ import { ThemeActions, builtInThemeId } from '../theme-actions';
       <button type="button" aria-haspopup="dialog" (click)="themeEditor.emit()">Edit theme…</button>
       <button type="button" aria-haspopup="dialog" (click)="layoutEditor.emit()">Layouts…</button>
       <button type="button" aria-haspopup="dialog" (click)="components.emit()">Components…</button>
-      @if (store.deck().components.length > 0) {
+      @if (canReview()) {
         <button type="button" aria-haspopup="dialog" (click)="review.emit()">Review code…</button>
       }
       <button type="button" (click)="themes.pickFont()">Add font…</button>
@@ -115,6 +115,7 @@ export class EditorToolbar {
   readonly help = output<void>();
   readonly components = output<void>();
   readonly review = output<void>();
+  readonly canReview = input(false);
   readonly themeEditor = output<void>();
   readonly layoutEditor = output<void>();
   readonly present = output<void>();

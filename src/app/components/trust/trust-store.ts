@@ -69,6 +69,11 @@ export class TrustStore {
     });
   }
 
+  /** Whether the deck has a trust record (it came from a file); reactive. */
+  governs(deckId: string): boolean {
+    return this.repository !== null && !!this.record(deckId);
+  }
+
   /** The sources the user last trusted (or, for a fresh import, those of an earlier version) to compare against. */
   diffBase(deckId: string): ComponentSnapshot[] {
     const record = this.record(deckId);

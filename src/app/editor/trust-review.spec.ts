@@ -22,7 +22,11 @@ class FakeTools {
 /** Stands in for `TrustStore` (the editor may not import the components feature). */
 class FakeTrust implements CodeTrust {
   readonly pending = signal(true);
+  readonly fromFile = signal(true);
   refresh = vi.fn<(deckId: string) => Promise<void>>(async () => undefined);
+  governs(): boolean {
+    return this.fromFile();
+  }
   needsReview(): boolean {
     return this.pending();
   }
@@ -79,6 +83,14 @@ describe('reviewing the code of a deck when it is opened', () => {
     expect(reviewButton(e)).toBeDefined();
   });
 
+  it('has no button for a deck made here: it has no decisions to review', async () => {
+    const trust = new FakeTrust();
+    trust.pending.set(false);
+    trust.fromFile.set(false);
+    const e = await open(trust);
+    expect(reviewButton(e)).toBeUndefined();
+  });
+
   it('has no button for a deck without code components', async () => {
     const e = await open(new FakeTrust(), { withCode: false });
     expect(reviewButton(e)).toBeUndefined();
@@ -115,12 +127,10 @@ describe('reviewing the code of a deck when it is opened', () => {
     expect(e.root.querySelector('app-canvas')).not.toBeNull();
   });
 
-  it('works without the tools: nothing to show, and no button press fails', async () => {
+  it('works without the tools: nothing to show and no button', async () => {
     const e = await open(new FakeTrust(), { tools: false });
     expect(dialog()).toBeNull();
-    reviewButton(e)!.click();
-    await settle(e.fixture);
-    expect(dialog()).toBeNull();
+    expect(reviewButton(e)).toBeUndefined();
     expect(e.root.querySelector('app-canvas')).not.toBeNull();
   });
 });

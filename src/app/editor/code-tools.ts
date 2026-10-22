@@ -26,6 +26,9 @@ export class CodeTools {
     return this.loader !== null && (this.trust?.needsReview(deck.id, deck.components) ?? false);
   });
 
+  /** Whether "Review code…" applies: only decks that came from a file have decisions. */
+  readonly reviewable = computed(() => this.loader !== null && (this.trust?.governs(this.store.deck().id) ?? false) && this.store.deck().components.length > 0);
+
   /** Re-reads the trust decision of a deck that is being opened, before its slides are drawn. */
   refreshTrust(deckId: string): Promise<void> {
     return this.trust?.refresh(deckId) ?? Promise.resolve();

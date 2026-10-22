@@ -216,6 +216,15 @@ describe('TrustDialog', () => {
       expect(view.contentDOM.getAttribute('aria-label')).toBe('HTML source, read only');
     });
 
+    it('names the source type of the tab that is shown, not of the first one', async () => {
+      const d = await open();
+      await click(d, button(d.root, /^Read code/));
+      for (const [tab, label] of [['CSS', 'CSS source, read only'], ['JS', 'JS source, read only']]) {
+        await click(d, button(d.root, tab));
+        expect(d.root.querySelector('.cm-content')?.getAttribute('aria-label')).toBe(label);
+      }
+    });
+
     it('shows the property schema as formatted text', async () => {
       const d = await open();
       await click(d, button(d.root, /^Read code/));

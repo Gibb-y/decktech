@@ -1,5 +1,5 @@
 import { Component, afterNextRender, computed, inject, Injector, output, signal } from '@angular/core';
-import { DeckRepository, snapshotOf, type ComponentSnapshot } from '../../core/persistence';
+import { DeckRepository, componentHash, snapshotOf, type ComponentSnapshot } from '../../core/persistence';
 import { DeckStore } from '../../core/store';
 import { FocusTrap, LiveAnnouncer } from '../../shared';
 import { analyzeDeck } from './analysis';
@@ -193,7 +193,7 @@ export class TrustDialog {
   private readonly base = computed(() => new Map(this.trust.diffBase(this.deck().id).map((s) => [s.componentId, s])));
 
   /** The components the user ticked to run; starts with those that run now. */
-  protected readonly selected = signal<ReadonlySet<string>>(new Set(this.deck().components.filter((def) => this.trust.mayRun(this.deck().id, def)).map((def) => def.id)));
+  protected readonly selected = signal<ReadonlySet<string>>(new Set());
 
   protected readonly rows = computed(() => {
     const base = this.base();
@@ -229,8 +229,20 @@ export class TrustDialog {
     return blob.ok ? blob.value.text() : null;
   };
 
+  private touched = false;
+
   constructor() {
+    void this.preselect();
     void this.trust.knownLibraries().then((known) => this.known.set(known));
+  }
+
+  /** Ticks the components whose current content has a "run" decision; the hashes arrive asynchronously, so this waits for them. */
+  private async preselect(): Promise<void> {
+    const record = this.trust.record(this.deck().id);
+    if (!record) return;
+    const hashes = await Promise.all(this.deck().components.map(async (def) => [def.id, await componentHash(def)] as const));
+    if (this.touched) return;
+    this.selected.set(new Set(hashes.filter(([id, hash]) => record.decisions.some((d) => d.componentId === id && d.hash === hash && d.run)).map(([id]) => id)));
   }
 
   protected reportOf(id: string) {
@@ -257,6 +269,7 @@ export class TrustDialog {
   }
 
   protected toggle(id: string, event: Event): void {
+    this.touched = true;
     const checked = (event.target as HTMLInputElement).checked;
     this.selected.update((set) => {
       const next = new Set(set);

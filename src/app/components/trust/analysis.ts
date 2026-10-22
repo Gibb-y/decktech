@@ -44,7 +44,7 @@ export interface TrustReport {
 /** Library releases that ship with the app, by SHA-256 digest. None are bundled yet; trusted decks add to the known set. */
 export const BUNDLED_LIBRARIES: ReadonlyMap<string, string> = new Map();
 
-const URL_PATTERN = /(?:https?:)?\/\/[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?::\d+)?(?:\/[^\s"'`)<>\\]*)?|https?:\/\/[^\s"'`)<>\\]+/gi;
+const URL_PATTERN = /(?:(?:https?|wss?):)?\/\/[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?::\d+)?(?:\/[^\s"'`)<>\\]*)?|(?:https?|wss?):\/\/[^\s"'`)<>\\]+/gi;
 const MAX_URLS = 5;
 /** A line this long, or a file of this size on one or two lines, is not meant to be read by a person. */
 const LONG_LINE = 500;

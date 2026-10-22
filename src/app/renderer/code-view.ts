@@ -33,6 +33,8 @@ export const COMPONENT_TOOLS = new InjectionToken<ComponentToolsLoader>('Compone
 export interface CodeTrust {
   refresh(deckId: string): Promise<void>;
   needsReview(deckId: string, components: readonly ComponentDef[]): boolean;
+  /** The deck came from a file and has a trust record; a deck made here has none and needs no review. */
+  governs(deckId: string): boolean;
 }
 
 export const CODE_TRUST = new InjectionToken<CodeTrust>('Code trust');

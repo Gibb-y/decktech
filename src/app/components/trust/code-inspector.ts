@@ -139,7 +139,10 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
                 {{ formatted() ? 'Showing a formatted copy (view only).' : 'Showing the source as it is.' }}
               </span>
             </div>
-            <app-code-mirror #box class="viewer" [readOnly]="true" [language]="language()" [label]="label(tab()) + ' source, read only'" [value]="shown()" />
+            <!-- CodeMirror reads its language and label once, so each tab gets its own viewer -->
+            @for (key of [tab()]; track key) {
+              <app-code-mirror #box class="viewer" [readOnly]="true" [language]="language()" [label]="label(tab()) + ' source, read only'" [value]="shown()" />
+            }
           }
         }
         @if ((tab() === 'libs' || tab() === 'files') && openAsset()) {
@@ -300,8 +303,9 @@ export class CodeInspector {
 
   constructor() {
     // Another component, or another tab, must not keep showing a file of the one before.
+    const componentId = computed(() => this.component().id);
     effect(() => {
-      this.component();
+      componentId();
       untracked(() => this.closeAsset());
     });
     effect(() => {
