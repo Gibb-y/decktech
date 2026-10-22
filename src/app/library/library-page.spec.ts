@@ -287,7 +287,7 @@ describe('LibraryPage', () => {
     it('gives each action a name that includes the deck', async () => {
       const { fixture } = await setup(['Budget']);
       const names = Array.from(rows(fixture)[0].querySelectorAll('button'), (b) => b.textContent.replace(/\s+/g, ' ').trim());
-      expect(names).toEqual(['Rename Budget', 'Duplicate Budget', 'Delete Budget']);
+      expect(names).toEqual(['Rename Budget', 'Duplicate Budget', 'Export Budget', 'Delete Budget']);
     });
 
     it('uses only native, tabbable controls (no click handlers on plain elements)', async () => {

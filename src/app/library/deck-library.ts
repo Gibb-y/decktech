@@ -1,6 +1,7 @@
 import { Service, computed, inject, signal } from '@angular/core';
 import { createDeck, err, generateId, ok, type Deck, type Result } from '../core/model';
 import { DeckRepository, toPersistenceError, type DeckSummary } from '../core/persistence';
+import { DeckArchive, type ExportOutcome, type ImportedDeck } from './archive';
 import { BUILT_IN_TEMPLATES, instantiateTemplate } from './templates';
 
 export const MAX_TITLE_LENGTH = 200;
@@ -30,6 +31,7 @@ export function checkTitle(raw: string): Result<string, LibraryError> {
 @Service()
 export class DeckLibrary {
   private readonly repository = inject(DeckRepository);
+  private readonly archive = inject(DeckArchive);
 
   private readonly decksState = signal<DeckSummary[]>([]);
   private readonly statusState = signal<LibraryStatus>('loading');
@@ -85,6 +87,35 @@ export class DeckLibrary {
       const copy: Deck = { ...structuredClone(deck), id: generateId('deck'), title: `Copy of ${deck.title}`.slice(0, MAX_TITLE_LENGTH) };
       return this.store(copy);
     });
+  }
+
+  /** Lets the user choose a `.deck` file. Not queued: a dialog can stay open for long and blocks nothing. */
+  pickFile(): Promise<File | null> {
+    return this.archive.pickFile();
+  }
+
+  /**
+   * Imports a `.deck` file as a new, untrusted deck (arc42 §6.4). The file is verified completely
+   * before anything is stored, so a rejected file leaves the library as it was.
+   */
+  importFile(file: File): Promise<Result<ImportedDeck, LibraryError>> {
+    return this.enqueue(async () => {
+      const imported = await this.archive.importFile(file);
+      if (!imported.ok) return imported;
+      // The deck is stored whatever the refresh does, like `store`.
+      await this.reload();
+      return imported;
+    });
+  }
+
+  /** Writes one deck to a `.deck` file. */
+  exportDeck(id: string): Promise<Result<ExportOutcome, LibraryError>> {
+    return this.enqueue(() => this.archive.exportStored(id));
+  }
+
+  /** Writes every deck into one ZIP of `.deck` files. */
+  exportAll(): Promise<Result<ExportOutcome, LibraryError>> {
+    return this.enqueue(() => this.archive.exportAll());
   }
 
   /** Deleting a deck written by a newer version is allowed: the user may want it gone. */

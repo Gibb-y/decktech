@@ -122,8 +122,8 @@ Built (DT-14): `StepEngine`, the `Preloader` rule and `PresentationView` as in 5
 
 ```mermaid
 flowchart TD
-    A[Import .deck] --> B[Unzip with size / entry limits]
-    B --> C[`migrate`: run migrations, validate with `validateDeck`;<br/>newer schema opens read-only]
+    A[Import .deck] --> B[Unzip with size / entry / ratio limits,<br/>path rules, mime and content checks]
+    B --> C[Content hash, `migrate`: run migrations, validate with `validateDeck`;<br/>newer schema is refused]
     C --> D{Contains code components<br/>or requests permissions?}
     D -- no --> G[Open normally]
     D -- yes --> E[Trust dialog: components, slides,<br/>permissions, libraries, flags]
@@ -136,6 +136,8 @@ flowchart TD
     F -- Cancel --> X[Abort]
 ```
 
+As built (DT-16), steps A to C are `DeckArchive.importFile` (8.2 "As built (DT-16)"): the whole file is verified in memory first, and only a file that passed is stored, as a new deck that never replaces one with the same id. The result is marked `untrusted` and carries `hasCode` and the content `hash`. The trust dialog and the "code disabled until decided" gate (D to J) are DT-17 and **are not built yet**: until then the library page only tells the user that the imported deck contains code components and does not open it, but an opened deck's components run in their sandbox like those of a local deck (11.2).
+
 Locally authored decks are trusted by default; decks imported from files are untrusted until the user decides. Trust is recorded per deck id + content hash (see [ADR-008](../ADRs/ADR-008-trust-prompt-for-imported-decks.md)).
 
 The inspector shows source as text only. No frame is created for an untrusted component, so reading the code never runs it. If a previously trusted deck is re-imported with a different hash, the inspector opens on a per-component diff against the last trusted version.
@@ -144,4 +146,4 @@ The inspector shows source as text only. No frame is created for an untrusted co
 
 - A component that throws or hangs shows an error overlay (in edit mode) or is replaced by a neutral placeholder (in presentation mode) so one broken component never stops the talk.
 - Frame heartbeat missing for 5 s → the supervisor marks it unresponsive; the author can reload or skip it. Built (DT-11): the runtime beats every second; a frame that never says `ready` within 5 s, navigates away, floods or sends garbage is `failed` and destroyed, a silent one is `unresponsive` and recovers if it beats again; the editor shows the reason with "Reload component" and "Skip component", presenting destroys the frame and shows "This component is unavailable." (so does a component that throws), and the slide is never blocked (Q8). Reasons also go to `HostConsole` and, tagged by component id, to `ErrorService` (8.9). Built (DT-12): frames beyond one slide from the shown one, and editor frames scrolled out of view, are destroyed and made again on return (5.3, "Frame lifecycle").
-- Autosave failure (quota, IndexedDB error, conflict with another tab) sets `AutosaveService.status` to `error` and shows the persistent `PersistenceBanner` (`role="alert"`) with "Try again" and, once DT-16 provides `DECK_EXPORT_HANDLER`, an immediate `.deck` download. The failed deck stays pending: nothing is marked saved, the next edit or "Try again" retries, and `open(id)` refuses to leave a deck whose changes could not be saved unless forced.
+- Autosave failure (quota, IndexedDB error, conflict with another tab) sets `AutosaveService.status` to `error` and shows the persistent `PersistenceBanner` (`role="alert"`) with "Try again" and, an immediate `.deck` download (`DECK_EXPORT_HANDLER`, provided by `provideDeckArchive()`; it exports the deck as it is in memory, including the changes that could not be saved). The failed deck stays pending: nothing is marked saved, the next edit or "Try again" retries, and `open(id)` refuses to leave a deck whose changes could not be saved unless forced.
