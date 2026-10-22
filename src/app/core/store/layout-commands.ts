@@ -139,7 +139,8 @@ export class DuplicateLayout implements Command {
   do(deck: Deck): CommandResult {
     const index = layoutIndex(deck, this.layoutId);
     const original = deck.layouts[index];
-    const name = `${original.name} copy`.slice(0, MAX_THEME_NAME);
+    const suffix = ' copy';
+    const name = `${[...original.name].slice(0, MAX_THEME_NAME - suffix.length).join('')}${suffix}`; // keeps the suffix and whole characters
     const copy = checkLayout(deck, { ...structuredClone(original), id: this.newLayoutId, name });
     return resultOf(deck, { ...deck, layouts: [...deck.layouts.slice(0, index + 1), copy, ...deck.layouts.slice(index + 1)] });
   }

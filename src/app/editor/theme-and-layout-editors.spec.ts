@@ -87,6 +87,12 @@ describe('theme editor', () => {
     await typeInto(e, value, '#123456');
     await click(e, button(colours, 'Add'));
     expect(colours.querySelector('[role="alert"]')?.textContent).toContain('A name is 1 to 64');
+    for (const bad of ['__proto__', 'constructor']) {
+      await typeInto(e, name, bad);
+      await click(e, button(colours, 'Add'));
+      expect(colours.querySelector('[role="alert"]')?.textContent).toContain('A name is 1 to 64');
+      expect(rowInput(e, `colors-${bad}`)).toBeNull();
+    }
     await typeInto(e, name, 'accent');
     await click(e, button(colours, 'Add'));
     expect(colours.querySelector('[role="alert"]')?.textContent).toContain('exists already');

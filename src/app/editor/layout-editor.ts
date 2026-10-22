@@ -1,4 +1,4 @@
-import { Component, computed, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { PLACEHOLDER_KINDS, generateId, type Fill, type Layout, type Placeholder, type PlaceholderKind } from '../core/model';
 import {
   AddLayout,
@@ -340,6 +340,11 @@ export class LayoutEditor {
   protected readonly error = signal<string | null>(null);
 
   private drag: Drag | null = null;
+
+  constructor() {
+    // Closing mid-drag (Escape) must not leave the store's gesture open.
+    inject(DestroyRef).onDestroy(() => this.drag?.release());
+  }
 
   readonly closed = output<void>();
 

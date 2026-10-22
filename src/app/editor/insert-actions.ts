@@ -73,7 +73,8 @@ export class InsertActions {
   private build(kind: Exclude<InsertKind, 'image'>, slideId: string): { command: Command; element: Element } {
     const typeScale = this.store.deck().theme.typeScale;
     const sized = (key: string, fallback: number): Partial<TextEl> => ({ fontSize: Object.hasOwn(typeScale, key) ? typeScale[key] : fallback, ...(Object.hasOwn(typeScale, key) ? { sizeToken: key } : {}) });
-    const text = (box: Partial<TextEl>): TextEl => createElement('text', { ...sized('body', 40), ...box });
+    // A box that sets its own size (the title) must not inherit the body's token.
+    const text = (box: Partial<TextEl>): TextEl => createElement('text', { ...('fontSize' in box ? {} : sized('body', 40)), ...box });
     const add = (element: Element) => ({ command: new AddElement(slideId, element), element });
     switch (kind) {
       case 'title':

@@ -31,6 +31,8 @@ const KEY = ID_PATTERN;
 /** The renderer refuses a font stack with these (it ends up in a custom property). */
 const UNSAFE_FONT = /[;{}<>\\]|url\s*\(|expression\s*\(|\/\*/i;
 const MAX_KEY = 64;
+/** Names the validator refuses as keys of a theme map. */
+const FORBIDDEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 const rowsOf = (theme: Theme): Rows => ({
   colors: Object.entries(theme.colors).map(([key, value]) => ({ key, value })),
@@ -338,7 +340,7 @@ export class ThemeEditor {
     const def = GROUPS.find((g) => g.id === group)!;
     const fail = (message: string) => this.addProblem.update((p) => ({ ...p, [group]: message }));
     const name = key.trim();
-    if (!KEY.test(name) || name.length > MAX_KEY) return fail('A name is 1 to 64 letters, digits, "_" or "-"');
+    if (!KEY.test(name) || name.length > MAX_KEY || FORBIDDEN.has(name)) return fail('A name is 1 to 64 letters, digits, "_" or "-"');
     if (this.rows()[group].some((r) => r.key === name)) return fail(`“${name}” exists already`);
     const text = value.trim();
     if (def.numeric ? text === '' || !Number.isFinite(Number(text)) || Number(text) < 0 : text === '') return fail(`Enter a ${def.valueLabel}`);

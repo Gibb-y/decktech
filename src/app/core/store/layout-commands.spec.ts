@@ -122,11 +122,6 @@ describe('DuplicateLayout', () => {
     throwsWith(() => new DuplicateLayout('nope').do(deck), 'does not exist');
   });
 
-  it('keeps a name within the limit', () => {
-    const deck = createDeck();
-    deck.layouts[0].name = 'x'.repeat(100);
-    expect(new DuplicateLayout(deck.layouts[0].id).do(deck).deck.layouts[1].name).toHaveLength(100);
-  });
 });
 
 describe('RenameLayout', () => {
@@ -404,5 +399,16 @@ describe('awkward ids', () => {
     store.redo();
     store.redo();
     expect(store.deck().layouts.at(-1)!.placeholders[0]).toMatchObject({ id, x: 1 });
+  });
+});
+
+describe('DuplicateLayout names', () => {
+  it('keeps the suffix when the name is already at the limit', () => {
+    const deck = createDeck();
+    deck.layouts[0].name = 'x'.repeat(100);
+    const copy = new DuplicateLayout(deck.layouts[0].id).do(deck).deck.layouts[1].name;
+    expect(copy).toHaveLength(100);
+    expect(copy.endsWith(' copy')).toBe(true);
+    expect(copy).not.toBe(deck.layouts[0].name);
   });
 });

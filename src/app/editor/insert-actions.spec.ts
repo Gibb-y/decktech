@@ -280,3 +280,23 @@ describe('InsertActions.insertImage into an image placeholder', () => {
     expect('placeholder' in last(store)).toBe(false);
   });
 });
+
+describe('InsertActions sizes from the theme', () => {
+  it('a title in a theme without a heading size gets its own size and no body token', () => {
+    const { store, insert } = setup();
+    const deck = structuredClone(store.deck());
+    delete (deck.theme.typeScale as Record<string, number>)['heading'];
+    store.load(deck);
+    insert.insert('title');
+    expect(last(store)).toMatchObject({ fontSize: 64 });
+    expect('sizeToken' in last(store)).toBe(false);
+  });
+
+  it('a title and a text box carry the heading and body tokens', () => {
+    const { store, insert } = setup();
+    insert.insert('title');
+    expect(last(store)).toMatchObject({ sizeToken: 'heading' });
+    insert.insert('text');
+    expect(last(store)).toMatchObject({ sizeToken: 'body' });
+  });
+});
