@@ -3,7 +3,8 @@
 | Term | Definition |
 |------|------------|
 | Deck | A presentation: ordered slides plus theme, layouts, assets and component definitions. Stored as JSON, exported as `.deck`. |
-| `.deck` | ZIP archive containing `deck.json`, assets and a manifest. |
+| `.deck` | ZIP archive containing `deck.json`, `assets/<sha256>.<ext>`, an optional `thumbnail.png` and a `manifest.json` with the format version and the SHA-256 of `deck.json` (8.5). |
+| Content hash | SHA-256 of the bytes of `deck.json` as stored in a `.deck`; checked on import, and what trust is bound to (ADR-008). Assets are covered because each is checked against the id the deck lists it under. |
 | Slide | One page of a deck, with a layout, elements, notes and optional transition. |
 | Element | An object on a slide: text, image, shape, line, table, video or code. Positioned in stage units. |
 | Stage | The 1920x1080 logical coordinate space of a slide, scaled to the display. |
