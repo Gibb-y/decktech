@@ -388,3 +388,21 @@ describe('size tokens in SetProps', () => {
     if (!result.ok) expect(result.error.map((e) => e.message).join()).toContain('unknown theme type size "huge"');
   });
 });
+
+describe('awkward ids', () => {
+  it.each(['__proto__', 'constructor', 'toString'])('a layout and placeholder called %s can be added, edited and undone', (id) => {
+    TestBed.configureTestingModule({});
+    const store = TestBed.inject(DeckStore);
+    const deck = sample();
+    store.load(deck);
+    store.execute(new AddLayout({ id, name: 'Odd', placeholders: [ph(id)] }));
+    store.execute(new SetPlaceholderBox(id, id, { x: 1, y: 2, w: 3, h: 4 }));
+    expect(store.deck().layouts.at(-1)!.placeholders[0]).toMatchObject({ id, x: 1 });
+    store.undo();
+    store.undo();
+    expect(store.deck()).toEqual(deck);
+    store.redo();
+    store.redo();
+    expect(store.deck().layouts.at(-1)!.placeholders[0]).toMatchObject({ id, x: 1 });
+  });
+});
