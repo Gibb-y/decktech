@@ -22,4 +22,4 @@ Every screen and dialog carried its own colours, spacing and button styles (the 
 - (+) The contrast of the whole palette is checked by a test, not by eye.
 - (-) We write and maintain the primitives (focus handling in menus, tabs and dialogs) ourselves; they need their own accessibility tests.
 - (-) The dark set must be written twice in plain CSS; the check keeps the copies equal.
-- (-) Until the last screen is migrated the app is light only by default, and the baseline lists the debt.
+- (-) Only colours are enforced by the script; sizes and spacing rely on review. The dialogs still carry their own frame instead of one shared component.
