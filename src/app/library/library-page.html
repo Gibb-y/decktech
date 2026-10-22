@@ -26,7 +26,7 @@
   <p class="error" role="alert">{{ message }}</p>
 }
 @if (notice(); as message) {
-  <p class="notice">
+  <p class="notice" role="status">
     {{ message }}
     @if (imported(); as deck) {
       <a [routerLink]="['/deck', deck.deck.id]">Open “{{ deck.deck.title }}”</a>

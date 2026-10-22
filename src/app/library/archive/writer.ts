@@ -20,8 +20,6 @@ import {
 /** 1 January 1980 UTC, the earliest ZIP time: the same deck always gives the same bytes. */
 const FIXED_TIME = Date.UTC(1980, 0, 1);
 
-const copy = (bytes: Uint8Array): ArrayBuffer => bytes.slice().buffer;
-
 /**
  * Packs a deck and its asset bytes into a `.deck` file: `deck.json`, `assets/<hash>.<ext>`, an
  * optional `thumbnail.png` and `manifest.json` (arc42 §8.5). Every asset is checked against its
@@ -38,7 +36,7 @@ export async function writeArchive(
   if (deckBytes.length > limits.maxDeckBytes) {
     return err(archiveError('too-large', 'The deck is too large to export.'));
   }
-  const contentHash = await sha256Hex(copy(deckBytes));
+  const contentHash = await sha256Hex(deckBytes as BufferSource);
   const manifest: Manifest = {
     format: ARCHIVE_FORMAT,
     formatVersion: FORMAT_VERSION,
@@ -57,7 +55,7 @@ export async function writeArchive(
     if (!bytes) return err(archiveError('missing-entry', `The file of asset ${id.slice(0, 12)}… is missing, so the deck cannot be exported.`));
     const extension = extensionFor(ref.mime);
     if (extension === null) return err(archiveError('bad-mime', `Asset ${id.slice(0, 12)}… has the mime type "${ref.mime}", which is not allowed.`));
-    if (bytes.length !== ref.size || (await sha256Hex(copy(bytes))) !== id) {
+    if (bytes.length !== ref.size || (await sha256Hex(bytes as BufferSource)) !== id) {
       return err(archiveError('hash-mismatch', `The stored file of asset ${id.slice(0, 12)}… is damaged, so the deck cannot be exported.`));
     }
     if (bytes.length > limits.maxEntryBytes) return err(archiveError('too-large', `Asset ${id.slice(0, 12)}… is too large to export.`));

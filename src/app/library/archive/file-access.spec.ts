@@ -32,6 +32,17 @@ describe('FileAccess with the File System Access API', () => {
     expect(close).toHaveBeenCalled();
   });
 
+  it('downloads instead when the click that allowed the picker is gone', async () => {
+    const lost = Object.assign(new Error('user activation'), { name: 'SecurityError' });
+    const create = vi.fn().mockReturnValue('blob:y');
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: create, revokeObjectURL: vi.fn() }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const files = make({ showSaveFilePicker: vi.fn().mockRejectedValue(lost) });
+    await expect(files.save('big.deck', new Uint8Array(1))).resolves.toBe('saved');
+    expect(click).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
   it('offers .zip for a bundle', async () => {
     const showSaveFilePicker = vi.fn().mockResolvedValue({ createWritable: async () => ({ write: async () => undefined, close: async () => undefined }) });
     await make({ showSaveFilePicker }).save('all.zip', new Uint8Array(1));

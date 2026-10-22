@@ -35,6 +35,9 @@ export type SaveOutcome = 'saved' | 'cancelled';
 const ZIP = 'application/zip';
 const REVOKE_AFTER_MS = 30_000;
 
+const isActivationLoss = (e: unknown): boolean =>
+  typeof e === 'object' && e !== null && 'name' in e && ['SecurityError', 'NotAllowedError'].includes((e as { name: string }).name);
+
 const isAbort = (e: unknown): boolean => typeof e === 'object' && e !== null && 'name' in e && (e as { name: unknown }).name === 'AbortError';
 
 /**
@@ -67,7 +70,8 @@ export class FileAccess {
         return 'saved';
       } catch (e) {
         if (isAbort(e)) return 'cancelled';
-        throw e;
+        // Building a big archive can outlast the click that allows the picker; a download still works.
+        if (!isActivationLoss(e)) throw e;
       }
     }
     this.download(env.document, name, bytes);

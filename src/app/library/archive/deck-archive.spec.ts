@@ -247,6 +247,9 @@ describe('fileStem', () => {
     ['../../etc/passwd', 'etc-passwd'],
     ['Überblick', 'Überblick'],
     ['a'.repeat(200), 'a'.repeat(80)],
+    ['a'.repeat(79) + ' b', 'a'.repeat(79)],
+    ['CON', '_CON'],
+    ['nul', '_nul'],
   ])('%j → %j', (title, stem) => {
     expect(fileStem(title)).toBe(stem);
   });

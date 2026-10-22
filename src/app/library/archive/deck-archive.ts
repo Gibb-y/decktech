@@ -41,7 +41,9 @@ const BUNDLE_NAME = 'decktech-decks.zip';
 
 /** `My talk: 2026!` → `My-talk-2026`; never empty. */
 export function fileStem(title: string): string {
-  return title.trim().replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'deck';
+  const stem = title.trim().replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 80).replace(/-+$/, '') || 'deck';
+  // Windows refuses these device names as file names.
+  return /^(con|prn|aux|nul|com\d|lpt\d)$/i.test(stem) ? `_${stem}` : stem;
 }
 
 /**

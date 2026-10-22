@@ -192,7 +192,7 @@ async function verify(files: Record<string, Uint8Array>, limits: ArchiveLimits):
   if (!manifest.ok) return manifest;
 
   // Before parsing anything: a changed or damaged deck.json is not worth interpreting.
-  const hash = await sha256Hex(copy(deckBytes));
+  const hash = await sha256Hex(deckBytes as BufferSource);
   if (hash !== manifest.value.contentHash) {
     return err(archiveError('hash-mismatch', 'The deck does not match its content hash; the file is damaged or was changed after it was exported.'));
   }
@@ -240,7 +240,7 @@ async function verifyAssets(
     if (bytes.length > limits.maxEntryBytes) return bad('too-large', 'it is too large.');
     const problem = contentProblem(bytes, ref.mime);
     if (problem) return bad('bad-mime', problem);
-    if ((await sha256Hex(copy(bytes))) !== id) return bad('hash-mismatch', 'its content does not match its hash.');
+    if ((await sha256Hex(bytes as BufferSource)) !== id) return bad('hash-mismatch', 'its content does not match its hash.');
     result.set(id, { ref: { ...ref }, bytes });
   }
   for (const name of Object.keys(files)) {
@@ -250,6 +250,3 @@ async function verifyAssets(
   }
   return ok(result);
 }
-
-/** `crypto.subtle.digest` wants an `ArrayBuffer`; the view may sit inside a bigger one. */
-const copy = (bytes: Uint8Array): ArrayBuffer => bytes.slice().buffer;

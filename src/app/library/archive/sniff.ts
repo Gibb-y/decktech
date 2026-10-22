@@ -37,7 +37,7 @@ function isSvg(bytes: Uint8Array): boolean {
   const start = text.search(/<svg[\s>/]/i);
   if (start < 0 || start > MAX_SVG_PROLOGUE || !SVG_PROLOGUE.test(text.slice(0, start))) return false;
   // Scripts do not run in an image, but the file is also reachable as a plain asset; refuse the obvious.
-  return !/<script[\s>/]|javascript:/i.test(text);
+  return !/<script[\s>/]|<foreignObject[\s>/]|javascript:|\son[a-z]+\s*=/i.test(text);
 }
 
 function isJson(bytes: Uint8Array): boolean {

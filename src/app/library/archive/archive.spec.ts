@@ -449,6 +449,8 @@ describe('content checks', () => {
     ['a script element', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'],
     ['a javascript: link', '<svg><a href="javascript:alert(1)"><text>x</text></a></svg>'],
     ['text before the svg element', 'hello <svg></svg>'],
+    ['an event handler', '<svg onload="alert(1)"></svg>'],
+    ['a foreignObject', '<svg><foreignObject><div/></foreignObject></svg>'],
     ['a huge prologue', `${'<!-- -->'.repeat(1000)}<svg></svg>`],
   ])('rejects an SVG with %s', (_name, svg) => {
     expect(contentProblem(strToU8(svg), 'image/svg+xml')).not.toBeNull();
