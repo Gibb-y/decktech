@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { createDeck, createSlide, validateDeck, type Element } from '../core/model';
 import { DeckRepository, InMemoryDeckRepository } from '../core/persistence';
-import { DeleteSlide, DeckStore } from '../core/store';
+import { DeleteSlide, DeckStore, SetPlaceholderBox } from '../core/store';
 import { LiveAnnouncer } from '../shared';
 import { INSERT_ITEMS, InsertActions, type InsertKind } from './insert-actions';
 
@@ -232,5 +232,71 @@ describe('InsertActions.pickImage', () => {
     insert.pickImage();
     input.dispatchEvent(new Event('change'));
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+describe('InsertActions.insertImage into an image placeholder', () => {
+  const withImagePlaceholders = () => {
+    const ctx = setup();
+    const deck = structuredClone(ctx.store.deck());
+    deck.layouts.push({
+      id: 'ly_pics',
+      name: 'Pictures',
+      placeholders: [
+        { id: 'p1', kind: 'image', x: 100, y: 200, w: 500, h: 400 },
+        { id: 'p2', kind: 'image', x: 700, y: 200, w: 500, h: 400 },
+      ],
+    });
+    deck.slides[0].layoutId = 'ly_pics';
+    ctx.store.load(deck);
+    return ctx;
+  };
+
+  it('fills the first free image placeholder and stays bound to it', async () => {
+    const { store, insert } = withImagePlaceholders();
+    await insert.insertImage(png([1]));
+    expect(last(store)).toMatchObject({ type: 'image', placeholder: 'image', x: 100, y: 200, w: 500, h: 400, fit: 'contain' });
+  });
+
+  it('the next picture takes the next one, and a third is placed freely', async () => {
+    const { store, insert } = withImagePlaceholders();
+    await insert.insertImage(png([1]));
+    await insert.insertImage(png([2]));
+    expect(last(store)).toMatchObject({ placeholder: 'image', x: 700, y: 200 });
+    await insert.insertImage(png([3]));
+    expect('placeholder' in last(store)).toBe(false);
+  });
+
+  it('follows the layout when its placeholder moves', async () => {
+    const { store, insert } = withImagePlaceholders();
+    await insert.insertImage(png([1]));
+    store.execute(new SetPlaceholderBox('ly_pics', 'p1', { x: 10, y: 20, w: 30, h: 40 }));
+    expect(last(store)).toMatchObject({ x: 10, y: 20, w: 30, h: 40 });
+  });
+
+  it('a layout without an image placeholder centres the picture as before', async () => {
+    const { store, insert } = setup();
+    await insert.insertImage(png([1]));
+    expect('placeholder' in last(store)).toBe(false);
+  });
+});
+
+describe('InsertActions sizes from the theme', () => {
+  it('a title in a theme without a heading size gets its own size and no body token', () => {
+    const { store, insert } = setup();
+    const deck = structuredClone(store.deck());
+    delete (deck.theme.typeScale as Record<string, number>)['heading'];
+    store.load(deck);
+    insert.insert('title');
+    expect(last(store)).toMatchObject({ fontSize: 64 });
+    expect('sizeToken' in last(store)).toBe(false);
+  });
+
+  it('a title and a text box carry the heading and body tokens', () => {
+    const { store, insert } = setup();
+    insert.insert('title');
+    expect(last(store)).toMatchObject({ sizeToken: 'heading' });
+    insert.insert('text');
+    expect(last(store)).toMatchObject({ sizeToken: 'body' });
   });
 });

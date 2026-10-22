@@ -27,13 +27,15 @@ import { ThemeActions, builtInThemeId } from '../theme-actions';
         Theme
         <select (change)="chooseTheme($event)">
           @if (current() === null) {
-            <option value="" selected disabled>Custom</option>
+            <option value="" selected disabled>{{ store.deck().theme.name ?? 'Custom' }}</option>
           }
           @for (theme of builtIn; track theme.id) {
             <option [value]="theme.id" [selected]="current() === theme.id">{{ theme.name }}</option>
           }
         </select>
       </label>
+      <button type="button" aria-haspopup="dialog" (click)="themeEditor.emit()">Edit theme…</button>
+      <button type="button" aria-haspopup="dialog" (click)="layoutEditor.emit()">Layouts…</button>
       <button type="button" aria-haspopup="dialog" (click)="components.emit()">Components…</button>
       <button type="button" (click)="themes.pickFont()">Add font…</button>
       <button type="button" (click)="present.emit()">Present <kbd aria-hidden="true">F5</kbd></button>
@@ -109,5 +111,7 @@ export class EditorToolbar {
   readonly insert = output<void>();
   readonly help = output<void>();
   readonly components = output<void>();
+  readonly themeEditor = output<void>();
+  readonly layoutEditor = output<void>();
   readonly present = output<void>();
 }

@@ -3,7 +3,7 @@ import { ELEMENT_BASE_KEYS, ELEMENT_SCHEMAS, ELEMENT_TYPES, type FieldSpec } fro
 import { ID_PATTERN } from './ids';
 import { err, ok, type Result } from './result';
 import { validateRichText } from './rich-text';
-import type { ComponentDef, Deck, Theme } from './types';
+import type { ComponentDef, Deck, Fill, Theme } from './types';
 
 export interface ValidationError {
   /** Location of the problem, e.g. `slides[2].elements[0].w`. */
@@ -57,6 +57,8 @@ export const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
 
 const MAX_SHORT_STRING = 1_000;
 const MAX_COORDINATE = 1_000_000;
+/** Longest name of a theme or layout. */
+export const MAX_THEME_NAME = 100;
 const MAX_STEP = 1_000;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const SHA256_HEX = /^[0-9a-f]{64}$/;
@@ -93,6 +95,13 @@ export function validateTheme(input: unknown, assetIds: Iterable<string>): Resul
   const v = new Validator(DEFAULT_VALIDATION_OPTIONS);
   v.themeOnly(input, assetIds);
   return v.errors.length === 0 ? ok(input as Theme) : err(v.errors);
+}
+
+/** Validates a fill (a layout background) the way `validateDeck` does: colour tokens must be among `colors`, images among `assetIds`. */
+export function validateFill(input: unknown, colors: Iterable<string>, assetIds: Iterable<string>): Result<Fill, ValidationError[]> {
+  const v = new Validator(DEFAULT_VALIDATION_OPTIONS);
+  v.fillOnly(input, colors, assetIds);
+  return v.errors.length === 0 ? ok(input as Fill) : err(v.errors);
 }
 
 /** Validates one component definition the way `validateDeck` does, for commands that edit it. `files` and `libs` must be among `assetIds`. */
@@ -152,6 +161,13 @@ class Validator {
     this.resolve(this.assetRefs, new Set(assetIds), 'asset');
   }
 
+  /** A fill on its own (`SetLayoutBackground`). */
+  fillOnly(input: unknown, colors: Iterable<string>, assetIds: Iterable<string>): void {
+    for (const c of colors) this.themeColors.add(c);
+    this.fill('background', input);
+    this.resolve(this.assetRefs, new Set(assetIds), 'asset');
+  }
+
   /** A component on its own (`SetComponentDef`). */
   componentOnly(input: unknown, assetIds: Iterable<string>): void {
     this.component('component', input);
@@ -172,8 +188,9 @@ class Validator {
   }
 
   private theme(path: string, value: unknown): void {
-    const t = this.record(path, value, ['colors', 'fonts', 'typeScale', 'spacing', 'fontFaces']);
+    const t = this.record(path, value, ['name', 'colors', 'fonts', 'typeScale', 'spacing', 'fontFaces']);
     if (!t) return;
+    if (t['name'] !== undefined) this.string(`${path}.name`, t['name'], MAX_THEME_NAME, 1);
     this.map(`${path}.colors`, t['colors'], (p, x, key) => {
       if (this.literalColor(p, x)) this.themeColors.add(key);
     });
@@ -402,6 +419,11 @@ class Validator {
       case 'font':
         if (this.string(path, value, MAX_SHORT_STRING, 1) && !this.themeFonts.has(value as string)) {
           this.fail(path, `references unknown theme font "${value as string}"`);
+        }
+        break;
+      case 'sizeToken':
+        if (this.string(path, value, MAX_SHORT_STRING, 1) && !this.themeSizes.has(value as string)) {
+          this.fail(path, `references unknown theme type size "${value as string}"`);
         }
         break;
       case 'asset':

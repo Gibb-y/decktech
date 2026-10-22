@@ -1,5 +1,5 @@
 import { Service, inject, signal } from '@angular/core';
-import { createElement, generateId, type ComponentDef, type Element, type TextEl } from '../core/model';
+import { createElement, freePlaceholder, generateId, type ComponentDef, type Element, type TextEl } from '../core/model';
 import { DeckRepository } from '../core/persistence';
 import { AddAsset, AddCodeElement, AddElement, Batch, CommandError, DeckStore, type Command } from '../core/store';
 import { LiveAnnouncer } from '../shared';
@@ -72,11 +72,13 @@ export class InsertActions {
 
   private build(kind: Exclude<InsertKind, 'image'>, slideId: string): { command: Command; element: Element } {
     const typeScale = this.store.deck().theme.typeScale;
-    const text = (box: Partial<TextEl>): TextEl => createElement('text', { fontSize: typeScale['body'] ?? 40, ...box });
+    const sized = (key: string, fallback: number): Partial<TextEl> => ({ fontSize: Object.hasOwn(typeScale, key) ? typeScale[key] : fallback, ...(Object.hasOwn(typeScale, key) ? { sizeToken: key } : {}) });
+    // A box that sets its own size (the title) must not inherit the body's token.
+    const text = (box: Partial<TextEl>): TextEl => createElement('text', { ...('fontSize' in box ? {} : sized('body', 40)), ...box });
     const add = (element: Element) => ({ command: new AddElement(slideId, element), element });
     switch (kind) {
       case 'title':
-        return add(text({ x: 120, y: 80, w: 1680, h: 140, text: 'Title', font: 'heading', fontSize: typeScale['heading'] ?? 64 }));
+        return add(text({ x: 120, y: 80, w: 1680, h: 140, text: 'Title', font: 'heading', ...sized('heading', 64) }));
       case 'bullets':
         return add(text({ x: 120, y: 260, w: 1680, h: 640, text: '- First point\n- Second point' }));
       case 'text':
@@ -120,13 +122,16 @@ export class InsertActions {
     }
     const { ref } = stored.value;
     const size = await fitted(file);
+    // A picture fills a free image placeholder of the slide's layout and stays bound to it (arc42 §8.7); else it is centred.
+    const deck = this.store.deck();
+    const slide = deck.slides.find((s) => s.id === slideId);
+    const target = slide && freePlaceholder(slide, deck.layouts.find((l) => l.id === slide.layoutId), 'image');
     const element = createElement('image', {
       assetId: ref.hash,
       alt: '',
-      w: size.w,
-      h: size.h,
-      x: Math.round((this.store.deck().stage.width - size.w) / 2),
-      y: Math.round((this.store.deck().stage.height - size.h) / 2),
+      ...(target
+        ? { x: target.x, y: target.y, w: target.w, h: target.h, placeholder: 'image' as const }
+        : { w: size.w, h: size.h, x: Math.round((deck.stage.width - size.w) / 2), y: Math.round((deck.stage.height - size.h) / 2) }),
     });
     // The hash identifies the content: an asset already in the deck is reused as it is, even if the browser reported another mime type this time.
     const commands: Command[] = Object.hasOwn(this.store.deck().assets, ref.hash) ? [] : [new AddAsset(ref.hash, ref)];

@@ -6,16 +6,18 @@ import { Canvas } from './canvas';
 import { CodeTools, type CodeToolsRequest } from './code-tools';
 import { EditorActions } from './editor-actions';
 import { InsertActions, type InsertKind } from './insert-actions';
+import { LayoutEditor } from './layout-editor';
 import { NotesPane } from './notes-pane';
 import { PropertiesPanel } from './properties/properties-panel';
 import { ShortcutHelp } from './shortcut-help';
 import { ShortcutRegistry } from './shortcut-registry';
 import { SlideSorter } from './sorter/slide-sorter';
+import { ThemeEditor } from './theme-editor';
 import { EditorToolbar } from './toolbar/editor-toolbar';
 import { InsertMenu } from './toolbar/insert-menu';
 
 type ShellState = { status: 'loading' } | { status: 'ready' } | { status: 'unavailable'; message: string };
-type Dialog = 'insert' | 'help' | null;
+type Dialog = 'insert' | 'help' | 'theme' | 'layouts' | null;
 
 /** Whether keys typed at `target` belong to a text control, so single-key shortcuts must stay out of the way. */
 function isTextEntry(target: EventTarget | null): boolean {
@@ -30,7 +32,7 @@ function isTextEntry(target: EventTarget | null): boolean {
  */
 @Component({
   selector: 'app-editor-shell',
-  imports: [RouterLink, Canvas, SlideSorter, PropertiesPanel, NotesPane, EditorToolbar, InsertMenu, ShortcutHelp],
+  imports: [RouterLink, Canvas, SlideSorter, PropertiesPanel, NotesPane, EditorToolbar, InsertMenu, ShortcutHelp, ThemeEditor, LayoutEditor],
   host: {
     '(document:keydown)': 'onDocumentKeydown($event)',
   },
@@ -39,7 +41,7 @@ function isTextEntry(target: EventTarget | null): boolean {
       <a routerLink="/">← Your decks</a>
       <h1 tabindex="-1">{{ heading() }}</h1>
       @if (state().status === 'ready') {
-        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (present)="present()" />
+        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (themeEditor)="dialog.set('theme')" (layoutEditor)="dialog.set('layouts')" (present)="present()" />
       }
     </header>
     @switch (state().status) {
@@ -56,6 +58,12 @@ function isTextEntry(target: EventTarget | null): boolean {
           }
           @case ('help') {
             <app-shortcut-help (closed)="dialog.set(null)" />
+          }
+          @case ('theme') {
+            <app-theme-editor (closed)="dialog.set(null)" />
+          }
+          @case ('layouts') {
+            <app-layout-editor (closed)="dialog.set(null)" />
           }
         }
       }

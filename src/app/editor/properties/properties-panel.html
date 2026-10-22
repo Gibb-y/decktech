@@ -11,19 +11,34 @@
         @for (field of section.fields; track field.key) {
           @switch (field.control) {
             @case ('number') {
-              <div class="field">
-                <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                <input
-                  type="number"
-                  [id]="'prop-' + field.key"
-                  [formField]="form.numbers[field.key]"
-                  [attr.aria-invalid]="form.numbers[field.key]().invalid() ? 'true' : null"
-                  [attr.aria-describedby]="form.numbers[field.key]().invalid() ? 'error-' + field.key : null"
-                />
-                @for (error of form.numbers[field.key]().errors(); track $index) {
-                  <span class="error" role="alert" [id]="'error-' + field.key">{{ error.message }}</span>
-                }
-              </div>
+              @if (field.key === 'fontSize' && textElement(element); as sized) {
+                <div class="field">
+                  <label for="prop-sizeToken">Size</label>
+                  <select id="prop-sizeToken" (change)="setSizeToken(sized, $event)">
+                    <option value="" [selected]="sized.sizeToken === undefined">Custom size</option>
+                    @for (size of sizeNames(); track size.key) {
+                      <option [value]="size.key" [selected]="sized.sizeToken === size.key">{{ size.key }} ({{ size.value }})</option>
+                    }
+                  </select>
+                </div>
+              }
+              @if (field.key !== 'fontSize' || sizeTokenOf(element) === undefined) {
+                <div class="field">
+                  <label [for]="'prop-' + field.key">{{ field.label }}</label>
+                  <input
+                    type="number"
+                    [id]="'prop-' + field.key"
+                    [formField]="form.numbers[field.key]"
+                    [attr.aria-invalid]="form.numbers[field.key]().invalid() ? 'true' : null"
+                    [attr.aria-describedby]="form.numbers[field.key]().invalid() ? 'error-' + field.key : null"
+                  />
+                  @for (error of form.numbers[field.key]().errors(); track $index) {
+                    <span class="error" role="alert" [id]="'error-' + field.key">{{ error.message }}</span>
+                  }
+                </div>
+              } @else {
+                <p class="note">The size follows the theme: {{ effectiveSize(element) }} px. Choose “Custom size” to type one.</p>
+              }
             }
             @case ('text') {
               <div class="field">

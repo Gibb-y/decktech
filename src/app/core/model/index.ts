@@ -12,3 +12,4 @@ export * from './placeholders';
 export * from './props';
 export * from './theme-refs';
 export * from './themes';
+export * from './type-scale';

@@ -1,6 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import type { TextEl, Theme } from '../core/model';
+import { effectiveFontSize, type TextEl, type Theme } from '../core/model';
 import { ElementView } from './element-view';
 import { RICH_TEXT_CSS, richToView } from './rich-view';
 import { parseText } from './text-blocks';
@@ -10,9 +10,10 @@ const ALIGNS: readonly string[] = ['left', 'center', 'right'];
 
 /** Font, size, alignment and colour of a text element's box; the editor in `editor/text` uses it too, so editing looks like presenting. */
 export function textStyle(el: TextEl, theme: Theme): Record<string, string> {
+  const size = effectiveFontSize(el, theme);
   const style: Record<string, string> = {
     'font-family': resolveFont(el.font, theme),
-    'font-size': `${Number.isFinite(el.fontSize) ? Math.max(0, el.fontSize) : 0}px`,
+    'font-size': `${Number.isFinite(size) ? Math.max(0, size) : 0}px`,
     'text-align': ALIGNS.includes(el.align) ? el.align : 'left',
   };
   const color = resolveColor(el.color, theme);

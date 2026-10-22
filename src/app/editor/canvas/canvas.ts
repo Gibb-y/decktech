@@ -101,6 +101,8 @@ export class Canvas {
   protected readonly components = computed(() => this.store.deck().components);
   protected readonly deckId = computed(() => this.store.deck().id);
   protected readonly layout = computed(() => this.store.deck().layouts.find((l) => l.id === this.slide().layoutId));
+  /** The current layout's placeholders, drawn as outlines in edit mode only (this component is the editor's alone). */
+  protected readonly placeholders = computed(() => this.layout()?.placeholders ?? []);
 
   /** Zoom and pan in effect: recomputed from the area while in "fit" mode, else what the user set. */
   readonly viewport = computed<Viewport>(() => (this.mode() === 'fit' ? fitViewport(this.area(), this.stage()) : this.custom()));

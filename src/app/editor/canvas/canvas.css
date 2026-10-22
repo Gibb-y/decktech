@@ -85,6 +85,21 @@ summary:focus-visible {
   --handle: calc(12px * var(--inv, 1));
   --line: calc(1.5px * var(--inv, 1));
 }
+.placeholder-outline {
+  position: absolute;
+  box-sizing: border-box;
+  border: var(--line) dashed #6b7280;
+  pointer-events: none;
+}
+.placeholder-outline span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0 calc(4px * var(--inv, 1));
+  background: #6b7280;
+  color: #fff;
+  font: calc(11px * var(--inv, 1)) system-ui, sans-serif;
+}
 .hit {
   position: absolute;
   cursor: move;

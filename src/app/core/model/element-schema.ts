@@ -14,6 +14,8 @@ export type FieldSpec = { optional?: boolean } & (
   | { kind: 'fill' }
   /** Key into `Theme.fonts`. */
   | { kind: 'font' }
+  /** Key into `Theme.typeScale`. */
+  | { kind: 'sizeToken' }
   /** Id in `Deck.assets`. */
   | { kind: 'asset' }
   /** Id in `Deck.components`. */
@@ -41,6 +43,7 @@ export const ELEMENT_SCHEMAS: Record<ElementType, ElementSchema> = {
       rich: { kind: 'rich', optional: true },
       font: { kind: 'font', optional: true },
       fontSize: { kind: 'number', min: 0 },
+      sizeToken: { kind: 'sizeToken', optional: true },
       color: { kind: 'color' },
       align: { kind: 'enum', values: ALIGNS },
     },

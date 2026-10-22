@@ -30,6 +30,7 @@ export function themeRefs(deck: Deck): ThemeRefs {
         if (spec.kind === 'color') color(value as Color);
         else if (spec.kind === 'fill') fill(value as Fill);
         else if (spec.kind === 'font') refs.fonts.add(value as string);
+        else if (spec.kind === 'sizeToken') refs.sizes.add(value as string);
         else if (spec.kind === 'rich') {
           const rich = richTokenRefs(value as RichDoc);
           rich.colors.forEach((t) => refs.colors.add(t));
