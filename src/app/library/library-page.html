@@ -14,10 +14,24 @@
       </li>
     }
   </ul>
+  <h3 id="files-heading">Files</h3>
+  <div class="row">
+    <button type="button" [attr.aria-disabled]="library.busy() || null" (click)="importDeck()">Import deck…</button>
+    <button type="button" [attr.aria-disabled]="library.busy() || null" (click)="exportAll()">Export all decks</button>
+    <span class="muted">A .deck file holds one deck with its pictures, fonts and code. “Export all” makes one ZIP with a .deck file per deck.</span>
+  </div>
 </section>
 
 @if (error(); as message) {
   <p class="error" role="alert">{{ message }}</p>
+}
+@if (notice(); as message) {
+  <p class="notice">
+    {{ message }}
+    @if (imported(); as deck) {
+      <a [routerLink]="['/deck', deck.deck.id]">Open “{{ deck.deck.title }}”</a>
+    }
+  </p>
 }
 
 <section aria-labelledby="decks-heading" class="panel">
@@ -65,6 +79,9 @@
               </button>
               <button type="button" [attr.aria-disabled]="library.busy() || null" (click)="duplicate(deck.id)">
                 Duplicate<span class="sr-only"> {{ deck.title }}</span>
+              </button>
+              <button type="button" [attr.aria-disabled]="library.busy() || null" (click)="exportDeck(deck)">
+                Export<span class="sr-only"> {{ deck.title }}</span>
               </button>
               <button type="button" class="danger" [id]="'delete-btn-' + deck.id" [attr.aria-disabled]="library.busy() || null" (click)="askDelete(deck)">
                 Delete<span class="sr-only"> {{ deck.title }}</span>

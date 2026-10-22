@@ -6,4 +6,5 @@ export * from './memory-deck-repository';
 export * from './persistence-banner';
 export * from './providers';
 export * from './tokens';
+export * from './assets';
 export * from './library';

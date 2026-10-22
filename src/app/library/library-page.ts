@@ -3,6 +3,7 @@ import { Component, Injector, afterNextRender, computed, inject, linkedSignal, s
 import { Router, RouterLink } from '@angular/router';
 import type { DeckSummary } from '../core/persistence';
 import { FocusTrap, LiveAnnouncer } from '../shared';
+import type { ImportedDeck } from './archive';
 import { DeckLibrary } from './deck-library';
 
 /** Decks drawn at once; the rest is added with "Show more" so a long list opens fast (arc42 Q11). */
@@ -28,6 +29,10 @@ export class LibraryPage {
   protected readonly renameDraft = signal('');
   protected readonly pendingDelete = signal<DeckSummary | null>(null);
   protected readonly deleteError = signal<string | null>(null);
+  /** Result of the last import or export, shown in a polite status region. */
+  protected readonly notice = signal<string | null>(null);
+  /** The last imported deck, so the notice can link to it. */
+  protected readonly imported = signal<ImportedDeck | null>(null);
 
   protected readonly matches = computed(() => {
     const needle = this.query().trim().toLowerCase();
@@ -87,6 +92,54 @@ export class LibraryPage {
     this.announcer.announce(`Duplicated as ${result.value.title}`);
     // The copy can be filtered out or beyond the first page; the heading is always there.
     this.focus(`rename-btn-${result.value.id}`, 'library-heading');
+  }
+
+  protected async importDeck(): Promise<void> {
+    if (this.library.busy()) return;
+    let file: File | null;
+    try {
+      file = await this.library.pickFile();
+    } catch (e) {
+      return this.fail(`Could not open the file dialog: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (!file) return;
+    const result = await this.library.importFile(file);
+    if (!result.ok) {
+      this.imported.set(null);
+      this.notice.set(null);
+      return this.fail(result.error.message);
+    }
+    this.error.set(null);
+    const { deck, hasCode } = result.value;
+    this.imported.set(result.value);
+    const text = `Imported “${deck.title}”.${hasCode ? ' It contains code components. Look through them before you present it.' : ''}`;
+    this.notice.set(text);
+    this.announcer.announce(text);
+  }
+
+  protected async exportDeck(deck: DeckSummary): Promise<void> {
+    if (this.library.busy()) return;
+    this.report(await this.library.exportDeck(deck.id), `Exported “${deck.title}”`);
+  }
+
+  protected async exportAll(): Promise<void> {
+    if (this.library.busy()) return;
+    this.report(await this.library.exportAll(), 'Exported all decks');
+  }
+
+  private report(result: Awaited<ReturnType<DeckLibrary['exportAll']>>, success: string): void {
+    this.imported.set(null);
+    if (!result.ok) {
+      this.notice.set(null);
+      return this.fail(result.error.message);
+    }
+    this.error.set(null);
+    const { cancelled, skipped, fileName } = result.value;
+    if (cancelled) return this.notice.set(null);
+    const left = skipped.length > 0 ? ` Left out because they are from a newer version: ${skipped.join(', ')}.` : '';
+    const text = `${success} to ${fileName}.${left}`;
+    this.notice.set(text);
+    this.announcer.announce(text);
   }
 
   protected startRename(deck: DeckSummary): void {
