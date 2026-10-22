@@ -77,6 +77,7 @@ type Direction = 'earlier' | 'later';
       gap: 0.25rem;
     }
     .name {
+      justify-content: flex-start;
       overflow: hidden;
       text-align: left;
       text-overflow: ellipsis;

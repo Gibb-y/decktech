@@ -60,8 +60,13 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
     }
     li button {
       display: grid;
+      justify-content: stretch;
+      justify-items: start;
       width: 100%;
+      min-height: 0;
+      padding: var(--space-2) var(--space-3);
       text-align: left;
+      white-space: normal;
     }
     .label {
       font-weight: 600;
