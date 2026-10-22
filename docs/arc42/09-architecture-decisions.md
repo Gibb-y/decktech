@@ -15,3 +15,4 @@ Significant decisions are recorded as individual ADRs (context, decision, conseq
 | [ADR-009](../ADRs/ADR-009-fixed-logical-stage.md) | Fixed logical stage with CSS scaling | Accepted |
 | [ADR-010](../ADRs/ADR-010-component-definitions-separate-from-instances.md) | Component definitions separate from element instances | Accepted |
 | [ADR-011](../ADRs/ADR-011-code-element-view-injection-and-frame-bootstrap.md) | Inject the code element view into the renderer; bootstrap frames over the port | Accepted |
+| [ADR-012](../ADRs/ADR-012-design-tokens-and-shared-primitives.md) | Design tokens and shared primitives, no UI library | Accepted |

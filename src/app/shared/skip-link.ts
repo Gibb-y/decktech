@@ -12,16 +12,17 @@ import { Component, input } from '@angular/core';
       position: absolute;
       top: 0;
       left: 0;
-      z-index: 2000;
-      padding: 0.6rem 1rem;
-      background: #111;
-      color: #fff;
+      z-index: var(--z-skip-link);
+      padding: var(--space-2) var(--space-4);
+      border-radius: 0 0 var(--radius-md) 0;
+      background: var(--accent);
+      color: var(--accent-text);
       transform: translateY(-100%);
     }
     .skip:focus {
       transform: none;
-      outline: 3px solid #ffbf47;
-      outline-offset: -3px;
+      outline: 2px solid var(--accent-text);
+      outline-offset: -4px;
     }
   `,
 })
