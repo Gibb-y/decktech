@@ -38,7 +38,7 @@ mindmap
 | Q2 | Usability | An author adds a slide with a titled image using only the keyboard. | Possible with documented shortcuts; AXE clean. |
 | Q3 | Expressiveness | A developer builds an interactive chart with a vendored library as a code component. | Works offline; no host changes required. |
 | Q4 | Security | A malicious imported component tries to read `parent.document`, IndexedDB, or send data to an external server. | All attempts fail; user was prompted before code ran. |
-| Q4a | Security / Usability | A developer opens a colleague's deck and wants to review its code before running it. | Every component's HTML, CSS, JS and libraries are readable in the trust dialog in ≤ 2 clicks, without any component code executing. Re-importing a changed deck shows a diff. |
+| Q4a | Security / Usability | A developer opens a colleague's deck and wants to review its code before running it. | Every component's HTML, CSS, JS and libraries are readable in the trust dialog in ≤ 2 clicks, without any component code executing. Re-importing a changed deck shows a diff. Verified (DT-17) by tests: reaching a component's HTML in one click and any tab in two, no `iframe` on the page in any state of the dialog and the inspector, diff and badges for a modified re-import, AXE clean in the list and in the inspector tabs. |
 | Q5 | Security | A crafted `.deck` ZIP contains path traversal or a decompression bomb. | Import rejected with a message; app unaffected. |
 | Q6 | Reliability | The network drops (or never existed) during a talk. | Everything works; no network requests are made by the host. |
 | Q7 | Reliability | The browser crashes while editing. | At most the last ~1 s of edits lost on reload. |
