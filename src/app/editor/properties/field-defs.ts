@@ -93,6 +93,7 @@ function controlFor(key: string, spec: FieldSpec): FieldDef | undefined {
       return { ...base, control: 'color', optional };
     case 'fill':
       return { ...base, control: 'fill', optional };
+    case 'sizeToken': // the "Size" select of the panel, which knows the theme
     case 'asset':
     case 'component':
     case 'table':

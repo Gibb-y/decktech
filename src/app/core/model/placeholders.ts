@@ -8,14 +8,16 @@ import type { Element, Layout, Placeholder, PlaceholderKind, Slide, Theme } from
 export function createPlaceholderElement(placeholder: Placeholder, theme: Theme): Element | null {
   const { kind, x, y, w, h } = placeholder;
   const size = (key: string, fallback: number): number => (Object.hasOwn(theme.typeScale, key) ? theme.typeScale[key] : fallback);
+  // The size follows the theme's type scale (arc42 §8.7); `fontSize` is the fallback if the token goes.
+  const token = (key: string): { sizeToken?: string } => (Object.hasOwn(theme.typeScale, key) ? { sizeToken: key } : {});
   const heading = Object.hasOwn(theme.fonts, 'heading') ? { font: 'heading' } : {};
   switch (kind) {
     case 'title':
-      return createElement('text', { x, y, w, h, text: 'Title', fontSize: size('heading', 64), placeholder: kind, ...heading });
+      return createElement('text', { x, y, w, h, text: 'Title', fontSize: size('heading', 64), ...token('heading'), placeholder: kind, ...heading });
     case 'body':
-      return createElement('text', { x, y, w, h, text: h >= 400 ? '- First point\n- Second point' : 'Text', fontSize: size('body', 40), placeholder: kind });
+      return createElement('text', { x, y, w, h, text: h >= 400 ? '- First point\n- Second point' : 'Text', fontSize: size('body', 40), ...token('body'), placeholder: kind });
     case 'footer':
-      return createElement('text', { x, y, w, h, text: 'Footer', fontSize: size('caption', 28), placeholder: kind });
+      return createElement('text', { x, y, w, h, text: 'Footer', fontSize: size('caption', 28), ...token('caption'), placeholder: kind });
     case 'image':
       return null;
   }

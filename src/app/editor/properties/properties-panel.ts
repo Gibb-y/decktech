@@ -1,6 +1,6 @@
 import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { FormField, form, validate } from '@angular/forms/signals';
-import { ELEMENT_SCHEMAS, type CodeEl, type Color, type Element, type Fill, type TextEl } from '../../core/model';
+import { ELEMENT_SCHEMAS, effectiveFontSize, type CodeEl, type Color, type Element, type Fill, type TextEl } from '../../core/model';
 import { CommandError, DeckStore, SetProps, SetSlideBackground, type Command } from '../../core/store';
 import { LiveAnnouncer } from '../../shared';
 import { describeElement } from '../describe';
@@ -111,6 +111,24 @@ export class PropertiesPanel {
 
   protected codeElement(element: Element): CodeEl | null {
     return element.type === 'code' ? element : null;
+  }
+
+  protected readonly sizeNames = computed(() => Object.entries(this.theme().typeScale).map(([key, value]) => ({ key, value })));
+
+  protected sizeTokenOf(element: Element): string | undefined {
+    return element.type === 'text' ? element.sizeToken : undefined;
+  }
+
+  protected effectiveSize(element: Element): number {
+    return element.type === 'text' ? effectiveFontSize(element, this.theme()) : 0;
+  }
+
+  /** "Custom size" keeps the size the text has now as its own number; a theme size follows the type scale from then on. */
+  protected setSizeToken(element: TextEl, event: Event): void {
+    if (element.locked) return;
+    const key = (event.target as HTMLSelectElement).value;
+    const size = key === '' ? effectiveFontSize(element, this.theme()) : this.theme().typeScale[key];
+    this.setProps(element, key === '' ? { fontSize: size } : { sizeToken: key, fontSize: size });
   }
 
   protected hasRich(element: Element): boolean {

@@ -34,6 +34,8 @@ export interface FontFaceRef {
 }
 
 export interface Theme {
+  /** What the author called the theme in the theme editor; the picker shows it for a custom theme. */
+  name?: string;
   colors: Record<string, string>;
   fonts: Record<string, string>;
   typeScale: Record<string, number>;
@@ -125,6 +127,8 @@ export interface TextEl extends ElementBase {
   /** Key into `Theme.fonts`; the theme body font when omitted. */
   font?: string;
   fontSize: number;
+  /** Key into `Theme.typeScale`: when set, the size comes from the theme and `fontSize` is only the fallback (arc42 §8.7). */
+  sizeToken?: string;
   color: Color;
   align: 'left' | 'center' | 'right';
 }

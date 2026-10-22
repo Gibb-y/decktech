@@ -25,3 +25,23 @@ export function contrastRatio(a: string, b: string): number {
 
 /** WCAG AA for normal text. */
 export const AA_TEXT_CONTRAST = 4.5;
+
+/** Colour tokens whose contrast against the theme's `background` the theme editor reports. */
+export const CONTRAST_TOKENS = ['text', 'muted', 'accent'] as const;
+
+export interface ContrastCheck {
+  token: string;
+  /** Ratio against the background, or `null` when either colour is not a hex literal (not measurable here). */
+  ratio: number | null;
+  /** `null` when the ratio is unknown. */
+  passes: boolean | null;
+}
+
+/** Contrast of the text, muted and accent colours the theme defines against its background (arc42 §8.7, §8.8). */
+export function themeContrast(theme: { colors: Readonly<Record<string, string>> }): ContrastCheck[] {
+  const background = Object.hasOwn(theme.colors, 'background') ? theme.colors['background'] : undefined;
+  return CONTRAST_TOKENS.filter((token) => Object.hasOwn(theme.colors, token)).map((token) => {
+    const ratio = background === undefined ? NaN : contrastRatio(theme.colors[token], background);
+    return Number.isNaN(ratio) ? { token, ratio: null, passes: null } : { token, ratio, passes: ratio >= AA_TEXT_CONTRAST };
+  });
+}

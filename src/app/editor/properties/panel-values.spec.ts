@@ -7,7 +7,7 @@ const text = (extra: Partial<Parameters<typeof createElement<'text'>>[1]> = {}) 
 
 describe('field definitions', () => {
   it('cover every editable field of every element type, straight from the schema', () => {
-    const skipped = new Set(['asset', 'component', 'table', 'props', 'rich']);
+    const skipped = new Set(['asset', 'component', 'table', 'props', 'rich', 'sizeToken']);
     for (const type of ELEMENT_TYPES) {
       const expected = Object.entries(ELEMENT_SCHEMAS[type].fields).filter(([, spec]) => !skipped.has(spec.kind)).map(([key]) => key);
       expect(typeFields(type).map((f) => f.key), type).toEqual(expected);

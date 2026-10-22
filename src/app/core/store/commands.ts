@@ -453,6 +453,9 @@ export class SetProps implements Command {
         for (const [key, value] of entries) {
           if (!allowed.has(key)) throw new CommandError(`"${key}" is not a settable property of a ${e.type} element`);
           checkValue(e, key, value);
+          if (key === 'sizeToken' && typeof value === 'string' && !Object.hasOwn(deck.theme.typeScale, value)) {
+            throw new CommandError(`The theme has no type size "${value}"`);
+          }
           if ((e as unknown as Record<string, unknown>)[key] === value) continue;
           next ??= { ...e };
           if (value === undefined) delete next[key];
@@ -460,6 +463,11 @@ export class SetProps implements Command {
         }
         // Different plain text would leave a stale `rich` document that the renderer prefers.
         if (next && e.type === 'text' && next['text'] !== e.text) delete next['rich'];
+        // A size typed in by hand replaces the token it came from, else the number would be ignored.
+        if (e.type === 'text' && e.sizeToken !== undefined && Object.hasOwn(this.changes, 'fontSize') && !Object.hasOwn(this.changes, 'sizeToken')) {
+          next ??= { ...e };
+          delete next['sizeToken'];
+        }
         return (next as Element | undefined) ?? e;
       }),
     );
@@ -497,6 +505,7 @@ function checkValue(element: Element, key: string, value: unknown): void {
   if (base) problem = base.check(value);
   else if (spec?.kind === 'number') problem = finite(value, spec.min, spec.max);
   else if (spec?.kind === 'string') problem = typeof value === 'string' ? undefined : 'a string';
+  else if (spec?.kind === 'sizeToken') problem = typeof value === 'string' && value.length > 0 ? undefined : 'a non-empty string';
   else if (spec?.kind === 'boolean') problem = typeof value === 'boolean' ? undefined : 'a boolean';
   else if (spec?.kind === 'enum') problem = spec.values.includes(value as string) ? undefined : `one of ${spec.values.join(', ')}`;
   if (problem) throw new CommandError(`"${key}" must be ${problem}`);

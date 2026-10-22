@@ -72,11 +72,12 @@ export class InsertActions {
 
   private build(kind: Exclude<InsertKind, 'image'>, slideId: string): { command: Command; element: Element } {
     const typeScale = this.store.deck().theme.typeScale;
-    const text = (box: Partial<TextEl>): TextEl => createElement('text', { fontSize: typeScale['body'] ?? 40, ...box });
+    const sized = (key: string, fallback: number): Partial<TextEl> => ({ fontSize: Object.hasOwn(typeScale, key) ? typeScale[key] : fallback, ...(Object.hasOwn(typeScale, key) ? { sizeToken: key } : {}) });
+    const text = (box: Partial<TextEl>): TextEl => createElement('text', { ...sized('body', 40), ...box });
     const add = (element: Element) => ({ command: new AddElement(slideId, element), element });
     switch (kind) {
       case 'title':
-        return add(text({ x: 120, y: 80, w: 1680, h: 140, text: 'Title', font: 'heading', fontSize: typeScale['heading'] ?? 64 }));
+        return add(text({ x: 120, y: 80, w: 1680, h: 140, text: 'Title', font: 'heading', ...sized('heading', 64) }));
       case 'bullets':
         return add(text({ x: 120, y: 260, w: 1680, h: 640, text: '- First point\n- Second point' }));
       case 'text':
