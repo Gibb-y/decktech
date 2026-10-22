@@ -85,7 +85,17 @@ export class DeckLibrary {
       const { deck } = loaded.value;
       // Only the deck id changes: other ids are scoped to their deck, and assets are shared by hash.
       const copy: Deck = { ...structuredClone(deck), id: generateId('deck'), title: `Copy of ${deck.title}`.slice(0, MAX_TITLE_LENGTH) };
-      return this.store(copy);
+      // The copy has the code of the original, so it has the original's decisions too: without
+      // them duplicating an imported deck would switch its code on (arc42 §6.4).
+      const trust = await this.repository.getTrust(id);
+      if (!trust.ok) return fail(`Could not read your trust decisions: ${trust.error.message}`);
+      if (trust.value) {
+        const copied = await this.repository.putTrust({ ...trust.value, deckId: copy.id });
+        if (!copied.ok) return fail(`Could not copy the trust decisions: ${copied.error.message}`);
+      }
+      const stored = await this.store(copy);
+      if (!stored.ok && trust.value) await this.repository.deleteTrust(copy.id);
+      return stored;
     });
   }
 

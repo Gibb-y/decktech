@@ -14,6 +14,7 @@ import {
 } from './deck-repository';
 import { checkLibraryEntry, validLibraryEntries, type LibraryComponent } from './library';
 import { toPersistenceError, type PersistenceError } from './errors';
+import { readTrustRecord, trustOrPending, type TrustRecord } from './trust';
 
 export const DB_NAME = 'decktech';
 export const DB_VERSION = 1;
@@ -36,7 +37,8 @@ interface AssetRecord {
  */
 type MetaRecord =
   | { key: string; kind: 'summary'; summary: DeckSummary; schemaVersion: number }
-  | { key: string; kind: 'unexported'; id: string; since: number };
+  | { key: string; kind: 'unexported'; id: string; since: number }
+  | { key: string; kind: 'trust'; record: TrustRecord };
 
 type BackupRecord = StoredBackup;
 
@@ -53,6 +55,7 @@ type Db = IDBPDatabase<DeckTechDB>;
 
 const SUMMARY = 'summary:';
 const UNEXPORTED = 'unexported:';
+const TRUST = 'trust:';
 /**
  * Runs `work` on a transaction and aborts it if `work` throws, so a failure halfway through cannot
  * commit the writes that were already queued.
@@ -227,6 +230,7 @@ export class IndexedDbDeckRepository extends DeckRepository implements BackupSin
           () => tx.objectStore('decks').delete(id),
           () => tx.objectStore('meta').delete(SUMMARY + id),
           () => tx.objectStore('meta').delete(UNEXPORTED + id),
+          () => tx.objectStore('meta').delete(TRUST + id),
           ...doomed.map((seq) => () => tx.objectStore('backups').delete(seq)),
         ];
         await Promise.all([...queueAll(removals), tx.done]);
@@ -281,6 +285,36 @@ export class IndexedDbDeckRepository extends DeckRepository implements BackupSin
   deleteComponent(id: string): Promise<Result<void, PersistenceError>> {
     return this.guard(async (db) => {
       await db.delete('components', id);
+      return ok(undefined);
+    });
+  }
+
+  getTrust(deckId: string): Promise<Result<TrustRecord | null, PersistenceError>> {
+    return this.guard(async (db) => {
+      const stored = await db.get('meta', TRUST + deckId);
+      return ok(stored?.kind === 'trust' ? trustOrPending(deckId, stored.record) : null);
+    });
+  }
+
+  listTrust(): Promise<Result<TrustRecord[], PersistenceError>> {
+    return this.guard(async (db) => {
+      const records = await db.getAll('meta', prefixRange(TRUST));
+      return ok(records.flatMap((r) => (r.kind === 'trust' ? [trustOrPending(r.key.slice(TRUST.length), r.record)] : [])));
+    });
+  }
+
+  async putTrust(record: TrustRecord): Promise<Result<void, PersistenceError>> {
+    const checked = readTrustRecord(record);
+    if (!checked) return err({ kind: 'invalid', message: 'This trust record is not valid.' });
+    return this.guard(async (db) => {
+      await db.put('meta', { key: TRUST + checked.deckId, kind: 'trust', record: checked });
+      return ok(undefined);
+    });
+  }
+
+  deleteTrust(deckId: string): Promise<Result<void, PersistenceError>> {
+    return this.guard(async (db) => {
+      await db.delete('meta', TRUST + deckId);
       return ok(undefined);
     });
   }

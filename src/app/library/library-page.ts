@@ -112,7 +112,7 @@ export class LibraryPage {
     this.error.set(null);
     const { deck, hasCode } = result.value;
     this.imported.set(result.value);
-    const text = `Imported “${deck.title}”.${hasCode ? ' It contains code components. Look through them before you present it.' : ''}`;
+    const text = `Imported “${deck.title}”.${hasCode ? ' It contains code components, which stay switched off until you have read them and chosen what runs. Open the deck to do that.' : ''}`;
     this.notice.set(text);
     this.announcer.announce(text);
   }

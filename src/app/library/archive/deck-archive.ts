@@ -1,7 +1,7 @@
 import { Service, inject } from '@angular/core';
 import { zipSync, type Zippable } from 'fflate';
 import { err, generateId, ok, type Deck, type Result } from '../../core/model';
-import { DeckRepository } from '../../core/persistence';
+import { DeckRepository, pendingRecord, previousSnapshots } from '../../core/persistence';
 import { FileAccess } from './file-access';
 import { DEFAULT_ARCHIVE_LIMITS, type ArchiveLimits } from './format';
 import { readArchive } from './reader';
@@ -21,7 +21,9 @@ export interface ImportedDeck {
   hasCode: boolean;
   /** SHA-256 of `deck.json`; trust is bound to it. */
   hash: string;
-  /** Always true: a deck that came from a file is untrusted until DT-17's flow says otherwise. */
+  /** The deck id inside the file; trust decisions about earlier imports of it are looked up by this. */
+  sourceId: string;
+  /** Always true: a deck that came from a file is untrusted until the user decides (a pending `TrustRecord` when it has code). */
   untrusted: true;
   /** The file's deck id was taken, so the copy got a new one. */
   renamed: boolean;
@@ -153,9 +155,26 @@ export class DeckArchive {
       if (!put.ok) return fail(`Could not store a file of the deck: ${put.error.message}`);
       if (put.value.ref.hash !== id) return fail('Could not store a file of the deck: it was stored under a different hash.');
     }
+    // The "not decided yet" mark is written first: a deck must never exist without it, because a
+    // deck without a record counts as made here and its code would run (arc42 §6.4).
+    if (hasCode) {
+      const marked = await this.markUntrusted(stored, deck.id, hash);
+      if (!marked.ok) return marked;
+    }
     const saved = await this.repository.save(stored, null);
-    if (!saved.ok) return fail(`Could not save the imported deck: ${saved.error.message}`);
-    return ok({ deck: stored, hasCode, hash, untrusted: true, renamed, migrated });
+    if (!saved.ok) {
+      if (hasCode) await this.repository.deleteTrust(stored.id);
+      return fail(`Could not save the imported deck: ${saved.error.message}`);
+    }
+    return ok({ deck: stored, sourceId: deck.id, hasCode, hash, untrusted: true, renamed, migrated });
+  }
+
+  /** Records that the imported deck has no decision yet, with the earlier trusted version of the same source deck as the base of the diff. */
+  private async markUntrusted(stored: Deck, sourceId: string, hash: string): Promise<Result<void, ArchiveFailure>> {
+    const known = await this.repository.listTrust();
+    if (!known.ok) return fail(`Could not read your trust decisions: ${known.error.message}`);
+    const put = await this.repository.putTrust(pendingRecord(stored.id, sourceId, hash, previousSnapshots(known.value, sourceId)));
+    return put.ok ? ok(undefined) : fail(`Could not record that the imported deck is untrusted: ${put.error.message}`);
   }
 
   private async pack(deck: Deck): Promise<Result<Uint8Array, ArchiveFailure>> {

@@ -13,6 +13,7 @@ import {
 } from './deck-repository';
 import { checkLibraryEntry, validLibraryEntries, type LibraryComponent } from './library';
 import { toPersistenceError, type PersistenceError } from './errors';
+import { readTrustRecord, trustOrPending, type TrustRecord } from './trust';
 
 interface StoredDeck {
   summary: DeckSummary;
@@ -33,6 +34,7 @@ export class InMemoryDeckRepository extends DeckRepository implements BackupSink
   private readonly decks = new Map<string, StoredDeck>();
   private readonly assets = new Map<string, StoredBlob>();
   private readonly unexported = new Map<string, number>();
+  private readonly trust = new Map<string, unknown>();
   private readonly backups: StoredBackup[] = [];
   private readonly library = new Map<string, { id: string; entry: LibraryComponent }>();
   private nextSeq = 1;
@@ -98,6 +100,7 @@ export class InMemoryDeckRepository extends DeckRepository implements BackupSink
   async delete(id: string): Promise<Result<void, PersistenceError>> {
     this.decks.delete(id);
     this.unexported.delete(id);
+    this.trust.delete(id);
     for (let i = this.backups.length - 1; i >= 0; i--) {
       if (this.backups[i].deckId === id) this.backups.splice(i, 1);
     }
@@ -134,6 +137,27 @@ export class InMemoryDeckRepository extends DeckRepository implements BackupSink
 
   async deleteComponent(id: string): Promise<Result<void, PersistenceError>> {
     this.library.delete(id);
+    return ok(undefined);
+  }
+
+  async getTrust(deckId: string): Promise<Result<TrustRecord | null, PersistenceError>> {
+    const stored = this.trust.get(deckId);
+    return ok(stored === undefined ? null : trustOrPending(deckId, stored));
+  }
+
+  async listTrust(): Promise<Result<TrustRecord[], PersistenceError>> {
+    return ok([...this.trust].map(([id, stored]) => trustOrPending(id, stored)));
+  }
+
+  async putTrust(record: TrustRecord): Promise<Result<void, PersistenceError>> {
+    const checked = readTrustRecord(record);
+    if (!checked) return err({ kind: 'invalid', message: 'This trust record is not valid.' });
+    this.trust.set(checked.deckId, checked);
+    return ok(undefined);
+  }
+
+  async deleteTrust(deckId: string): Promise<Result<void, PersistenceError>> {
+    this.trust.delete(deckId);
     return ok(undefined);
   }
 

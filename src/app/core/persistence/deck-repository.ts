@@ -2,6 +2,7 @@ import type { MigrationError, MigrationOutcome } from '../migrations';
 import type { AssetRef, Deck, Result } from '../model';
 import type { PersistenceError } from './errors';
 import type { LibraryComponent } from './library';
+import type { TrustRecord } from './trust';
 
 /** What the library needs to list a deck without reading its body. */
 export interface DeckSummary {
@@ -81,6 +82,18 @@ export abstract class DeckRepository {
 
   /** Pre-migration backups of a deck, oldest first. */
   abstract listBackups(deckId: string): Promise<Result<StoredBackup[], PersistenceError>>;
+
+  /**
+   * The trust record of a deck (6.4): `null` when it has none, which means it was made here and is
+   * trusted. A stored record that is damaged comes back as a pending one, never as `null`.
+   */
+  abstract getTrust(deckId: string): Promise<Result<TrustRecord | null, PersistenceError>>;
+  /** Every trust record, for finding an earlier trusted version of a deck that is imported again. */
+  abstract listTrust(): Promise<Result<TrustRecord[], PersistenceError>>;
+  /** Stores the record under its `deckId`, replacing the earlier one. */
+  abstract putTrust(record: TrustRecord): Promise<Result<void, PersistenceError>>;
+  /** Removes the record; the deck is then trusted. An unknown id is not an error. */
+  abstract deleteTrust(deckId: string): Promise<Result<void, PersistenceError>>;
 
   /** The component library (5.3), oldest first: components saved for reuse across decks. */
   abstract listComponents(): Promise<Result<LibraryComponent[], PersistenceError>>;

@@ -3,7 +3,7 @@ import { strToU8, unzipSync } from 'fflate';
 import { DECK_V0 } from '../../core/migrations/fixtures';
 import { SCHEMA_VERSION, type Deck } from '../../core/model';
 import { DECK_EXPORT_HANDLER, DeckRepository, InMemoryDeckRepository } from '../../core/persistence';
-import { assetFor, fixture, packed, pngBytes, reworked, withDeckJson, type Fixture } from './archive-fixtures';
+import { COMPONENT, assetFor, fixture, packed, pngBytes, reworked, withDeckJson, type Fixture } from './archive-fixtures';
 import { DeckArchive, fileStem } from './deck-archive';
 import { FileAccess, type SaveOutcome } from './file-access';
 import { DECK_ENTRY } from './format';
@@ -252,5 +252,81 @@ describe('fileStem', () => {
     ['nul', '_nul'],
   ])('%j → %j', (title, stem) => {
     expect(fileStem(title)).toBe(stem);
+  });
+});
+
+describe('DeckArchive import: trust', () => {
+  it('marks a deck with code as pending, keyed by the id it is stored under', async () => {
+    const { repo, archive } = setup();
+    const f = await fixture({ code: true });
+    const result = await archive.importBytes(await packed(f));
+    if (!result.ok) throw new Error(result.error.message);
+    const trust = await repo.getTrust(result.value.deck.id);
+    expect(trust.ok && trust.value).toMatchObject({ deckId: f.deck.id, sourceId: f.deck.id, status: 'pending', archiveHash: result.value.hash, decisions: [], previous: null });
+  });
+
+  it('writes no record for a deck without code', async () => {
+    const { repo, archive } = setup();
+    const result = await archive.importBytes(await packed(await fixture()));
+    expect(result.ok && result.value.hasCode).toBe(false);
+    expect(await repo.listTrust()).toEqual({ ok: true, value: [] });
+  });
+
+  it('marks the copy of a deck whose id was taken, and remembers the id from the file', async () => {
+    const { repo, archive } = setup();
+    const f = await fixture({ code: true });
+    await store(repo, f);
+    const result = await archive.importBytes(await packed(f));
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.value.renamed).toBe(true);
+    expect(result.value.sourceId).toBe(f.deck.id);
+    const trust = await repo.getTrust(result.value.deck.id);
+    expect(trust.ok && trust.value).toMatchObject({ deckId: result.value.deck.id, sourceId: f.deck.id, status: 'pending' });
+    // the deck that was there before is untouched and still trusted
+    expect(await repo.getTrust(f.deck.id)).toEqual({ ok: true, value: null });
+  });
+
+  it('carries the sources of the version the user trusted before, so a changed re-import can be compared', async () => {
+    const { repo, archive } = setup();
+    const f = await fixture({ code: true });
+    const first = await archive.importBytes(await packed(f));
+    if (!first.ok) throw new Error(first.error.message);
+    // the user trusts the first import
+    const pending = await repo.getTrust(first.value.deck.id);
+    if (!pending.ok || !pending.value) throw new Error('no record');
+    const snapshot = { componentId: COMPONENT.id, name: 'Counter', html: COMPONENT.html, css: '', js: 'old', props: '[]', permissions: [], libs: [], files: [] };
+    await repo.putTrust({ ...pending.value, status: 'decided', decidedAt: 5, snapshots: [snapshot] });
+
+    const modified = { ...f, deck: { ...f.deck, components: [{ ...f.deck.components[0], js: 'new code' }] } } as Fixture;
+    const second = await archive.importBytes(await packed(modified));
+    if (!second.ok) throw new Error(second.error.message);
+    expect(second.value.renamed).toBe(true);
+    const trust = await repo.getTrust(second.value.deck.id);
+    expect(trust.ok && trust.value).toMatchObject({ status: 'pending', previous: [{ componentId: COMPONENT.id, js: 'old' }] });
+  });
+
+  it('stores nothing, not even the mark, when the deck cannot be saved', async () => {
+    const { repo, archive } = setup();
+    vi.spyOn(repo, 'save').mockResolvedValueOnce({ ok: false, error: { kind: 'storage', message: 'closed' } });
+    const result = await archive.importBytes(await packed(await fixture({ code: true })));
+    expect(!result.ok && result.error.message).toBe('Could not save the imported deck: closed');
+    expect(await repo.listTrust()).toEqual({ ok: true, value: [] });
+    expect(await ids(repo)).toEqual([]);
+  });
+
+  it('does not store the deck when the mark cannot be written: a deck without a mark would run its code', async () => {
+    const { repo, archive } = setup();
+    vi.spyOn(repo, 'putTrust').mockResolvedValueOnce({ ok: false, error: { kind: 'quota', message: 'full' } });
+    const result = await archive.importBytes(await packed(await fixture({ code: true })));
+    expect(!result.ok && result.error.message).toBe('Could not record that the imported deck is untrusted: full');
+    expect(await ids(repo)).toEqual([]);
+  });
+
+  it('does not store the deck when the earlier decisions cannot be read', async () => {
+    const { repo, archive } = setup();
+    vi.spyOn(repo, 'listTrust').mockResolvedValueOnce({ ok: false, error: { kind: 'storage', message: 'blocked' } });
+    const result = await archive.importBytes(await packed(await fixture({ code: true })));
+    expect(!result.ok && result.error.message).toBe('Could not read your trust decisions: blocked');
+    expect(await ids(repo)).toEqual([]);
   });
 });

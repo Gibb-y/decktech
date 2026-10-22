@@ -8,3 +8,4 @@ export * from './providers';
 export * from './tokens';
 export * from './assets';
 export * from './library';
+export * from './trust';
