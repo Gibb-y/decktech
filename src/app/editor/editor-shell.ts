@@ -41,7 +41,7 @@ function isTextEntry(target: EventTarget | null): boolean {
       <a routerLink="/">← Your decks</a>
       <h1 tabindex="-1">{{ heading() }}</h1>
       @if (state().status === 'ready') {
-        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (themeEditor)="dialog.set('theme')" (layoutEditor)="dialog.set('layouts')" (present)="present()" />
+        <app-editor-toolbar (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (review)="codeTools.review()"(themeEditor)="dialog.set('theme')" (layoutEditor)="dialog.set('layouts')" (present)="present()" />
       }
     </header>
     @switch (state().status) {
@@ -161,6 +161,8 @@ export class EditorShell {
   protected readonly state = signal<ShellState>({ status: 'loading' });
   protected readonly dialog = signal<Dialog>(null);
   private opening = 0;
+  /** The deck whose code review was opened by itself, so closing the dialog does not open it again. */
+  private asked: string | null = null;
 
   constructor() {
     effect(() => {
@@ -170,6 +172,16 @@ export class EditorShell {
     effect(() => {
       const request = this.codeTools.request();
       untracked(() => void this.showTools(request));
+    });
+    // A deck with code nobody has decided on asks once when it is opened (arc42 §6.4); "Review code…" asks again.
+    effect(() => {
+      if (this.state().status !== 'ready' || !this.codeTools.reviewNeeded()) return;
+      untracked(() => {
+        const id = this.store.deck().id;
+        if (this.asked === id || this.codeTools.request() !== null) return;
+        this.asked = id;
+        this.codeTools.review();
+      });
     });
     inject(DestroyRef).onDestroy(() => {
       this.toolsAttempt++; // a dialog still loading must not appear after the page is gone
@@ -270,8 +282,7 @@ export class EditorShell {
     }
     const ref = this.container.createComponent(type);
     ref.setInput('view', request.view);
-    ref.setInput('elementId', request.view === 'edit' ? request.elementId : null);
-    (ref.instance as { closed: OutputEmitterRef<void> }).closed.subscribe(() => this.codeTools.close());
+    ref.setInput('elementId', request.view === 'edit' ? request.elementId : null);    (ref.instance as { closed: OutputEmitterRef<void> }).closed.subscribe(() => this.codeTools.close());
     this.tools = ref;
   }
 
@@ -290,6 +301,10 @@ export class EditorShell {
     if (attempt !== this.opening) return; // the route changed while loading
     if (!result.ok) return this.state.set({ status: 'unavailable', message: `This deck could not be opened: ${result.error.message}` });
     if (result.value.readOnly) return this.state.set({ status: 'unavailable', message: result.value.reason });
+    // The decision about the deck's code is read before any slide is drawn (arc42 §6.4).
+    await this.codeTools.refreshTrust(id);
+    if (attempt !== this.opening) return;
+    this.asked = null;
     this.state.set({ status: 'ready' });
   }
 }

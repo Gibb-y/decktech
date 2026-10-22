@@ -43,6 +43,11 @@ const sameRecord = (a: Record<string, string>, b: Record<string, string>): boole
       } @else {
         @if (hasFrame()) {
           <div #slot class="slot"></div>
+        } @else if (!allowed()) {
+          <div class="placeholder" role="img" [attr.aria-label]="'Code component switched off: ' + def.name">
+            <span>{{ def.name }}</span>
+            <span class="off">Code switched off</span>
+          </div>
         } @else if (!problem()) {
           <div class="placeholder" role="img" [attr.aria-label]="'Code component paused: ' + def.name">{{ def.name }}</div>
         }
@@ -101,6 +106,10 @@ const sameRecord = (a: Record<string, string>, b: Record<string, string>): boole
       text-align: center;
       color: var(--deck-color-text, #111111);
       background: color-mix(in srgb, currentColor 10%, transparent);
+    }
+    .off {
+      font-size: 0.6em;
+      opacity: 0.8;
     }
     .notice {
       position: absolute;
@@ -199,6 +208,15 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   });
   private readonly frameMode = computed<'edit' | 'present'>(() => (this.mode() === 'edit' ? 'edit' : 'present'));
 
+  /**
+   * Whether the user has let this component run (arc42 §6.4). A component that may not run gets no
+   * frame at all, in the editor, the code editor's preview and the presenter alike.
+   */
+  protected readonly allowed = computed(() => {
+    const def = this.definition();
+    return def !== undefined && this.policy.mayRun(this.deckId(), def);
+  });
+
   /** Allowed network origins: the component must ask (permission) and the policy must grant. */
   private readonly origins = computed(() => {
     const def = this.definition();
@@ -214,7 +232,7 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   private readonly srcdoc = computed(() => {
     const def = this.definition();
     const runtime = this.runtime();
-    if (!def || runtime === null || this.mode() === 'thumbnail') return null;
+    if (!def || runtime === null || this.mode() === 'thumbnail' || !this.allowed()) return null;
     return buildDocument({ def, runtime, themeVars: untracked(this.vars), networkOrigins: this.origins() });
   });
 
@@ -223,11 +241,12 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
 
   /** When presenting, a silent or throwing frame is destroyed for a neutral placeholder; so is a skipped one. */
   protected readonly hasFrame = computed(() => {
-    if (!this.wanted() || this.skipped()) return false;
+    if (!this.allowed() || !this.wanted() || this.skipped()) return false;
     return !(this.mode() === 'present' && (this.supervisorState().status === 'unresponsive' || this.scriptError() !== null));
   });
 
   protected readonly problem = computed(() => {
+    if (!this.allowed()) return null;
     const runtimeError = this.runtimeError();
     if (runtimeError) return runtimeError;
     if (!this.wanted()) return null;
@@ -337,7 +356,7 @@ export class CodeElementRenderer extends ElementView<CodeEl> {
   private start(slot: HTMLElement, srcdoc: string): void {
     const def = untracked(this.definition);
     const element = untracked(this.element);
-    if (!def || !element) return;
+    if (!def || !element || !untracked(this.allowed)) return;
     const deckId = untracked(this.deckId);
     const mode = untracked(this.frameMode);
     const origins = untracked(this.origins);

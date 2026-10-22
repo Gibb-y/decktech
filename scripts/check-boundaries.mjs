@@ -81,7 +81,7 @@ export function findChunkViolations(files) {
  */
 const CODEMIRROR_FILE = 'components/editor/code-mirror.ts';
 const CODEMIRROR = /(?:\bfrom\s*|\bimport\s*\(?\s*)(['"])@codemirror\//g;
-const TOOLS_CHUNK = /\bimport\b[^;()]*?\bfrom\s*(['"])(?:\.{1,2}\/)+(?:editor\/)?(?:component-tools|code-editor-dialog|library-dialog|code-mirror)\1|\bimport\s*(['"])(?:\.{1,2}\/)+(?:editor\/)?(?:component-tools|code-editor-dialog|library-dialog|code-mirror)\2/g;
+const TOOLS_CHUNK = /\bimport\b[^;()]*?\bfrom\s*(['"])(?:\.{1,2}\/)+(?:(?:editor|trust)\/)?(?:component-tools|code-editor-dialog|library-dialog|code-mirror|trust-dialog|code-inspector)\1|\bimport\s*(['"])(?:\.{1,2}\/)+(?:(?:editor|trust)\/)?(?:component-tools|code-editor-dialog|library-dialog|code-mirror|trust-dialog|code-inspector)\2/g;
 
 /** @param {{ path: string, text: string }[]} files */
 export function findCodeMirrorViolations(files) {
@@ -94,7 +94,7 @@ export function findCodeMirrorViolations(files) {
         violations.push({ file: path, line: lineOf(m.index), message: 'CodeMirror may only be imported by components/editor/code-mirror.ts' });
       }
     }
-    if (!path.startsWith('components/editor/')) {
+    if (!path.startsWith('components/editor/') && !path.startsWith('components/trust/')) {
       for (const m of text.matchAll(TOOLS_CHUNK)) {
         violations.push({ file: path, line: lineOf(m.index), message: 'the code tools chunk must be loaded with import(), not a static import' });
       }
