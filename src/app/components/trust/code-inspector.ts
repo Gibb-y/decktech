@@ -52,7 +52,7 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
     <div class="inspector">
       <div role="tablist" aria-label="Parts of the component">
         @for (id of tabs(); track id) {
-          <button
+          <button class="btn"
             type="button"
             role="tab"
             [id]="'inspect-tab-' + id"
@@ -107,7 +107,7 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
                       <strong class="unknown">Not a known library</strong>
                     }
                   </p>
-                  <button type="button" [attr.aria-expanded]="openAsset() === lib.id" (click)="toggleAsset(lib.id)">
+                  <button class="btn" type="button" [attr.aria-expanded]="openAsset() === lib.id" (click)="toggleAsset(lib.id)">
                     {{ openAsset() === lib.id ? 'Hide source' : 'Show source' }}<span class="sr-only"> of library {{ lib.id.slice(0, 8) }}</span>
                   </button>
                 </li>
@@ -124,7 +124,7 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
                   <p>
                     <code>{{ file.id }}</code> — {{ file.mime }}, {{ file.size }} bytes
                   </p>
-                  <button type="button" [attr.aria-expanded]="openAsset() === file.id" (click)="toggleAsset(file.id)">
+                  <button class="btn" type="button" [attr.aria-expanded]="openAsset() === file.id" (click)="toggleAsset(file.id)">
                     {{ openAsset() === file.id ? 'Hide content' : 'Show content' }}<span class="sr-only"> of file {{ file.id.slice(0, 8) }}</span>
                   </button>
                 </li>
@@ -133,8 +133,8 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
           }
           @default {
             <div class="bar">
-              <button type="button" (click)="searchBox()?.search()">Search</button>
-              <button type="button" [attr.aria-pressed]="formatted()" (click)="formatted.set(!formatted())">Format</button>
+              <button class="btn" type="button" (click)="searchBox()?.search()">Search</button>
+              <button class="btn" type="button" [attr.aria-pressed]="formatted()" (click)="formatted.set(!formatted())">Format</button>
               <span class="muted">
                 {{ formatted() ? 'Showing a formatted copy (view only).' : 'Showing the source as it is.' }}
               </span>
@@ -147,8 +147,8 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
         }
         @if ((tab() === 'libs' || tab() === 'files') && openAsset()) {
           <div class="bar">
-            <button type="button" (click)="assetBox()?.search()">Search</button>
-            <button type="button" [attr.aria-pressed]="formatted()" (click)="formatted.set(!formatted())">Format</button>
+            <button class="btn" type="button" (click)="assetBox()?.search()">Search</button>
+            <button class="btn" type="button" [attr.aria-pressed]="formatted()" (click)="formatted.set(!formatted())">Format</button>
             @if (assetNote(); as note) {
               <span class="muted" role="status">{{ note }}</span>
             }
@@ -191,7 +191,7 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
       font-size: 0.95rem;
     }
     .diff {
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
       border-radius: 0.25rem;
       font: 0.85rem ui-monospace, Consolas, monospace;
       overflow-x: auto;
@@ -204,16 +204,16 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
       word-break: break-all;
     }
     .line.add {
-      background: #dff3e1;
-      color: #0d3b17;
+      background: var(--success-subtle);
+      color: var(--text);
     }
     .line.del {
-      background: #fde8e6;
-      color: #5c0f0a;
+      background: var(--danger-subtle);
+      color: var(--text);
     }
     .line.fold {
-      background: #f1f2f4;
-      color: #404040;
+      background: var(--surface-sunken);
+      color: var(--text-muted);
       font-style: italic;
     }
     .mark {
@@ -232,10 +232,10 @@ const sectionsOf = (before: ComponentSnapshot, after: ComponentSnapshot): Sectio
       word-break: break-all;
     }
     .known {
-      color: #1f5f2a;
+      color: var(--success-ink);
     }
     .unknown {
-      color: #7a2d00;
+      color: var(--warning-ink);
     }
     .sr-only {
       position: absolute;

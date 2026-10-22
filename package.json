@@ -7,7 +7,9 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint:boundaries": "node scripts/check-boundaries.mjs"
+    "lint:boundaries": "node scripts/check-boundaries.mjs",
+    "lint:tokens": "node scripts/check-tokens.mjs",
+    "test:scripts": "node --test scripts/"
   },
   "private": true,
   "packageManager": "npm@11.19.1",

@@ -22,7 +22,7 @@ export function newSpec(type: PropType, key: string, label: string): PropSpec {
     case 'boolean':
       return { key, type, label, default: false };
     case 'color':
-      return { key, type, label, default: '#336699' };
+      return { key, type, label, default: '#336699' }; // token-check-ignore
     default:
       return { key, type, label, default: '' };
   }
@@ -71,11 +71,11 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
       <fieldset>
         <legend>Property {{ i + 1 }}{{ spec.label ? ': ' + spec.label : '' }}</legend>
         <div class="grid">
-          <label>Key <input type="text" [value]="spec.key" (input)="edit(i, { key: text($event) })" spellcheck="false" /></label>
-          <label>Label <input type="text" [value]="spec.label" (input)="edit(i, { label: text($event) })" /></label>
+          <label>Key <input class="input" type="text" [value]="spec.key" (input)="edit(i, { key: text($event) })" spellcheck="false" /></label>
+          <label>Label <input class="input" type="text" [value]="spec.label" (input)="edit(i, { label: text($event) })" /></label>
           <label>
             Type
-            <select (change)="edit(i, { type: text($event) })">
+            <select class="input" (change)="edit(i, { type: text($event) })">
               @for (t of types; track t.value) {
                 <option [value]="t.value" [selected]="t.value === spec.type">{{ t.label }}</option>
               }
@@ -83,9 +83,9 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
           </label>
           @switch (spec.type) {
             @case ('number') {
-              <label>Default <input type="number" [value]="spec.default" (change)="edit(i, { default: num($event) ?? 0 })" /></label>
-              <label>Smallest <input type="number" [value]="spec.min ?? ''" (change)="edit(i, { min: num($event) })" /></label>
-              <label>Largest <input type="number" [value]="spec.max ?? ''" (change)="edit(i, { max: num($event) })" /></label>
+              <label>Default <input class="input" type="number" [value]="spec.default" (change)="edit(i, { default: num($event) ?? 0 })" /></label>
+              <label>Smallest <input class="input" type="number" [value]="spec.min ?? ''" (change)="edit(i, { min: num($event) })" /></label>
+              <label>Largest <input class="input" type="number" [value]="spec.max ?? ''" (change)="edit(i, { max: num($event) })" /></label>
             }
             @case ('boolean') {
               <label class="check"><input type="checkbox" [checked]="spec.default === true" (change)="edit(i, { default: checked($event) })" /> On by default</label>
@@ -93,11 +93,11 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
             @case ('select') {
               <label class="wide">
                 Choices (one per line, <code>value: label</code>)
-                <textarea rows="3" [value]="optionsText(spec)" (change)="edit(i, { options: options($event) })"></textarea>
+                <textarea class="input" rows="3" [value]="optionsText(spec)" (change)="edit(i, { options: options($event) })"></textarea>
               </label>
               <label>
                 Default
-                <select (change)="edit(i, { default: text($event) })">
+                <select class="input" (change)="edit(i, { default: text($event) })">
                   @for (o of optionsOf(spec); track o.value) {
                     <option [value]="o.value" [selected]="o.value === spec.default">{{ o.label }}</option>
                   }
@@ -105,19 +105,19 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
               </label>
             }
             @default {
-              <label>Default <input type="text" [value]="stringDefault(spec)" (input)="edit(i, { default: text($event) })" /></label>
+              <label>Default <input class="input" type="text" [value]="stringDefault(spec)" (input)="edit(i, { default: text($event) })" /></label>
             }
           }
         </div>
-        <button type="button" (click)="remove(i)" [attr.aria-label]="'Remove property ' + (spec.label || spec.key || i + 1)">Remove</button>
+        <button class="btn" type="button" (click)="remove(i)" [attr.aria-label]="'Remove property ' + (spec.label || spec.key || i + 1)">Remove</button>
       </fieldset>
     }
-    <button type="button" (click)="add()">Add property</button>
+    <button class="btn" type="button" (click)="add()">Add property</button>
   `,
   styles: `
     fieldset {
       margin: 0 0 0.75rem;
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
       border-radius: 0.25rem;
     }
     .grid {
@@ -138,27 +138,6 @@ const numberOrUndefined = (text: string): number | undefined => (text.trim() ===
       display: flex;
       align-items: center;
       gap: 0.35rem;
-    }
-    input,
-    select,
-    textarea,
-    button {
-      font: inherit;
-      padding: 0.25rem 0.4rem;
-      border: 1px solid #5a5a5a;
-      border-radius: 0.25rem;
-      background: #fff;
-      color: #111;
-    }
-    input[type='checkbox'] {
-      padding: 0;
-    }
-    button {
-      cursor: pointer;
-    }
-    :is(input, select, textarea, button):focus-visible {
-      outline: 3px solid #ffbf47;
-      outline-offset: 2px;
     }
     .hint {
       margin: 0 0 0.75rem;

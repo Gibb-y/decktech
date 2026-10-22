@@ -28,7 +28,7 @@ export function startingDoc(element: TextEl): RichDoc {
       box-sizing: border-box;
       cursor: text;
       user-select: text;
-      outline: calc(2px * var(--inv, 1)) solid #1f4fc4;
+      outline: calc(2px * var(--inv, 1)) solid var(--accent);
     }
     app-text-editor .ProseMirror {
       outline: none;

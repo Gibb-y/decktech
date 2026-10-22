@@ -1,5 +1,6 @@
 import { Component, DestroyRef, ElementRef, ViewContainerRef, effect, inject, input, signal, untracked, type ComponentRef, type OutputEmitterRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { Icon, Tooltip } from '../shared';
 import { AutosaveService } from '../core/persistence';
 import { DeckStore } from '../core/store';
 import { Canvas } from './canvas';
@@ -32,14 +33,14 @@ function isTextEntry(target: EventTarget | null): boolean {
  */
 @Component({
   selector: 'app-editor-shell',
-  imports: [RouterLink, Canvas, SlideSorter, PropertiesPanel, NotesPane, EditorToolbar, InsertMenu, ShortcutHelp, ThemeEditor, LayoutEditor],
+  imports: [RouterLink, Icon, Tooltip, Canvas, SlideSorter, PropertiesPanel, NotesPane, EditorToolbar, InsertMenu, ShortcutHelp, ThemeEditor, LayoutEditor],
   host: {
     '(document:keydown)': 'onDocumentKeydown($event)',
   },
   template: `
-    <header class="top">
-      <a routerLink="/">← Your decks</a>
-      <h1 tabindex="-1">{{ heading() }}</h1>
+    <header class="appbar">
+      <a class="btn btn-quiet btn-icon" routerLink="/" aria-label="Your decks" appTooltip="Your decks"><app-icon name="home" /></a>
+      <h1 class="appbar-title" tabindex="-1">{{ heading() }}</h1>
       @if (state().status === 'ready') {
         <app-editor-toolbar [canReview]="codeTools.reviewable()" (insert)="dialog.set('insert')" (help)="dialog.set('help')" (components)="codeTools.openLibrary()" (review)="codeTools.review()" (themeEditor)="dialog.set('theme')" (layoutEditor)="dialog.set('layouts')" (present)="present()" />
       }
@@ -81,22 +82,10 @@ function isTextEntry(target: EventTarget | null): boolean {
       flex: 1 1 auto;
       flex-direction: column;
       min-height: 0;
-      color: #111;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    }
-    .top {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem 1rem;
-      padding: 0.5rem 1rem;
-    }
-    h1 {
-      margin: 0;
-      font-size: 1.25rem;
-    }
-    h1:focus {
-      outline: none;
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: var(--font-size-md);
     }
     .layout {
       display: grid;
@@ -108,13 +97,13 @@ function isTextEntry(target: EventTarget | null): boolean {
         'sorter canvas properties'
         'sorter notes properties';
       gap: 0;
-      border-top: 1px solid #c3c6cc;
     }
     .sorter {
       grid-area: sorter;
       min-height: 0;
       overflow: hidden;
-      border-right: 1px solid #c3c6cc;
+      background: var(--surface-raised);
+      border-right: 1px solid var(--border);
     }
     .canvas {
       grid-area: canvas;
@@ -125,21 +114,23 @@ function isTextEntry(target: EventTarget | null): boolean {
       grid-area: properties;
       min-height: 0;
       overflow-y: auto;
-      padding: 0.5rem 1rem;
-      border-left: 1px solid #c3c6cc;
+      padding: var(--space-2) var(--space-3);
+      background: var(--surface-raised);
+      border-left: 1px solid var(--border);
     }
     .notes {
       grid-area: notes;
       max-height: 30vh;
       overflow-y: auto;
-      border-top: 1px solid #c3c6cc;
+      background: var(--surface-raised);
+      border-top: 1px solid var(--border);
     }
     .error {
-      margin: 1rem;
-      padding: 0.75rem 1rem;
-      background: #fde8e6;
-      color: #5c0f0a;
-      border-left: 4px solid #8a1c14;
+      margin: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      background: var(--danger-subtle);
+      color: var(--text);
+      border-left: 4px solid var(--danger-ink);
     }
   `,
 })

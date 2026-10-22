@@ -1,7 +1,243 @@
+/*
+ * Design tokens and base layer of the app chrome (arc42 8.11, ADR-012).
+ *
+ * Everything here belongs to the editor's own UI. Deck themes (`Theme`, `--deck-*`) are separate and
+ * are set on the slide stage only; chrome tokens never reach slide rendering and the reverse.
+ * Colour literals are allowed in this file and nowhere else (`npm run lint:tokens`).
+ *
+ * The dark set appears twice (media query for "follow the system", attribute for the manual choice);
+ * `scripts/check-tokens.mjs` (`npm run lint:tokens`) checks that both copies are identical and that every text pair reaches AA.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --surface: #f5f6f8;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e9ebf0;
+  --surface-hover: #e3e6ec;
+  --surface-active: #d6dae3;
+  --scrim: rgb(15 18 25 / 0.5);
+
+  /* Lines: `border` is decorative, `border-control` is the edge of an input or button (3:1). */
+  --border: #d3d7df;
+  --border-control: #687080;
+
+  /* Text */
+  --text: #1a1e26;
+  --text-muted: #4a5262;
+  --text-disabled: #8a91a0;
+
+  /* Accent: `accent` is a fill, `accent-ink` is the accent used as text or an icon on a surface. */
+  --accent: #1d4ed8;
+  --accent-hover: #1a43b8;
+  --accent-active: #163a9e;
+  --accent-text: #ffffff;
+  --accent-ink: #1d4ed8;
+  --accent-subtle: #e4ebfc;
+
+  /* Status: `*-ink` on `*-subtle` for notices, `danger` / `danger-text` for a filled button. */
+  --danger: #b42318;
+  --danger-hover: #9b1c12;
+  --danger-text: #ffffff;
+  --danger-ink: #b42318;
+  --danger-subtle: #fdecea;
+  --warning-ink: #7a4d00;
+  --warning-subtle: #fff3d1;
+  --success-ink: #17652c;
+  --success-subtle: #e2f4e7;
+
+  --focus: #1d4ed8;
+  --guide: #c2188f;
+
+  /* Presentation mode is black whatever the scheme: the stage is letterboxed on black and the controls float on it. */
+  --present-bg: #000000;
+  --present-text: #ffffff;
+  --present-overlay: rgb(0 0 0 / 0.85);
+
+  /* Type */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.45;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+
+  /* Spacing (4px base) */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Density: compact by default. Controls never go below 24px (WCAG 2.5.8). */
+  --control-height: 1.75rem;
+  --control-height-sm: 1.5rem;
+  --control-height-lg: 2.25rem;
+  --control-padding-x: var(--space-3);
+
+  /* Shape and elevation */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgb(15 18 25 / 0.08);
+  --shadow-md: 0 4px 12px rgb(15 18 25 / 0.12), 0 1px 3px rgb(15 18 25 / 0.08);
+  --shadow-lg: 0 16px 40px rgb(15 18 25 / 0.22), 0 2px 6px rgb(15 18 25 / 0.1);
+
+  /* Motion */
+  --duration-fast: 100ms;
+  --duration-base: 160ms;
+  --duration-slow: 240ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layers */
+  --z-dropdown: 100;
+  --z-dialog: 1000;
+  --z-toast: 1500;
+  --z-skip-link: 2000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --surface: #13161b;
+    --surface-raised: #1b1f26;
+    --surface-sunken: #0e1014;
+    --surface-hover: #262b34;
+    --surface-active: #323845;
+    --scrim: rgb(0 0 0 / 0.6);
+    --border: #2f3541;
+    --border-control: #8b93a3;
+    --text: #e8eaee;
+    --text-muted: #a9b0bd;
+    --text-disabled: #697181;
+    --accent: #6c9bff;
+    --accent-hover: #86adff;
+    --accent-active: #9fbdff;
+    --accent-text: #0a1020;
+    --accent-ink: #8fb2ff;
+    --accent-subtle: #1c2740;
+    --danger: #f08379;
+    --danger-hover: #f49b93;
+    --danger-text: #1c0805;
+    --danger-ink: #ff9a90;
+    --danger-subtle: #3a1a17;
+    --warning-ink: #f2c35c;
+    --warning-subtle: #35290c;
+    --success-ink: #7ad493;
+    --success-subtle: #13301c;
+    --focus: #8fb2ff;
+    --guide: #ff7ad1;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #13161b;
+  --surface-raised: #1b1f26;
+  --surface-sunken: #0e1014;
+  --surface-hover: #262b34;
+  --surface-active: #323845;
+  --scrim: rgb(0 0 0 / 0.6);
+  --border: #2f3541;
+  --border-control: #8b93a3;
+  --text: #e8eaee;
+  --text-muted: #a9b0bd;
+  --text-disabled: #697181;
+  --accent: #6c9bff;
+  --accent-hover: #86adff;
+  --accent-active: #9fbdff;
+  --accent-text: #0a1020;
+  --accent-ink: #8fb2ff;
+  --accent-subtle: #1c2740;
+  --danger: #f08379;
+  --danger-hover: #f49b93;
+  --danger-text: #1c0805;
+  --danger-ink: #ff9a90;
+  --danger-subtle: #3a1a17;
+  --warning-ink: #f2c35c;
+  --warning-subtle: #35290c;
+  --success-ink: #7ad493;
+  --success-subtle: #13301c;
+  --focus: #8fb2ff;
+  --guide: #ff7ad1;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
+/* High contrast mode: the system palette wins, so only the keywords that must stay visible are set. */
+@media (forced-colors: active) {
+  /* Tripled so it outranks the dark sets above (specificity 0,2,0). */
+  :root:root:root {
+    --focus: Highlight;
+    --border-control: ButtonText;
+    --border: CanvasText;
+  }
+}
+
+/* Reduced motion: every transition and animation that uses the duration tokens collapses. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Base layer. Kept narrow on purpose: screens not yet moved to the tokens must not shift. */
 body {
   margin: 0;
-  background: #fff;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  line-height: var(--line-height-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-subtle);
+  color: var(--text);
+}
+
+* {
+  scrollbar-color: var(--border-control) transparent;
+  scrollbar-width: thin;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+}
+
 #main-content:focus {
   outline: none;
 }

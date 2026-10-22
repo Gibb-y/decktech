@@ -1,21 +1,21 @@
 <nav #scroller class="sorter" aria-label="Slides">
   <div class="tools" role="group" aria-label="Slide actions">
-    <button type="button" (click)="slideActions.addSlide()">Add</button>
-    <button type="button" (click)="slideActions.duplicateSlide()">Duplicate</button>
-    <button type="button" [attr.aria-disabled]="store.currentSlideIndex() > 0 ? null : 'true'" (click)="move(-1)">Move up</button>
-    <button type="button" [attr.aria-disabled]="store.currentSlideIndex() < store.slides().length - 1 ? null : 'true'" (click)="move(1)">Move down</button>
-    <button type="button" class="danger" [attr.aria-disabled]="store.slides().length > 1 ? null : 'true'" (click)="slideActions.deleteSlide()">Delete</button>
-    <button #sectionButton type="button" aria-haspopup="true" [attr.aria-expanded]="editingSection()" (click)="openSection()">Section</button>
+    <button class="btn btn-sm" type="button" (click)="slideActions.addSlide()">Add</button>
+    <button class="btn btn-sm" type="button" (click)="slideActions.duplicateSlide()">Duplicate</button>
+    <button class="btn btn-sm" type="button" [attr.aria-disabled]="store.currentSlideIndex() > 0 ? null : 'true'" (click)="move(-1)">Move up</button>
+    <button class="btn btn-sm" type="button" [attr.aria-disabled]="store.currentSlideIndex() < store.slides().length - 1 ? null : 'true'" (click)="move(1)">Move down</button>
+    <button type="button" class="btn btn-sm btn-outline-danger danger" [attr.aria-disabled]="store.slides().length > 1 ? null : 'true'" (click)="slideActions.deleteSlide()">Delete</button>
+    <button class="btn" #sectionButton type="button" aria-haspopup="true" [attr.aria-expanded]="editingSection()" (click)="openSection()">Section</button>
   </div>
 
   @if (editingSection()) {
     <form class="section-form" (submit)="saveSection($event, name)" (keydown.escape)="closeSection(); $event.preventDefault()">
       <label for="section-name">Section starting at this slide</label>
-      <input #name id="section-name" type="text" maxlength="200" autocomplete="off" aria-describedby="section-hint" [value]="store.currentSlide().section ?? ''" />
+      <input class="input" #name id="section-name" type="text" maxlength="200" autocomplete="off" aria-describedby="section-hint" [value]="store.currentSlide().section ?? ''" />
       <p id="section-hint" class="hint">Leave empty to remove the section.</p>
       <div class="tools">
-        <button type="submit">Save</button>
-        <button type="button" (click)="closeSection()">Cancel</button>
+        <button class="btn btn-sm" type="submit">Save</button>
+        <button class="btn btn-sm" type="button" (click)="closeSection()">Cancel</button>
       </div>
     </form>
   }

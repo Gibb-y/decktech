@@ -22,9 +22,9 @@ const DETAIL: Record<string, string> = {
           <p class="message">The download failed. Try again.</p>
         }
         <div class="actions">
-          <button type="button" (click)="retry()">Try again</button>
+          <button class="btn" type="button" (click)="retry()">Try again</button>
           @if (autosave.canExport()) {
-            <button type="button" (click)="download()">Download .deck</button>
+            <button class="btn" type="button" (click)="download()">Download .deck</button>
           }
         </div>
         </div>
@@ -35,7 +35,7 @@ const DETAIL: Record<string, string> = {
     .banner {
       position: sticky;
       top: 0;
-      z-index: 1000;
+      z-index: var(--z-toast);
     }
     .content {
       display: flex;
@@ -43,9 +43,9 @@ const DETAIL: Record<string, string> = {
       align-items: center;
       gap: 0.5rem 1rem;
       padding: 0.75rem 1rem;
-      background: #fde8e6;
-      color: #5c0f0a;
-      border-bottom: 2px solid #8a1c14;
+      background: var(--danger-subtle);
+      color: var(--text);
+      border-bottom: 2px solid var(--danger-ink);
     }
     .message {
       margin: 0;
@@ -54,19 +54,6 @@ const DETAIL: Record<string, string> = {
     .actions {
       display: flex;
       gap: 0.5rem;
-    }
-    button {
-      padding: 0.4rem 0.9rem;
-      border: 0;
-      border-radius: 0.25rem;
-      background: #7a1d14;
-      color: #fff;
-      font: inherit;
-      cursor: pointer;
-    }
-    button:focus-visible {
-      outline: 3px solid #1a1a1a;
-      outline-offset: 2px;
     }
   `,
 })

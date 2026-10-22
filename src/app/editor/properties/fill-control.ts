@@ -15,7 +15,7 @@ let nextId = 0;
   template: `
     <div class="field">
       <label [for]="id">{{ label() }}</label>
-      <select [id]="id" (change)="onKind($event)">
+      <select class="input" [id]="id" (change)="onKind($event)">
         @if (optional()) {
           <option value="none" [selected]="kind() === 'none'">{{ noneLabel() }}</option>
         }
@@ -36,13 +36,6 @@ let nextId = 0;
     }
     label {
       font-size: 0.875rem;
-    }
-    select {
-      font: inherit;
-    }
-    select:focus-visible {
-      outline: 3px solid #ffbf47;
-      outline-offset: 2px;
     }
   `,
 })

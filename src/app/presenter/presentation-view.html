@@ -32,9 +32,9 @@
 </div>
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement() }}</div>
 <div class="controls" role="group" aria-label="Presentation controls" [class.visible]="controlsVisible()">
-  <button type="button" [attr.aria-disabled]="atStart()" (click)="previous()">Previous</button>
+  <button class="btn" type="button" [attr.aria-disabled]="atStart()" (click)="previous()">Previous</button>
   <span class="position" aria-hidden="true">{{ position() }}</span>
-  <button type="button" [attr.aria-disabled]="atEnd()" (click)="onNextButton()">Next</button>
-  <button type="button" (click)="openPresenterView()">Presenter view</button>
-  <button type="button" (click)="exit()">Exit</button>
+  <button class="btn" type="button" [attr.aria-disabled]="atEnd()" (click)="onNextButton()">Next</button>
+  <button class="btn" type="button" (click)="openPresenterView()">Presenter view</button>
+  <button class="btn" type="button" (click)="exit()">Exit</button>
 </div>

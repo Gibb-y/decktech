@@ -57,7 +57,7 @@ const rowsOf = (theme: Theme): Rows => ({
       <h2 id="theme-editor-title">Edit theme</h2>
       <div class="field">
         <label for="theme-name">Theme name</label>
-        <input id="theme-name" type="text" [maxLength]="maxName" [value]="name()" (input)="name.set(value($event))" data-autofocus />
+        <input class="input" id="theme-name" type="text" [maxLength]="maxName" [value]="name()" (input)="name.set(value($event))" data-autofocus />
       </div>
 
       @for (group of groups; track group.id) {
@@ -69,7 +69,7 @@ const rowsOf = (theme: Theme): Rows => ({
               @if (group.id === 'colors' && isHex(row.value)) {
                 <input type="color" [attr.aria-label]="row.key + ', pick a colour'" [value]="row.value" (input)="setValue(group.id, row.key, value($event))" />
               }
-              <input
+              <input class="input"
                 [type]="group.numeric ? 'number' : 'text'"
                 [attr.aria-labelledby]="'row-' + group.id + '-' + row.key"
                 [value]="row.value"
@@ -80,16 +80,16 @@ const rowsOf = (theme: Theme): Rows => ({
               @if (inUse(group.id, row.key)) {
                 <span class="note">in use</span>
               }
-              <button type="button" [attr.aria-label]="'Remove ' + row.key" [attr.aria-disabled]="canRemove(group.id, row.key) ? null : 'true'" (click)="remove(group.id, row.key)">Remove</button>
+              <button class="btn" type="button" [attr.aria-label]="'Remove ' + row.key" [attr.aria-disabled]="canRemove(group.id, row.key) ? null : 'true'" (click)="remove(group.id, row.key)">Remove</button>
               @if (problem(group.id, row.key); as message) {
                 <span class="error" role="alert" [id]="'problem-' + group.id + '-' + row.key">{{ message }}</span>
               }
             </div>
           }
           <div class="row add">
-            <input type="text" [attr.aria-label]="'New ' + group.label.toLowerCase() + ' name'" placeholder="name" [value]="adding()[group.id].key" (input)="setAdding(group.id, 'key', value($event))" />
-            <input [type]="group.numeric ? 'number' : 'text'" [attr.aria-label]="'Value of the new ' + group.valueLabel" placeholder="value" [value]="adding()[group.id].value" (input)="setAdding(group.id, 'value', value($event))" />
-            <button type="button" (click)="add(group.id)">Add</button>
+            <input class="input" type="text" [attr.aria-label]="'New ' + group.label.toLowerCase() + ' name'" placeholder="name" [value]="adding()[group.id].key" (input)="setAdding(group.id, 'key', value($event))" />
+            <input class="input" [type]="group.numeric ? 'number' : 'text'" [attr.aria-label]="'Value of the new ' + group.valueLabel" placeholder="value" [value]="adding()[group.id].value" (input)="setAdding(group.id, 'value', value($event))" />
+            <button class="btn" type="button" (click)="add(group.id)">Add</button>
           </div>
           @if (addProblem()[group.id]; as message) {
             <p class="error" role="alert">{{ message }}</p>
@@ -105,7 +105,7 @@ const rowsOf = (theme: Theme): Rows => ({
               <span class="swatch" aria-hidden="true" [style.background]="draft().colors['background']" [style.color]="draft().colors[check.token]">Aa</span>
               <strong>{{ check.token }}</strong>:
               @if (check.ratio === null) {
-                not measured (use a hex colour such as #112233 to check it)
+                not measured (use a hex colour such as #112233 to check it) <!-- token-check-ignore -->
               } @else if (check.passes) {
                 {{ ratio(check.ratio) }}:1, meets WCAG AA ({{ minimum }}:1)
               } @else {
@@ -122,13 +122,13 @@ const rowsOf = (theme: Theme): Rows => ({
       @if (confirming()) {
         <div class="question" role="alertdialog" aria-labelledby="theme-discard" aria-modal="true">
           <p id="theme-discard">Discard your changes to the theme?</p>
-          <button type="button" data-keep (click)="confirming.set(false)">Keep editing</button>
-          <button type="button" (click)="closed.emit()">Discard</button>
+          <button class="btn" type="button" data-keep (click)="confirming.set(false)">Keep editing</button>
+          <button class="btn" type="button" (click)="closed.emit()">Discard</button>
         </div>
       }
       <div class="actions">
-        <button type="button" (click)="requestClose()">Cancel</button>
-        <button type="button" class="primary" [attr.aria-disabled]="canApply() ? null : 'true'" (click)="apply()">Apply theme</button>
+        <button class="btn" type="button" (click)="requestClose()">Cancel</button>
+        <button type="button" class="btn btn-primary" [attr.aria-disabled]="canApply() ? null : 'true'" (click)="apply()">Apply theme</button>
       </div>
     </div>
   `,
@@ -140,7 +140,7 @@ const rowsOf = (theme: Theme): Rows => ({
     fieldset {
       margin: 0.75rem 0 0;
       padding: 0.5rem 0.75rem;
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
     }
     legend {
       font-weight: 600;
@@ -166,19 +166,14 @@ const rowsOf = (theme: Theme): Rows => ({
       min-width: 0;
       padding: 0.2rem 0.35rem;
     }
-    input[type='color'] {
-      width: 2.5rem;
-      height: 2rem;
-      padding: 0;
-    }
     .note {
       font-size: 0.8rem;
-      color: #4d5560;
+      color: var(--text-muted);
     }
     .error {
       flex: 1 1 100%;
       margin: 0;
-      color: #8a1c14;
+      color: var(--danger-ink);
       font-size: 0.875rem;
     }
     .contrast {
@@ -197,30 +192,21 @@ const rowsOf = (theme: Theme): Rows => ({
       place-items: center;
       width: 2.5rem;
       height: 1.75rem;
-      border: 1px solid #767676;
+      border: 1px solid var(--border-control);
       font-weight: 700;
     }
     .warning {
-      color: #8a1c14;
+      color: var(--danger-ink);
       font-weight: 600;
     }
     .question {
       margin-top: 0.75rem;
       padding: 0.5rem 0.75rem;
-      background: #fff4e0;
-      border-left: 4px solid #8a5a00;
+      background: var(--warning-subtle);
+      border-left: 4px solid var(--warning-ink);
     }
     .actions {
       gap: 0.5rem;
-    }
-    button[aria-disabled='true'] {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .primary {
-      background: #1d3f9c;
-      border-color: #1d3f9c;
-      color: #fff;
     }
   `,
 })
@@ -238,7 +224,7 @@ export class ThemeEditor {
   protected readonly name = signal(this.start.name ?? '');
   protected readonly rows = signal<Rows>(rowsOf(this.start));
   protected readonly adding = signal<Record<Group, Row>>({
-    colors: { key: '', value: '#000000' },
+    colors: { key: '', value: '#000000' }, // token-check-ignore
     fonts: { key: '', value: '' },
     typeScale: { key: '', value: '' },
     spacing: { key: '', value: '' },
@@ -272,7 +258,7 @@ export class ThemeEditor {
     const found = new Map<string, string>();
     const rows = this.rows();
     for (const r of rows.colors) {
-      if (!LITERAL_COLOR.test(r.value)) found.set(`colors:${r.key}`, 'Use a hex colour such as #112233, rgb(), hsl() or a colour name');
+      if (!LITERAL_COLOR.test(r.value)) found.set(`colors:${r.key}`, 'Use a hex colour such as #112233, rgb(), hsl() or a colour name'); // token-check-ignore
     }
     for (const r of rows.fonts) {
       if (r.value.trim() === '' || UNSAFE_FONT.test(r.value)) found.set(`fonts:${r.key}`, 'Use a plain font family list such as "Inter", sans-serif');
@@ -344,11 +330,11 @@ export class ThemeEditor {
     if (this.rows()[group].some((r) => r.key === name)) return fail(`“${name}” exists already`);
     const text = value.trim();
     if (def.numeric ? text === '' || !Number.isFinite(Number(text)) || Number(text) < 0 : text === '') return fail(`Enter a ${def.valueLabel}`);
-    if (group === 'colors' && !LITERAL_COLOR.test(text)) return fail('Use a hex colour such as #112233, rgb(), hsl() or a colour name');
+    if (group === 'colors' && !LITERAL_COLOR.test(text)) return fail('Use a hex colour such as #112233, rgb(), hsl() or a colour name'); // token-check-ignore
     if (group === 'fonts' && UNSAFE_FONT.test(text)) return fail('Use a plain font family list such as "Inter", sans-serif');
     this.addProblem.update((p) => ({ ...p, [group]: undefined }));
     this.rows.update((rows) => ({ ...rows, [group]: [...rows[group], { key: name, value: text }] }));
-    this.adding.update((a) => ({ ...a, [group]: { key: '', value: group === 'colors' ? '#000000' : '' } }));
+    this.adding.update((a) => ({ ...a, [group]: { key: '', value: group === 'colors' ? '#000000' : '' } })); // token-check-ignore
   }
 
   protected apply(): void {

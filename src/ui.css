@@ -1,0 +1,663 @@
+/*
+ * Shared UI primitives of the app chrome (arc42 8.11, ADR-012): plain classes over the design tokens in
+ * styles.css, used by every screen so buttons, controls, tabs, dialogs and notices look and behave alike.
+ * Only `var(--token)` values here: no colour literals, no font sizes or spacing of its own
+ * (`npm run lint:tokens` checks both). The few components that need behaviour (icon, tooltip, dialog,
+ * tabs, notice) live in `app/shared/` and use these classes.
+ */
+
+/* ---- Buttons --------------------------------------------------------------------------------- */
+
+.btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--control-padding-x);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.btn:hover {
+  background: var(--surface-hover);
+}
+
+.btn:active {
+  background: var(--surface-active);
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn-primary:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.btn-primary:active {
+  border-color: var(--accent-active);
+  background: var(--accent-active);
+}
+
+/* Quiet: no edge until it is used. Toolbars are made of these. */
+.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--danger-text);
+}
+
+.btn-danger:hover {
+  border-color: var(--danger-hover);
+  background: var(--danger-hover);
+}
+
+.btn-danger:active {
+  border-color: var(--danger-hover);
+  background: var(--danger-hover);
+}
+
+.btn-outline-danger {
+  color: var(--danger-ink);
+  border-color: var(--danger-ink);
+}
+
+.btn-sm {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.btn-lg {
+  min-height: var(--control-height-lg);
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-lg);
+}
+
+/* Icon-only: a square the height of the control. It needs an accessible name (aria-label or appTooltip). */
+.btn-icon {
+  width: var(--control-height);
+  padding: 0;
+}
+
+.btn-icon.btn-sm {
+  width: var(--control-height-sm);
+}
+
+.btn-icon.btn-lg {
+  width: var(--control-height-lg);
+}
+
+/* Toggle button: aria-pressed or aria-expanded on a normal button. */
+.btn[aria-pressed='true'],
+.btn[aria-expanded='true'] {
+  border-color: var(--accent-ink);
+  background: var(--accent-subtle);
+  color: var(--accent-ink);
+}
+
+.btn-quiet[aria-pressed='true'],
+.btn-quiet[aria-expanded='true'] {
+  border-color: transparent;
+}
+
+/* Disabled. `aria-disabled` keeps the button focusable (the repo prefers it for briefly unavailable controls). */
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.btn-quiet:disabled,
+.btn-quiet[aria-disabled='true'] {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.toolbar-separator {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1) var(--space-1);
+  background: var(--border);
+}
+
+/* ---- Text, number and select controls, checkbox ------------------------------------------------ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+
+.field-label {
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.field-hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.field-error {
+  color: var(--danger-ink);
+  font-size: var(--font-size-xs);
+}
+
+.input {
+  box-sizing: border-box;
+  min-height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-tight);
+  transition: border-color var(--duration-fast) var(--ease);
+}
+
+textarea.input {
+  padding: var(--space-1) var(--space-2);
+  line-height: var(--line-height-base);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover {
+  border-color: var(--text-muted);
+}
+
+.input:focus-visible {
+  border-color: var(--focus);
+  outline-offset: 0;
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger-ink);
+}
+
+.input:disabled,
+.input[aria-disabled='true'] {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.input-sm {
+  min-height: var(--control-height-sm);
+}
+
+/* The native checkbox and radio, sized to the target minimum and tinted with the accent. */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-sm);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+}
+
+.check input {
+  width: var(--space-4);
+  height: var(--space-4);
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: inherit;
+}
+
+input[type='color'] {
+  box-sizing: border-box;
+  width: 2.5rem;
+  height: var(--control-height);
+  padding: 0;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+/* ---- Tabs --------------------------------------------------------------------------------------- */
+
+.tablist {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  box-sizing: border-box;
+  min-height: var(--control-height);
+  margin-bottom: -1px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
+}
+
+.tab:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+
+/* ---- Dialog shell ------------------------------------------------------------------------------- */
+
+.dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+.dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  animation: ui-fade-in var(--duration-base) var(--ease);
+}
+
+.dialog-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(36rem, calc(100vw - var(--space-5)));
+  max-height: calc(100vh - var(--space-6));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+  animation: ui-pop-in var(--duration-base) var(--ease);
+}
+
+.dialog-panel:focus {
+  outline: none;
+}
+
+.dialog-panel.dialog-wide {
+  width: min(64rem, calc(100vw - var(--space-5)));
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.dialog-footer:empty {
+  display: none;
+}
+
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-1)) scale(0.98);
+  }
+}
+
+/* ---- Badge, notice, kbd, tooltip ---------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-4);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.badge-accent {
+  background: var(--accent-subtle);
+  color: var(--accent-ink);
+}
+
+.badge-danger {
+  background: var(--danger-subtle);
+  color: var(--danger-ink);
+}
+
+.badge-warning {
+  background: var(--warning-subtle);
+  color: var(--warning-ink);
+}
+
+.badge-success {
+  background: var(--success-subtle);
+  color: var(--success-ink);
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: var(--font-size-md);
+}
+
+.notice-icon {
+  flex: none;
+  margin-top: var(--space-1);
+}
+
+.notice-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notice-info {
+  border-color: var(--accent-ink);
+  background: var(--accent-subtle);
+}
+
+.notice-info .notice-icon {
+  color: var(--accent-ink);
+}
+
+.notice-warning {
+  border-color: var(--warning-ink);
+  background: var(--warning-subtle);
+}
+
+.notice-warning .notice-icon {
+  color: var(--warning-ink);
+}
+
+.notice-danger {
+  border-color: var(--danger-ink);
+  background: var(--danger-subtle);
+}
+
+.notice-danger .notice-icon {
+  color: var(--danger-ink);
+}
+
+.notice-success {
+  border-color: var(--success-ink);
+  background: var(--success-subtle);
+}
+
+.notice-success .notice-icon {
+  color: var(--success-ink);
+}
+
+.kbd {
+  display: inline-block;
+  min-width: var(--space-4);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-control);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+  text-align: center;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: var(--z-toast);
+  box-sizing: border-box;
+  max-width: 20rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
+  pointer-events: auto;
+  animation: ui-fade-in var(--duration-fast) var(--ease);
+}
+
+.tooltip .kbd {
+  margin-left: var(--space-2);
+  border-color: var(--surface-raised);
+  background: transparent;
+  color: inherit;
+}
+
+/* ---- Icons ---------------------------------------------------------------------------------------- */
+
+.icon {
+  flex: none;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  font-size: var(--font-size-lg);
+  vertical-align: middle;
+}
+
+/* ---- Menu, app bar, links, cards ---------------------------------------------------------------- */
+
+.menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 14rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  animation: ui-pop-in var(--duration-fast) var(--ease);
+}
+
+.menu[hidden] {
+  display: none;
+}
+
+.menu-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-size-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: var(--surface-hover);
+}
+
+.menu-item[aria-checked='true'] {
+  color: var(--accent-ink);
+  font-weight: var(--font-weight-medium);
+}
+
+.menu-item .kbd {
+  margin-left: auto;
+}
+
+.menu-heading {
+  padding: var(--space-1) var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.menu-separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+/* A bar across the top of a screen: the editor and presenter headers. */
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: calc(var(--control-height) + var(--space-3));
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.appbar-title {
+  min-width: 0;
+  max-width: 16rem;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appbar-title:focus {
+  outline: none;
+}
+
+.link {
+  color: var(--accent-ink);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+/* ---- High contrast ---------------------------------------------------------------------------------- */
+
+@media (forced-colors: active) {
+  .btn-primary,
+  .btn-danger,
+  .btn[aria-pressed='true'],
+  .btn[aria-expanded='true'] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .tab[aria-selected='true'] {
+    border-bottom-color: Highlight;
+  }
+
+  .tooltip {
+    border: 1px solid CanvasText;
+  }
+}

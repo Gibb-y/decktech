@@ -32,14 +32,14 @@ const LANGUAGES: Record<CodeLanguage, () => Extension> = { html: () => html(), c
       height: 100%;
     }
     .surface ::ng-deep .cm-editor {
-      border: 1px solid #5a5a5a;
+      border: 1px solid var(--border-control);
       border-radius: 0.25rem;
-      background: #fff;
-      color: #111;
+      background: var(--surface-raised);
+      color: var(--text);
       font-size: 0.9rem;
     }
     .surface ::ng-deep .cm-editor.cm-focused {
-      outline: 3px solid #ffbf47;
+      outline: 3px solid var(--focus);
       outline-offset: 1px;
     }
     .surface ::ng-deep .cm-scroller {
@@ -47,9 +47,9 @@ const LANGUAGES: Record<CodeLanguage, () => Extension> = { html: () => html(), c
       overflow: auto;
     }
     .surface ::ng-deep .cm-gutters {
-      background: #f1f2f4;
-      color: #4a4a4a;
-      border-right: 1px solid #c3c6cc;
+      background: var(--surface-sunken);
+      color: var(--text-muted);
+      border-right: 1px solid var(--border);
     }
   `,
 })

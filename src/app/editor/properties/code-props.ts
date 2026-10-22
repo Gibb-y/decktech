@@ -44,9 +44,9 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
           }
         </p>
         <div class="buttons">
-          <button type="button" (click)="editCode()" [attr.aria-disabled]="tools.available() ? null : 'true'">Edit code…</button>
+          <button class="btn" type="button" (click)="editCode()" [attr.aria-disabled]="tools.available() ? null : 'true'">Edit code…</button>
           @if (uses() > 1) {
-            <button type="button" (click)="detach()">Detach (make unique)</button>
+            <button class="btn" type="button" (click)="detach()">Detach (make unique)</button>
           }
         </div>
       </fieldset>
@@ -58,7 +58,7 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
               @switch (spec.type) {
                 @case ('number') {
                   <label [for]="'code-prop-' + i">{{ spec.label }}</label>
-                  <input type="number" [id]="'code-prop-' + i" [formField]="form.numbers[spec.key]" [attr.aria-invalid]="problems()[spec.key] ? 'true' : null" [attr.aria-describedby]="problems()[spec.key] ? 'code-prop-error-' + i : null" />
+                  <input class="input" type="number" [id]="'code-prop-' + i" [formField]="form.numbers[spec.key]" [attr.aria-invalid]="problems()[spec.key] ? 'true' : null" [attr.aria-describedby]="problems()[spec.key] ? 'code-prop-error-' + i : null" />
                 }
                 @case ('boolean') {
                   <input type="checkbox" [id]="'code-prop-' + i" [formField]="form.flags[spec.key]" />
@@ -66,7 +66,7 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
                 }
                 @case ('select') {
                   <label [for]="'code-prop-' + i">{{ spec.label }}</label>
-                  <select [id]="'code-prop-' + i" [formField]="form.texts[spec.key]">
+                  <select class="input" [id]="'code-prop-' + i" [formField]="form.texts[spec.key]">
                     @for (option of options(spec); track option.value) {
                       <option [value]="option.value">{{ option.label }}</option>
                     }
@@ -74,7 +74,7 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
                 }
                 @case ('asset') {
                   <label [for]="'code-prop-' + i">{{ spec.label }}</label>
-                  <select [id]="'code-prop-' + i" [formField]="form.texts[spec.key]">
+                  <select class="input" [id]="'code-prop-' + i" [formField]="form.texts[spec.key]">
                     <option value="">None</option>
                     @for (asset of assets(); track asset.id) {
                       <option [value]="asset.id">{{ asset.label }}</option>
@@ -82,8 +82,8 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
                   </select>
                 }
                 @default {
-                  <label [for]="'code-prop-' + i">{{ spec.label }}{{ spec.type === 'color' ? ' (a colour such as #336699)' : '' }}</label>
-                  <input type="text" [id]="'code-prop-' + i" [formField]="form.texts[spec.key]" [attr.aria-invalid]="problems()[spec.key] ? 'true' : null" [attr.aria-describedby]="problems()[spec.key] ? 'code-prop-error-' + i : null" />
+                  <label [for]="'code-prop-' + i">{{ spec.label }}{{ spec.type === 'color' ? ' (a colour such as #336699)' : '' }}</label> <!-- token-check-ignore -->
+                  <input class="input" type="text" [id]="'code-prop-' + i" [formField]="form.texts[spec.key]" [attr.aria-invalid]="problems()[spec.key] ? 'true' : null" [attr.aria-describedby]="problems()[spec.key] ? 'code-prop-error-' + i : null" />
                 }
               }
               @if (problems()[spec.key]; as message) {
@@ -101,7 +101,7 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
     fieldset {
       margin: 0 0 0.75rem;
       padding: 0.5rem 0.75rem;
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
       border-radius: 0.25rem;
     }
     legend {
@@ -114,7 +114,7 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
     .note {
       margin: 0.15rem 0 0.5rem;
       font-size: 0.875rem;
-      color: #404040;
+      color: var(--text-muted);
     }
     .buttons {
       display: flex;
@@ -133,29 +133,12 @@ const read = (values: PanelValues, spec: PropSpec): unknown => (spec.type === 'n
     }
     input,
     select,
-    button {
-      font: inherit;
-      padding: 0.25rem 0.4rem;
-      border: 1px solid #5a5a5a;
-      border-radius: 0.25rem;
-      background: #fff;
-      color: #111;
-    }
-    input[type='checkbox'] {
-      padding: 0;
-    }
-    button {
-      cursor: pointer;
-    }
-    button[aria-disabled='true'] {
-      opacity: 0.6;
-    }
     :is(input, select, button):focus-visible {
-      outline: 3px solid #ffbf47;
+      outline: 3px solid var(--focus);
       outline-offset: 2px;
     }
     .error {
-      color: #8a1c14;
+      color: var(--danger-ink);
       font-size: 0.875rem;
     }
   `,

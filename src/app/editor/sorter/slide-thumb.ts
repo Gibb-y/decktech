@@ -24,7 +24,7 @@ const MARGIN = '240px 0px';
       display: block;
       width: 100%;
       overflow: hidden;
-      background: #e8eaee;
+      background: var(--surface-sunken);
     }
   `,
   host: {

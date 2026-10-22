@@ -63,7 +63,7 @@ const CHECKLIST = [
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="code-editor-title" appFocusTrap (keydown.escape)="onEscape($event)">
       <header>
         <h2 id="code-editor-title">Edit code: {{ initial.name }}</h2>
-        <label>Name <input type="text" [value]="name()" (input)="name.set(text($event))" data-autofocus /></label>
+        <label>Name <input class="input" type="text" [value]="name()" (input)="name.set(text($event))" data-autofocus /></label>
         @if (uses() > 1) {
           <p class="note" role="note">This component is used {{ uses() }} times. Changes apply to every use; detach one from the properties panel to give it its own copy.</p>
         }
@@ -71,9 +71,9 @@ const CHECKLIST = [
 
       <div class="body">
         <section class="work" aria-label="Component code">
-          <div role="tablist" aria-label="Component parts" (keydown)="onTabKey($event)">
+          <div class="tablist" role="tablist" aria-label="Component parts" (keydown)="onTabKey($event)">
             @for (t of tabs; track t.id) {
-              <button type="button" role="tab" [id]="'tab-' + t.id" [attr.aria-selected]="tab() === t.id" [attr.aria-controls]="'panel-' + t.id" [tabindex]="tab() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button>
+              <button class="tab" type="button" role="tab" [id]="'tab-' + t.id" [attr.aria-selected]="tab() === t.id" [attr.aria-controls]="'panel-' + t.id" [tabindex]="tab() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button>
             }
           </div>
           @for (t of codeTabs; track t.id) {
@@ -94,7 +94,7 @@ const CHECKLIST = [
               @for (id of libs(); track id) {
                 <li>
                   <span>{{ libLabels()[id] ?? 'Library' }} <code>import * as lib from '{{ id }}'</code></span>
-                  <button type="button" (click)="removeLibrary(id)" [attr.aria-label]="'Remove library ' + (libLabels()[id] ?? id.slice(0, 8))">Remove</button>
+                  <button class="btn" type="button" (click)="removeLibrary(id)" [attr.aria-label]="'Remove library ' + (libLabels()[id] ?? id.slice(0, 8))">Remove</button>
                 </li>
               }
             </ul>
@@ -103,9 +103,9 @@ const CHECKLIST = [
             </div>
             <fieldset>
               <legend>Download from npm once, while online</legend>
-              <label>Package <input type="text" [value]="npmName()" (input)="npmName.set(text($event))" spellcheck="false" placeholder="chart.js" /></label>
-              <label>Version <input type="text" [value]="npmVersion()" (input)="npmVersion.set(text($event))" spellcheck="false" placeholder="latest" /></label>
-              <button type="button" (click)="addFromNpm()" [attr.aria-disabled]="busy() ? 'true' : null">Download and add</button>
+              <label>Package <input class="input" type="text" [value]="npmName()" (input)="npmName.set(text($event))" spellcheck="false" placeholder="chart.js" /></label>
+              <label>Version <input class="input" type="text" [value]="npmVersion()" (input)="npmVersion.set(text($event))" spellcheck="false" placeholder="latest" /></label>
+              <button class="btn" type="button" (click)="addFromNpm()" [attr.aria-disabled]="busy() ? 'true' : null">Download and add</button>
             </fieldset>
             @if (libraryMessage(); as message) {
               <p role="status" class="status">{{ message }}</p>
@@ -122,8 +122,8 @@ const CHECKLIST = [
               <div class="consent" role="alertdialog" aria-labelledby="consent-title" aria-describedby="consent-text">
                 <p id="consent-title"><strong>Allow {{ asked.label }}?</strong></p>
                 <p id="consent-text">{{ asked.consent }}</p>
-                <button type="button" id="consent-allow" (click)="grant()">Allow</button>
-                <button type="button" (click)="pending.set(null)">Cancel</button>
+                <button class="btn" type="button" id="consent-allow" (click)="grant()">Allow</button>
+                <button class="btn" type="button" (click)="pending.set(null)">Cancel</button>
               </div>
             }
           </div>
@@ -157,7 +157,7 @@ const CHECKLIST = [
               <span class="muted">Nothing logged. Use deck.log(…) or console.log(…).</span>
             }
           </div>
-          <button type="button" (click)="hostConsole.clear()">Clear console</button>
+          <button class="btn" type="button" (click)="hostConsole.clear()">Clear console</button>
           <fieldset>
             <legend>Accessibility checklist</legend>
             @for (item of checklist; track item) {
@@ -190,15 +190,15 @@ const CHECKLIST = [
       @if (confirmDiscard()) {
         <div class="consent" role="alertdialog" aria-labelledby="discard-text">
           <p id="discard-text">Discard your changes to this component?</p>
-          <button type="button" (click)="closed.emit()">Discard</button>
-          <button type="button" id="discard-keep" (click)="confirmDiscard.set(false)">Keep editing</button>
+          <button class="btn" type="button" (click)="closed.emit()">Discard</button>
+          <button class="btn" type="button" id="discard-keep" (click)="confirmDiscard.set(false)">Keep editing</button>
         </div>
       }
       <footer>
-        <button type="button" (click)="saveToLibrary()">Save to library</button>
+        <button class="btn" type="button" (click)="saveToLibrary()">Save to library</button>
         <span class="spacer"></span>
-        <button type="button" (click)="cancel()">Cancel</button>
-        <button type="button" class="primary" (click)="done()" [attr.aria-disabled]="problems().length > 0 ? 'true' : null">Done</button>
+        <button class="btn" type="button" (click)="cancel()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="done()" [attr.aria-disabled]="problems().length > 0 ? 'true' : null">Done</button>
       </footer>
     </div>
   `,
