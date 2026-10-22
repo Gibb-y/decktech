@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Service, inject, signal } from '@angular/core';
 import type { ComponentDef } from '../../core/model';
 import { DeckRepository } from '../../core/persistence';
+import { TrustStore } from '../trust/trust-store';
 import { BRIDGE_LIMITS, measureJson, type JsonValue, type LogLevel } from './protocol';
 
 export interface ConsoleEntry {
@@ -31,12 +32,21 @@ export class HostConsole {
 }
 
 /**
- * Which origins a component may reach. The `network` permission on a `ComponentDef` only says
- * the component asks; the grant, and the origins, belong to the user and come with the trust
- * dialog (ADR-008, a later issue). Until then nothing is granted. Replace this service to grant.
+ * What a component may do. `mayRun` is the user's decision about its code (the trust dialog,
+ * ADR-008, answered by `TrustStore`): a component that may not run gets no frame. Which origins
+ * it may reach is separate: the `network` permission on a `ComponentDef` only says the component
+ * asks, and no origin is granted yet (the dialog lists the request; a grant is not built).
+ * Replace this service to grant.
  */
 @Service()
 export class ComponentPolicy {
+  private readonly trust = inject(TrustStore);
+
+  /** Reactive: reads signals, so a template or computed that calls it follows later decisions. */
+  mayRun(deckId: string, def: ComponentDef): boolean {
+    return this.trust.mayRun(deckId, def);
+  }
+
   networkOrigins(def: Pick<ComponentDef, 'id' | 'permissions'>): readonly string[] {
     void def;
     return [];

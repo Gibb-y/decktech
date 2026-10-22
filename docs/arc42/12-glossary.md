@@ -50,6 +50,8 @@
 | Properties panel | The contextual panel for the selected element (or the slide), built from `ELEMENT_SCHEMAS`; its scalar fields are a Signal Form whose edits become `SetProps` commands. |
 | Snapping guide | A line drawn while a dragged edge or centre is aligned with the slide or another element. |
 | Coalescing | Merging consecutive commands with the same key issued within a short window (500 ms) into one undo step, e.g. a drag. |
-| Trust | The user's decision to allow code components in an imported deck to run; bound to the deck's content hash. |
+| Trust | The user's decision to allow code components in an imported deck to run; recorded per deck in a trust record and bound to the hash of each component's definition. |
+| Trust record | `TrustRecord`, stored in `meta` as `trust:<deckId>`: `pending` after an import, `decided` once the user has chosen; absent for a deck made here, which is trusted. |
+| Code inspector | The read-only viewer of a component's HTML, CSS, JS, schema, libraries and files, with search, a view-only formatted copy and a diff against the last trusted version; never creates a frame. |
 | Vendored library | A third-party JS/CSS library stored inside the deck so it works offline. |
 | arc42 | Template for architecture documentation (https://docs.arc42.org). |

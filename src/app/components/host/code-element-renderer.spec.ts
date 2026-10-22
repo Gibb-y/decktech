@@ -72,7 +72,7 @@ async function harness(options: { mode?: RenderMode; def?: Partial<ComponentDef>
         } },
       { provide: ComponentAssets, useValue: { read: async () => ({ mime: 'image/png', data: new ArrayBuffer(4) }) } },
       { provide: LinkGuard, useValue: { open: vi.fn() } },
-      ...(options.origins ? [{ provide: ComponentPolicy, useValue: { networkOrigins: () => options.origins } }] : []),
+      ...(options.origins ? [{ provide: ComponentPolicy, useValue: { networkOrigins: () => options.origins, mayRun: () => true } }] : []),
     ],
   });
   const fixture = TestBed.createComponent(SlideRenderer);

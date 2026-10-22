@@ -1,4 +1,4 @@
-import { Component, computed, inject, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { BUILT_IN_THEMES } from '../../core/model';
 import { DeckStore } from '../../core/store';
 import { SlideActions } from '../slide-actions';
@@ -37,6 +37,9 @@ import { ThemeActions, builtInThemeId } from '../theme-actions';
       <button type="button" aria-haspopup="dialog" (click)="themeEditor.emit()">Edit theme…</button>
       <button type="button" aria-haspopup="dialog" (click)="layoutEditor.emit()">Layouts…</button>
       <button type="button" aria-haspopup="dialog" (click)="components.emit()">Components…</button>
+      @if (canReview()) {
+        <button type="button" aria-haspopup="dialog" (click)="review.emit()">Review code…</button>
+      }
       <button type="button" (click)="themes.pickFont()">Add font…</button>
       <button type="button" (click)="present.emit()">Present <kbd aria-hidden="true">F5</kbd></button>
       <button type="button" aria-haspopup="dialog" (click)="help.emit()">Keyboard shortcuts <kbd aria-hidden="true">?</kbd></button>
@@ -111,6 +114,8 @@ export class EditorToolbar {
   readonly insert = output<void>();
   readonly help = output<void>();
   readonly components = output<void>();
+  readonly review = output<void>();
+  readonly canReview = input(false);
   readonly themeEditor = output<void>();
   readonly layoutEditor = output<void>();
   readonly present = output<void>();

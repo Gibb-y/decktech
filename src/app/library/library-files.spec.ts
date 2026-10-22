@@ -74,6 +74,7 @@ describe('LibraryPage files', () => {
     const notice = root(fixture).querySelector('.notice');
     expect(notice?.textContent).toContain('Imported “Round trip”');
     expect(notice?.textContent).toContain('contains code components');
+    expect(notice?.textContent).toContain('stay switched off');
     expect(notice?.querySelector('a')?.getAttribute('href')).toMatch(/^\/deck\/dk_/);
     expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
   });

@@ -5,13 +5,13 @@ import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
 import { bracketMatching, defaultHighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+import { highlightSelectionMatches, openSearchPanel, searchKeymap } from '@codemirror/search';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, drawSelection, highlightActiveLine, keymap, lineNumbers } from '@codemirror/view';
 
-export type CodeLanguage = 'html' | 'css' | 'js';
+export type CodeLanguage = 'html' | 'css' | 'js' | 'text';
 
-const LANGUAGES: Record<CodeLanguage, () => Extension> = { html: () => html(), css: () => css(), js: () => javascript() };
+const LANGUAGES: Record<CodeLanguage, () => Extension> = { html: () => html(), css: () => css(), js: () => javascript(), text: () => [] };
 
 /**
  * The one place that imports CodeMirror 6 (ADR-005): `npm run lint:boundaries` fails on any other
@@ -58,6 +58,8 @@ export class CodeMirror {
   readonly language = input.required<CodeLanguage>();
   /** The accessible name of the text box. */
   readonly label = input.required<string>();
+  /** Shows the text without letting anyone change it (the code inspector, ADR-008): focusable, searchable, selectable, soft-wrapped. */
+  readonly readOnly = input(false);
   readonly changed = output<string>();
 
   private readonly surface = viewChild.required<ElementRef<HTMLElement>>('surface');
@@ -65,6 +67,7 @@ export class CodeMirror {
 
   constructor() {
     afterNextRender(() => {
+      const readOnly = untracked(this.readOnly);
       const view = new EditorView({
         parent: this.surface().nativeElement,
         state: EditorState.create({
@@ -82,6 +85,7 @@ export class CodeMirror {
             syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
             keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap]),
             LANGUAGES[untracked(this.language)](),
+            ...(readOnly ? [EditorState.readOnly.of(true), EditorView.lineWrapping] : []),
             EditorView.contentAttributes.of({ 'aria-label': untracked(this.label), 'aria-multiline': 'true' }),
             EditorView.updateListener.of((update) => {
               if (update.docChanged) this.changed.emit(update.state.doc.toString());
@@ -101,6 +105,14 @@ export class CodeMirror {
       this.view?.destroy();
       this.view = null;
     });
+  }
+
+  /** Opens CodeMirror's search box (also Ctrl+F in the text). */
+  search(): void {
+    if (this.view) {
+      this.view.focus();
+      openSearchPanel(this.view);
+    }
   }
 
   focus(): void {

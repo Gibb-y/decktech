@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { Router, RouterLink } from '@angular/router';
 import { AutosaveService } from '../core/persistence';
 import { DeckStore } from '../core/store';
+import { CODE_TRUST } from '../renderer';
 import { PresentationView } from './presentation-view';
 
 type PageState = { status: 'loading' } | { status: 'ready' } | { status: 'unavailable'; message: string };
@@ -52,6 +53,7 @@ export class PresenterPage {
   protected readonly store = inject(DeckStore);
   private readonly autosave = inject(AutosaveService);
   private readonly router = inject(Router);
+  private readonly trust = inject(CODE_TRUST, { optional: true });
   protected readonly state = signal<PageState>({ status: 'loading' });
   private opening = 0;
 
@@ -89,6 +91,9 @@ export class PresenterPage {
     if (attempt !== this.opening) return;
     if (!result.ok) return this.state.set({ status: 'unavailable', message: `This deck could not be opened: ${result.error.message}` });
     if (result.value.readOnly) return this.state.set({ status: 'unavailable', message: result.value.reason });
+    // The decision about the deck's code is read before any slide is drawn (arc42 §6.4).
+    await this.trust?.refresh(id);
+    if (attempt !== this.opening) return;
     this.state.set({ status: 'ready' });
   }
 }

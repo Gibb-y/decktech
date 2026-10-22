@@ -25,6 +25,14 @@ Imported decks open with code disabled until the user decides. The decision is m
 - When a deck has been trusted before and its content hash changed, the inspector opens a **diff view** against the last trusted version, per component, so only the changes need reviewing.
 - A trusted deck stays inspectable at any time from the component's "Edit code" action, which is the same viewer in editable form.
 
+## As built (DT-17)
+
+- Trust is recorded per deck in a `TrustRecord` and bound to the hash of each **component definition**, not to one hash of the whole file: slide edits never ask again, an edited or added component does. The archive hash is kept for information. A deck with no record is made here and trusted.
+- The gate is a renderer-level answer (`ComponentPolicy.mayRun`): no frame is created for a component that may not run, in the editor, the code editor's preview and the presenter. It fails closed (unknown, unreadable or damaged records mean no).
+- The dialog's choices are *Run selected components*, *Trust whole deck*, *Open with code disabled* and *Cancel*; the first three store a decision, *Cancel* stores nothing and leaves the deck switched off. A later "Review code…" changes a decision.
+- The diff compares with the sources the user trusted for the same file deck id (found at import) or, after a decision, with the sources they chose to run. Heuristic flags: permissions, `eval`/`new Function`, `import()`, network APIs, web addresses, minified lines.
+- Not built: granting network origins in the dialog, a bundled list of known library releases (the "known" mark comes from libraries of decisions the user made), and automatic trust of an unchanged re-import.
+
 ## Alternatives considered
 
 - Plain yes/no prompt: fast but uninformed; not appropriate for developers.

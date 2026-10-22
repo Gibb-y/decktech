@@ -7,6 +7,7 @@ import type { LibraryComponent } from './library';
 import { MAX_BACKUPS_PER_DECK } from './backups';
 import { DB_VERSION, IndexedDbDeckRepository } from './indexeddb-deck-repository';
 import { InMemoryDeckRepository } from './memory-deck-repository';
+import { pendingRecord, type TrustRecord } from './trust';
 
 interface Harness {
   repo: DeckRepository;
@@ -407,6 +408,53 @@ describe.each(factories)('DeckRepository: %s', (_name, make) => {
       const result = await h.repo.putComponent(make(entry('cp_a', 1)) as LibraryComponent);
       expect(result).toMatchObject({ ok: false, error: { kind: 'invalid', message: expect.stringMatching(message) } });
       expect(expectOk(await h.repo.listComponents())).toEqual([]);
+    });
+  });
+
+  describe('trust records', () => {
+    const record = (deckId: string, over: Partial<TrustRecord> = {}): TrustRecord => ({ ...pendingRecord(deckId, 'dk_source', 'a'.repeat(64), null), ...over });
+
+    it('has none for a deck that was made here', async () => {
+      const deck = createDeck();
+      expectOk(await h.repo.save(deck, null));
+      expect(expectOk(await h.repo.getTrust(deck.id))).toBeNull();
+      expect(expectOk(await h.repo.listTrust())).toEqual([]);
+    });
+
+    it('stores a record by deck id, replaces it and does not share the object', async () => {
+      const pending = record('dk_a');
+      expectOk(await h.repo.putTrust(pending));
+      pending.status = 'decided'; // the caller's copy is not the stored one
+      expect(expectOk(await h.repo.getTrust('dk_a'))?.status).toBe('pending');
+
+      const decided = record('dk_a', { status: 'decided', decidedAt: 5, decisions: [{ componentId: 'cmp_x', hash: 'f'.repeat(64), run: true }] });
+      expectOk(await h.repo.putTrust(decided));
+      expect(expectOk(await h.repo.getTrust('dk_a'))).toEqual(decided);
+      expectOk(await h.repo.putTrust(record('dk_b')));
+      expect(expectOk(await h.repo.listTrust()).map((r) => r.deckId).sort()).toEqual(['dk_a', 'dk_b']);
+    });
+
+    it.each<[string, unknown]>([
+      ['null', null],
+      ['a status that is not known', { ...pendingRecord('dk_a', 'dk_a', '', null), status: 'trusted' }],
+      ['a decision without a hash', { ...pendingRecord('dk_a', 'dk_a', '', null), decisions: [{ componentId: 'c', run: true }] }],
+      ['a snapshot that is not an object', { ...pendingRecord('dk_a', 'dk_a', '', null), snapshots: [1] }],
+    ])('refuses %s as invalid and stores nothing', async (_name, bad) => {
+      expect(await h.repo.putTrust(bad as TrustRecord)).toMatchObject({ ok: false, error: { kind: 'invalid' } });
+      expect(expectOk(await h.repo.listTrust())).toEqual([]);
+    });
+
+    it('is removed with its deck, and deleting an unknown record is fine', async () => {
+      const deck = createDeck();
+      expectOk(await h.repo.save(deck, null));
+      expectOk(await h.repo.putTrust(record(deck.id)));
+      expectOk(await h.repo.deleteTrust('dk_nope'));
+      expectOk(await h.repo.delete(deck.id));
+      expect(expectOk(await h.repo.getTrust(deck.id))).toBeNull();
+
+      expectOk(await h.repo.putTrust(record('dk_c')));
+      expectOk(await h.repo.deleteTrust('dk_c'));
+      expect(expectOk(await h.repo.getTrust('dk_c'))).toBeNull();
     });
   });
 });

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DeckRepository, InMemoryDeckRepository } from '../core/persistence';
+import { DeckRepository, InMemoryDeckRepository, pendingRecord, type TrustRecord } from '../core/persistence';
 import { createDeck, err, validateDeck, type Deck } from '../core/model';
 import { DeckLibrary, MAX_TITLE_LENGTH, checkTitle } from './deck-library';
 import { BUILT_IN_TEMPLATES, instantiateTemplate } from './templates';
@@ -259,5 +259,56 @@ describe('templates', () => {
   it('has unique ids', () => {
     const ids = BUILT_IN_TEMPLATES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  describe('duplicate and trust', () => {
+    const pending = (deckId: string): TrustRecord => pendingRecord(deckId, 'dk_source', 'h', null);
+
+    it('gives the copy of an untrusted deck the same pending record: duplicating must not switch its code on', async () => {
+      const { repo, library } = setup();
+      const deck = await seed(repo, 'Foreign');
+      await repo.putTrust(pending(deck.id));
+      const result = await library.duplicate(deck.id);
+      if (!result.ok) throw new Error(result.error.message);
+      const copy = await repo.getTrust(result.value.id);
+      expect(copy.ok && copy.value).toEqual({ ...pending(deck.id), deckId: result.value.id });
+      expect((await repo.getTrust(deck.id)).ok).toBe(true);
+    });
+
+    it('keeps the decisions of a decided deck for the copy', async () => {
+      const { repo, library } = setup();
+      const deck = await seed(repo, 'Reviewed');
+      const decided: TrustRecord = { ...pending(deck.id), status: 'decided', decidedAt: 9, decisions: [{ componentId: 'cmp_a', hash: 'a'.repeat(64), run: true }] };
+      await repo.putTrust(decided);
+      const result = await library.duplicate(deck.id);
+      if (!result.ok) throw new Error(result.error.message);
+      const copy = await repo.getTrust(result.value.id);
+      expect(copy.ok && copy.value).toEqual({ ...decided, deckId: result.value.id });
+    });
+
+    it('leaves a deck made here without a record', async () => {
+      const { repo, library } = setup();
+      const deck = await seed(repo, 'Mine');
+      const result = await library.duplicate(deck.id);
+      if (!result.ok) throw new Error(result.error.message);
+      expect(await repo.listTrust()).toEqual({ ok: true, value: [] });
+    });
+
+    it('stores no copy when the record cannot be copied, and no record when the copy cannot be stored', async () => {
+      const { repo, library } = setup();
+      const deck = await seed(repo, 'Foreign');
+      await repo.putTrust(pending(deck.id));
+      vi.spyOn(repo, 'putTrust').mockResolvedValueOnce({ ok: false, error: { kind: 'quota', message: 'full' } });
+      const first = await library.duplicate(deck.id);
+      expect(!first.ok && first.error.message).toBe('Could not copy the trust decisions: full');
+      await library.refresh();
+      expect(library.decks()).toHaveLength(1);
+
+      vi.spyOn(repo, 'save').mockResolvedValueOnce({ ok: false, error: { kind: 'storage', message: 'closed' } });
+      const second = await library.duplicate(deck.id);
+      expect(second.ok).toBe(false);
+      const left = await repo.listTrust();
+      expect(left.ok && left.value.map((r) => r.deckId)).toEqual([deck.id]);
+    });
   });
 });
