@@ -1,5 +1,5 @@
 import { Service, inject, signal } from '@angular/core';
-import { createElement, generateId, type ComponentDef, type Element, type TextEl } from '../core/model';
+import { createElement, freePlaceholder, generateId, type ComponentDef, type Element, type TextEl } from '../core/model';
 import { DeckRepository } from '../core/persistence';
 import { AddAsset, AddCodeElement, AddElement, Batch, CommandError, DeckStore, type Command } from '../core/store';
 import { LiveAnnouncer } from '../shared';
@@ -121,13 +121,16 @@ export class InsertActions {
     }
     const { ref } = stored.value;
     const size = await fitted(file);
+    // A picture fills a free image placeholder of the slide's layout and stays bound to it (arc42 §8.7); else it is centred.
+    const deck = this.store.deck();
+    const slide = deck.slides.find((s) => s.id === slideId);
+    const target = slide && freePlaceholder(slide, deck.layouts.find((l) => l.id === slide.layoutId), 'image');
     const element = createElement('image', {
       assetId: ref.hash,
       alt: '',
-      w: size.w,
-      h: size.h,
-      x: Math.round((this.store.deck().stage.width - size.w) / 2),
-      y: Math.round((this.store.deck().stage.height - size.h) / 2),
+      ...(target
+        ? { x: target.x, y: target.y, w: target.w, h: target.h, placeholder: 'image' as const }
+        : { w: size.w, h: size.h, x: Math.round((deck.stage.width - size.w) / 2), y: Math.round((deck.stage.height - size.h) / 2) }),
     });
     // The hash identifies the content: an asset already in the deck is reused as it is, even if the browser reported another mime type this time.
     const commands: Command[] = Object.hasOwn(this.store.deck().assets, ref.hash) ? [] : [new AddAsset(ref.hash, ref)];

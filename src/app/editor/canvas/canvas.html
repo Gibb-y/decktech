@@ -62,6 +62,11 @@
       [style.transform]="'scale(' + viewport().zoom + ')'"
       [style.--inv]="inverseZoom()"
     >
+      @for (p of placeholders(); track p.id) {
+        <div class="placeholder-outline" data-testid="placeholder-outline" aria-hidden="true" [style.left.px]="p.x" [style.top.px]="p.y" [style.width.px]="p.w" [style.height.px]="p.h">
+          <span>{{ p.kind }}</span>
+        </div>
+      }
       @for (element of slide().elements; track element.id) {
         <div
           class="hit"

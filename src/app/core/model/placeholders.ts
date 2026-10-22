@@ -51,3 +51,14 @@ export function reflowToLayout(elements: readonly Element[], layout: Layout): re
   });
   return changed ? next : elements;
 }
+
+/**
+ * The placeholder of `kind` that a new element of that kind would fill: elements bound to a kind
+ * take its placeholders in z-order (`reflowToLayout`), so a new top element takes the next one.
+ * `undefined` when the layout has no placeholder of that kind or all of them are taken.
+ */
+export function freePlaceholder(slide: Slide, layout: Layout | undefined, kind: PlaceholderKind): Placeholder | undefined {
+  if (!layout) return undefined;
+  const taken = slide.elements.filter((e) => e.placeholder === kind).length;
+  return layout.placeholders.filter((p) => p.kind === kind)[taken];
+}

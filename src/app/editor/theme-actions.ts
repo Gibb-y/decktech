@@ -39,6 +39,21 @@ export class ThemeActions {
     if (this.run(new SetTheme(next))) this.announcer.announce(`${built.name} theme applied`);
   }
 
+  /**
+   * Replaces the deck's theme with one made in the theme editor, as one undo step. Returns `null`
+   * when it was applied, else the reason the deck gave (a token or font in use that the theme lacks, ...).
+   */
+  applyCustom(theme: Theme): string | null {
+    try {
+      this.store.execute(new SetTheme(theme));
+    } catch (e) {
+      if (!(e instanceof CommandError)) throw e;
+      return e.message;
+    }
+    this.announcer.announce(theme.name ? `Theme “${theme.name}” applied` : 'Theme applied');
+    return null;
+  }
+
   /** Embeds a font file: stored as an asset, registered as a family and added to the theme's fonts under that name. */
   async addFont(file: File): Promise<boolean> {
     const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
