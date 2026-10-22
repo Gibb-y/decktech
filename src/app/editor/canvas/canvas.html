@@ -1,36 +1,36 @@
 <div class="toolbar" role="group" aria-label="Canvas tools">
   <div class="group" role="group" aria-label="History">
-    <button type="button" (click)="actions.undo()" [attr.aria-disabled]="store.canUndo() ? null : 'true'">Undo</button>
-    <button type="button" (click)="actions.redo()" [attr.aria-disabled]="store.canRedo() ? null : 'true'">Redo</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.undo()" [attr.aria-disabled]="store.canUndo() ? null : 'true'">Undo</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.redo()" [attr.aria-disabled]="store.canRedo() ? null : 'true'">Redo</button>
   </div>
   <div class="group" role="group" aria-label="Arrange">
     @for (b of alignButtons; track b.kind) {
-      <button type="button" (click)="actions.align(b.kind)" [attr.aria-disabled]="hasSelection() ? null : 'true'">{{ b.label }}</button>
+      <button type="button" class="btn btn-sm btn-quiet" (click)="actions.align(b.kind)" [attr.aria-disabled]="hasSelection() ? null : 'true'">{{ b.label }}</button>
     }
     @for (b of distributeButtons; track b.axis) {
-      <button type="button" (click)="actions.distribute(b.axis)" [attr.aria-disabled]="selection().length >= 3 ? null : 'true'">{{ b.label }}</button>
+      <button type="button" class="btn btn-sm btn-quiet" (click)="actions.distribute(b.axis)" [attr.aria-disabled]="selection().length >= 3 ? null : 'true'">{{ b.label }}</button>
     }
   </div>
   <div class="group" role="group" aria-label="Stacking order">
-    <button type="button" (click)="actions.reorder('back')" [attr.aria-disabled]="hasSelection() ? null : 'true'">To back</button>
-    <button type="button" (click)="actions.reorder('backward')" [attr.aria-disabled]="hasSelection() ? null : 'true'">Backward</button>
-    <button type="button" (click)="actions.reorder('forward')" [attr.aria-disabled]="hasSelection() ? null : 'true'">Forward</button>
-    <button type="button" (click)="actions.reorder('front')" [attr.aria-disabled]="hasSelection() ? null : 'true'">To front</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.reorder('back')" [attr.aria-disabled]="hasSelection() ? null : 'true'">To back</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.reorder('backward')" [attr.aria-disabled]="hasSelection() ? null : 'true'">Backward</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.reorder('forward')" [attr.aria-disabled]="hasSelection() ? null : 'true'">Forward</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.reorder('front')" [attr.aria-disabled]="hasSelection() ? null : 'true'">To front</button>
   </div>
   <div class="group" role="group" aria-label="Edit">
-    <button type="button" (click)="actions.duplicateSelection()" [attr.aria-disabled]="hasSelection() ? null : 'true'">Duplicate</button>
-    <button type="button" class="danger" (click)="actions.deleteSelection()" [attr.aria-disabled]="hasSelection() ? null : 'true'">Delete</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actions.duplicateSelection()" [attr.aria-disabled]="hasSelection() ? null : 'true'">Duplicate</button>
+    <button type="button" class="btn btn-sm btn-quiet danger" (click)="actions.deleteSelection()" [attr.aria-disabled]="hasSelection() ? null : 'true'">Delete</button>
   </div>
   <div class="group" role="group" aria-label="Zoom">
-    <button type="button" aria-label="Zoom out" (click)="zoomBy(1 / 1.25)">−</button>
+    <button type="button" class="btn btn-sm btn-quiet" aria-label="Zoom out" (click)="zoomBy(1 / 1.25)">−</button>
     <output class="zoom" aria-label="Zoom level">{{ zoomLabel() }}</output>
-    <button type="button" aria-label="Zoom in" (click)="zoomBy(1.25)">+</button>
-    <button type="button" (click)="fit()" [attr.aria-pressed]="fitting()">Fit</button>
-    <button type="button" (click)="actualSize()">100%</button>
+    <button type="button" class="btn btn-sm btn-quiet" aria-label="Zoom in" (click)="zoomBy(1.25)">+</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="fit()" [attr.aria-pressed]="fitting()">Fit</button>
+    <button type="button" class="btn btn-sm btn-quiet" (click)="actualSize()">100%</button>
   </div>
   <div class="group" role="group" aria-label="Code component">
-    <button type="button" [attr.aria-pressed]="interact()" [attr.aria-disabled]="canInteract() ? null : 'true'" (click)="toggleInteract()">Interact</button>
-    <button type="button" aria-keyshortcuts="Control+Enter" [attr.aria-disabled]="canEditCode() ? null : 'true'" (click)="editCode()">Edit code</button>
+    <button type="button" class="btn btn-sm btn-quiet" [attr.aria-pressed]="interact()" [attr.aria-disabled]="canInteract() ? null : 'true'" (click)="toggleInteract()">Interact</button>
+    <button type="button" class="btn btn-sm btn-quiet" aria-keyshortcuts="Control+Enter" [attr.aria-disabled]="canEditCode() ? null : 'true'" (click)="editCode()">Edit code</button>
   </div>
 </div>
 

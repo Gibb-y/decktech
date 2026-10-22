@@ -3,55 +3,33 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  color: #111;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  font-family: var(--font-ui);
 }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  padding: 0.4rem 0.5rem;
-  background: #f1f2f4;
-  border-bottom: 1px solid #c3c6cc;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
 }
 .group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .zoom {
   min-width: 3.5rem;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-button {
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 0.25rem 0.6rem;
-  border: 1px solid #5a5a5a;
-  border-radius: 0.25rem;
-  background: #fff;
-  color: #111;
-  cursor: pointer;
-}
-button[aria-pressed='true'] {
-  background: #1f4fc4;
-  border-color: #1f4fc4;
-  color: #fff;
-}
-button[aria-disabled='true'] {
-  opacity: 0.6;
-  cursor: default;
-}
 button.danger {
-  color: #8a1c14;
-  border-color: #8a1c14;
-}
-button:focus-visible,
-summary:focus-visible {
-  outline: 3px solid #ffbf47;
-  outline-offset: 2px;
+  color: var(--danger-ink);
 }
 
 /* The area the stage is shown in. It is the keyboard target and owns every pointer gesture. */
@@ -60,7 +38,7 @@ summary:focus-visible {
   flex: 1 1 auto;
   min-height: 24rem;
   overflow: hidden;
-  background: #d9dce1;
+  background: var(--surface-sunken);
   touch-action: none;
   user-select: none;
   cursor: default;
@@ -69,12 +47,12 @@ summary:focus-visible {
   cursor: grabbing;
 }
 .viewport:focus-visible {
-  outline: 3px solid #1f4fc4;
-  outline-offset: -3px;
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 .page {
   position: absolute;
-  box-shadow: 0 2px 12px rgb(0 0 0 / 0.35);
+  box-shadow: var(--shadow-lg);
 }
 .overlay {
   position: absolute;
@@ -88,7 +66,7 @@ summary:focus-visible {
 .placeholder-outline {
   position: absolute;
   box-sizing: border-box;
-  border: var(--line) dashed #6b7280;
+  border: var(--line) dashed var(--text-muted);
   pointer-events: none;
 }
 .placeholder-outline span {
@@ -96,9 +74,9 @@ summary:focus-visible {
   top: 0;
   left: 0;
   padding: 0 calc(4px * var(--inv, 1));
-  background: #6b7280;
-  color: #fff;
-  font: calc(11px * var(--inv, 1)) system-ui, sans-serif;
+  background: var(--text-muted);
+  color: var(--surface-raised);
+  font: calc(11px * var(--inv, 1)) var(--font-ui);
 }
 .hit {
   position: absolute;
@@ -116,12 +94,12 @@ summary:focus-visible {
   pointer-events: none;
 }
 .hit.selected {
-  outline: var(--line) solid #1f4fc4;
+  outline: var(--line) solid var(--accent);
 }
 .frame {
   position: absolute;
   box-sizing: border-box;
-  border: var(--line) solid #1f4fc4;
+  border: var(--line) solid var(--accent);
   pointer-events: none;
 }
 .frame.locked {
@@ -133,8 +111,8 @@ summary:focus-visible {
   width: var(--handle);
   height: var(--handle);
   transform: translate(-50%, -50%);
-  background: #fff;
-  border: var(--line) solid #1f4fc4;
+  background: var(--surface-raised);
+  border: var(--line) solid var(--accent);
   pointer-events: auto;
 }
 .h-nw { left: 0; top: 0; cursor: nwse-resize; }
@@ -157,11 +135,11 @@ summary:focus-visible {
   top: calc(-32px * var(--inv, 1));
   width: var(--line);
   height: calc(32px * var(--inv, 1));
-  background: #1f4fc4;
+  background: var(--accent);
 }
 .guide {
   position: absolute;
-  background: #d6249f;
+  background: var(--guide);
   pointer-events: none;
 }
 .guide.vertical {
@@ -176,7 +154,7 @@ summary:focus-visible {
 }
 .marquee {
   position: absolute;
-  border: var(--line) dashed #1f4fc4;
-  background: rgb(31 79 196 / 0.12);
+  border: var(--line) dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   pointer-events: none;
 }

@@ -10,7 +10,7 @@
   <script>
     // Sets the colour scheme before the first paint (no flash). Keep in step with shared/color-scheme.ts.
     (function () {
-      var mode = 'light';
+      var mode = 'system';
       try {
         var stored = localStorage.getItem('decktech.colorScheme');
         if (stored === 'dark' || stored === 'system' || stored === 'light') mode = stored;

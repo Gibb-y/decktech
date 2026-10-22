@@ -1,8 +1,9 @@
 :host {
   display: block;
   min-height: 0;
-  color: #111;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-md);
 }
 .sorter {
   height: 100%;
@@ -16,28 +17,10 @@
   gap: 0.25rem;
   margin-bottom: 0.5rem;
 }
-button {
-  font: inherit;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #5a5a5a;
-  border-radius: 0.25rem;
-  background: #fff;
-  color: #111;
-  cursor: pointer;
-}
-button[aria-disabled='true'] {
-  color: #595959;
-  cursor: not-allowed;
-}
-button:focus-visible,
-input:focus-visible {
-  outline: 3px solid #ffbf47;
-  outline-offset: 2px;
-}
 .section-form {
   margin-bottom: 0.75rem;
   padding: 0.5rem;
-  border: 1px solid #c3c6cc;
+  border: 1px solid var(--border);
   border-radius: 0.25rem;
 }
 .section-form label {
@@ -51,12 +34,12 @@ input:focus-visible {
   margin-top: 0.25rem;
   padding: 0.3rem 0.4rem;
   font: inherit;
-  border: 1px solid #5a5a5a;
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
 }
 .hint {
   margin: 0.25rem 0;
-  color: #4b4b4b;
+  color: var(--text-muted);
   font-size: 0.8rem;
 }
 ol {
@@ -79,7 +62,7 @@ li.drop-after::after {
   left: 0;
   right: 0;
   height: 4px;
-  background: #1f4fc4;
+  background: var(--accent);
 }
 li.drop-before::before {
   top: -0.3rem;
@@ -90,13 +73,19 @@ li.drop-after::after {
 .section {
   margin: 0.5rem 0 0.25rem;
   padding-bottom: 0.15rem;
-  border-bottom: 2px solid #1f4fc4;
+  border-bottom: 2px solid var(--accent);
   font-size: 0.8rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 .slide {
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
   display: grid;
   grid-template-columns: 1.25rem minmax(0, 1fr);
   align-items: start;
@@ -106,8 +95,8 @@ li.drop-after::after {
   text-align: left;
 }
 .slide[aria-current='true'] {
-  border-color: #1f4fc4;
-  box-shadow: 0 0 0 2px #1f4fc4;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .number {
   font-size: 0.8rem;

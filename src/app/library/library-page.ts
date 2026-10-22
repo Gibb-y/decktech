@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, Injector, afterNextRender, computed, inject, linkedSignal, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import type { DeckSummary } from '../core/persistence';
-import { FocusTrap, LiveAnnouncer } from '../shared';
+import { ColorSchemeSwitch, FocusTrap, LiveAnnouncer, Notice } from '../shared';
 import type { ImportedDeck } from './archive';
 import { DeckLibrary } from './deck-library';
 
@@ -12,7 +12,7 @@ export const PAGE_SIZE = 60;
 /** Home screen: list, search, create, rename, duplicate and delete decks. */
 @Component({
   selector: 'app-library-page',
-  imports: [RouterLink, DatePipe, FocusTrap],
+  imports: [RouterLink, DatePipe, FocusTrap, Notice, ColorSchemeSwitch],
   templateUrl: './library-page.html',
   styleUrl: './library-page.css',
 })

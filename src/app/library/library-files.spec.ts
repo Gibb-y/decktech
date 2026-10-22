@@ -94,7 +94,7 @@ describe('LibraryPage files', () => {
     button(fixture, 'Import deck…').click();
     await settle(fixture);
     expect(root(fixture).querySelector('[role="alert"]')?.textContent).toContain('This file cannot be imported.');
-    expect(root(fixture).querySelector('.notice')).toBeNull();
+    expect(root(fixture).querySelector('.notice-info')).toBeNull();
     expect(rowTitles(fixture)).toEqual([]);
     const listed = await repo.list();
     expect(listed.ok && listed.value).toEqual([]);
@@ -105,7 +105,7 @@ describe('LibraryPage files', () => {
     button(fixture, 'Import deck…').click();
     await settle(fixture);
     expect(root(fixture).querySelector('[role="alert"]')).toBeNull();
-    expect(root(fixture).querySelector('.notice')).toBeNull();
+    expect(root(fixture).querySelector('.notice-info')).toBeNull();
   });
 
   it('exports one deck from its row and says where it went', async () => {
@@ -125,7 +125,7 @@ describe('LibraryPage files', () => {
     files.outcome = 'cancelled';
     button(fixture, 'Export all decks').click();
     await settle(fixture);
-    expect(root(fixture).querySelector('.notice')).toBeNull();
+    expect(root(fixture).querySelector('.notice-info')).toBeNull();
     files.outcome = 'saved';
     button(fixture, 'Export all decks').click();
     await settle(fixture);

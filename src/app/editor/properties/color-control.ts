@@ -6,12 +6,12 @@ let nextId = 0;
 const HEX6 = /^#[0-9a-f]{6}$/i;
 const HEX3 = /^#[0-9a-f]{3}$/i;
 
-/** `#abc` → `#aabbcc`; anything that is not a hex colour falls back to black (a colour input needs hex). */
+/** token-check-ignore: `#abc` → `#aabbcc`; anything that is not a hex colour falls back to black (a colour input needs hex). */
 export function toHex(color: Color | undefined): string {
-  if (typeof color !== 'string') return '#000000';
+  if (typeof color !== 'string') return '#000000'; // token-check-ignore
   if (HEX6.test(color)) return color.toLowerCase();
   if (HEX3.test(color)) return `#${[...color.slice(1)].map((c) => c + c).join('')}`.toLowerCase();
-  return '#000000';
+  return '#000000'; // token-check-ignore
 }
 
 /**
@@ -24,7 +24,7 @@ export function toHex(color: Color | undefined): string {
   template: `
     <div class="field">
       <label [for]="id">{{ label() }}</label>
-      <select [id]="id" (change)="onChoice($event)">
+      <select class="input" [id]="id" (change)="onChoice($event)">
         @if (optional()) {
           <option value="none" [selected]="choice() === 'none'">None</option>
         }
@@ -48,24 +48,6 @@ export function toHex(color: Color | undefined): string {
     label {
       flex: 1 1 100%;
       font-size: 0.875rem;
-    }
-    select,
-    input {
-      font: inherit;
-    }
-    select {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-    input[type='color'] {
-      width: 2.5rem;
-      height: 2rem;
-      padding: 0;
-    }
-    select:focus-visible,
-    input:focus-visible {
-      outline: 3px solid #ffbf47;
-      outline-offset: 2px;
     }
   `,
 })

@@ -9,10 +9,10 @@ export const COLOR_SCHEME_MODES: readonly ColorSchemeMode[] = ['system', 'light'
 export const COLOR_SCHEME_KEY = 'decktech.colorScheme';
 
 /**
- * What a first visit gets. Light until every screen has moved to the design tokens (arc42 8.11); then
- * this becomes `'system'`. `index.html` repeats the value for the no-flash script: change both together.
+ * What a first visit gets: follow the system. `index.html` repeats the value for the no-flash script:
+ * change both together.
  */
-export const DEFAULT_COLOR_SCHEME: ColorSchemeMode = 'light';
+export const DEFAULT_COLOR_SCHEME: ColorSchemeMode = 'system';
 
 export function isColorSchemeMode(value: unknown): value is ColorSchemeMode {
   return typeof value === 'string' && (COLOR_SCHEME_MODES as readonly string[]).includes(value);
@@ -69,7 +69,7 @@ const LABELS: Readonly<Record<ColorSchemeMode, string>> = { system: 'System', li
   template: `
     <label>
       <span class="sr-only">Colour scheme</span>
-      <select (change)="choose($event)">
+      <select class="input input-sm" (change)="choose($event)">
         @for (mode of modes; track mode) {
           <option [value]="mode" [selected]="mode === scheme.mode()">{{ labels[mode] }}</option>
         }

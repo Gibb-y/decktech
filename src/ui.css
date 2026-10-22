@@ -80,6 +80,11 @@
   background: var(--danger-hover);
 }
 
+.btn-outline-danger {
+  color: var(--danger-ink);
+  border-color: var(--danger-ink);
+}
+
 .btn-sm {
   min-height: var(--control-height-sm);
   padding: 0 var(--space-2);
@@ -235,6 +240,17 @@ textarea.input {
   margin: 0;
   accent-color: var(--accent);
   cursor: inherit;
+}
+
+input[type='color'] {
+  box-sizing: border-box;
+  width: 2.5rem;
+  height: var(--control-height);
+  padding: 0;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  cursor: pointer;
 }
 
 /* ---- Tabs --------------------------------------------------------------------------------------- */
@@ -507,6 +523,121 @@ textarea.input {
   stroke-linejoin: round;
   font-size: var(--font-size-lg);
   vertical-align: middle;
+}
+
+/* ---- Menu, app bar, links, cards ---------------------------------------------------------------- */
+
+.menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 14rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  animation: ui-pop-in var(--duration-fast) var(--ease);
+}
+
+.menu[hidden] {
+  display: none;
+}
+
+.menu-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-size-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: var(--surface-hover);
+}
+
+.menu-item[aria-checked='true'] {
+  color: var(--accent-ink);
+  font-weight: var(--font-weight-medium);
+}
+
+.menu-item .kbd {
+  margin-left: auto;
+}
+
+.menu-heading {
+  padding: var(--space-1) var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.menu-separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+/* A bar across the top of a screen: the editor and presenter headers. */
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: calc(var(--control-height) + var(--space-3));
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.appbar-title {
+  min-width: 0;
+  max-width: 16rem;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appbar-title:focus {
+  outline: none;
+}
+
+.link {
+  color: var(--accent-ink);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
 }
 
 /* ---- High contrast ---------------------------------------------------------------------------------- */

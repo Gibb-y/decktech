@@ -21,7 +21,7 @@ import { ComponentLibrary } from './component-library';
           @for (def of library.builtIn; track def.id) {
             <li>
               <span class="name">{{ def.name }}</span>
-              <button type="button" (click)="insert(def)" [attr.aria-label]="'Insert ' + def.name" [attr.data-autofocus]="$first ? '' : null">Insert</button>
+              <button class="btn" type="button" (click)="insert(def)" [attr.aria-label]="'Insert ' + def.name" [attr.data-autofocus]="$first ? '' : null">Insert</button>
             </li>
           }
         </ul>
@@ -35,8 +35,8 @@ import { ComponentLibrary } from './component-library';
           @for (entry of library.saved(); track entry.def.id) {
             <li>
               <span class="name">{{ entry.def.name }}</span>
-              <button type="button" (click)="insert(entry.def, entry.assets)" [attr.aria-label]="'Insert ' + entry.def.name">Insert</button>
-              <button type="button" (click)="library.remove(entry.def.id)" [attr.aria-label]="'Remove ' + entry.def.name + ' from the library'">Remove</button>
+              <button class="btn" type="button" (click)="insert(entry.def, entry.assets)" [attr.aria-label]="'Insert ' + entry.def.name">Insert</button>
+              <button class="btn" type="button" (click)="library.remove(entry.def.id)" [attr.aria-label]="'Remove ' + entry.def.name + ' from the library'">Remove</button>
             </li>
           } @empty {
             <li class="muted">Nothing saved yet. Use “Save to library” in the code editor.</li>
@@ -45,7 +45,7 @@ import { ComponentLibrary } from './component-library';
       </section>
       <footer>
         <span class="spacer"></span>
-        <button type="button" (click)="closed.emit()">Close</button>
+        <button class="btn" type="button" (click)="closed.emit()">Close</button>
       </footer>
     </div>
   `,

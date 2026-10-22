@@ -1,5 +1,5 @@
 // Guards the design tokens of docs/arc42/08-crosscutting-concepts.md §8.11. Run with `npm run lint:tokens`; exits 1 on any problem.
-//   1. Colour literals: chrome code (everything under src/ except styles.css, specs and the deck / slide code below)
+//   1. Colour literals (a line containing `token-check-ignore` is skipped, for colours that are data): chrome code (everything under src/ except styles.css, specs and the deck / slide code below)
 //      must take colours from the tokens. Files that still carry literals are listed in token-baseline.json; a file may
 //      not gain literals, and a new file may not have any. Run with --update to write the baseline after removing some.
 //   2. Contrast: every text / control colour pair of the light and the dark set reaches WCAG AA.
@@ -26,7 +26,11 @@ export const EXEMPT = [
 const SCANNED = /\.(?:ts|css|html)$/;
 const LITERAL = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-zA-Z_-])|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/g;
 
+/** Chrome that lives in an otherwise exempt folder. */
+const CHROME_IN_EXEMPT = ['app/core/persistence/persistence-banner.ts'];
+
 export function isChromeFile(path) {
+  if (CHROME_IN_EXEMPT.includes(path)) return true;
   return SCANNED.test(path) && !path.endsWith('.spec.ts') && !EXEMPT.some((e) => (e.endsWith('/') ? path.startsWith(e) : path === e));
 }
 
@@ -35,7 +39,8 @@ export function countLiterals(files) {
   const counts = {};
   for (const { path, text } of files) {
     if (!isChromeFile(path)) continue;
-    const n = [...text.matchAll(LITERAL)].length;
+    // A line marked `token-check-ignore` holds a colour as data (a default for a deck colour, an example in a hint), not styling.
+    const n = text.split('\n').filter((line) => !line.includes('token-check-ignore')).reduce((sum, line) => sum + [...line.matchAll(LITERAL)].length, 0);
     if (n > 0) counts[path] = n;
   }
   return counts;
@@ -110,6 +115,8 @@ export const PAIRS = [
     ['--focus', s, 3],
     ['--border-control', s, 3],
   ]),
+  ['--guide', '--surface-sunken', 3],
+  ['--accent', '--surface-sunken', 3],
   ['--accent-text', '--accent', 4.5],
   ['--accent-text', '--accent-hover', 4.5],
   ['--accent-text', '--accent-active', 4.5],

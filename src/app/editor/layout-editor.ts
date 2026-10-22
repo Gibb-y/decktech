@@ -46,21 +46,21 @@ let gestureCounter = 0;
       <div class="bar">
         <label>
           Layout
-          <select data-autofocus (change)="select($event)">
+          <select class="input" data-autofocus (change)="select($event)">
             @for (l of layouts(); track l.id) {
               <option [value]="l.id" [selected]="l.id === layout()?.id">{{ l.name }}</option>
             }
           </select>
         </label>
-        <button type="button" (click)="addLayout()">Add layout</button>
-        <button type="button" (click)="duplicate()">Duplicate</button>
-        <button type="button" (click)="startDelete()">Delete…</button>
+        <button class="btn" type="button" (click)="addLayout()">Add layout</button>
+        <button class="btn" type="button" (click)="duplicate()">Duplicate</button>
+        <button class="btn" type="button" (click)="startDelete()">Delete…</button>
       </div>
 
       @if (layout(); as current) {
         <div class="field">
           <label for="layout-name">Name</label>
-          <input id="layout-name" type="text" [value]="current.name" (change)="rename($event)" />
+          <input class="input" id="layout-name" type="text" [value]="current.name" (change)="rename($event)" />
         </div>
         <p class="note">{{ usage() }}</p>
 
@@ -74,14 +74,14 @@ let gestureCounter = 0;
               }
             </p>
             @if (users() > 0) {
-              <select aria-label="Replacement layout" data-keep [value]="replacement()" (change)="replacement.set(valueOf($event))">
+              <select class="input" aria-label="Replacement layout" data-keep [value]="replacement()" (change)="replacement.set(valueOf($event))">
                 @for (l of others(); track l.id) {
                   <option [value]="l.id" [selected]="l.id === replacement()">{{ l.name }}</option>
                 }
               </select>
             }
-            <button type="button" (click)="confirmDelete()">{{ users() > 0 ? 'Move slides and delete' : 'Delete' }}</button>
-            <button type="button" (click)="deleting.set(false)">Cancel</button>
+            <button class="btn" type="button" (click)="confirmDelete()">{{ users() > 0 ? 'Move slides and delete' : 'Delete' }}</button>
+            <button class="btn" type="button" (click)="deleting.set(false)">Cancel</button>
           </div>
         }
 
@@ -133,7 +133,7 @@ let gestureCounter = 0;
         <div class="bar">
           <label>
             Placeholder
-            <select (change)="selectedId.set(valueOf($event))">
+            <select class="input" (change)="selectedId.set(valueOf($event))">
               <option value="" [selected]="selected() === undefined">None selected</option>
               @for (p of current.placeholders; track p.id) {
                 <option [value]="p.id" [selected]="p.id === selectedId()">{{ label(p) }}</option>
@@ -142,13 +142,13 @@ let gestureCounter = 0;
           </label>
           <label>
             New placeholder
-            <select #newKind>
+            <select class="input" #newKind>
               @for (k of kinds; track k) {
                 <option [value]="k">{{ k }}</option>
               }
             </select>
           </label>
-          <button type="button" (click)="addPlaceholder(newKind.value)">Add placeholder</button>
+          <button class="btn" type="button" (click)="addPlaceholder(newKind.value)">Add placeholder</button>
         </div>
 
         @if (selected(); as p) {
@@ -157,7 +157,7 @@ let gestureCounter = 0;
             <div class="grid">
               <label>
                 Kind
-                <select (change)="setKind(p, $event)">
+                <select class="input" (change)="setKind(p, $event)">
                   @for (k of kinds; track k) {
                     <option [value]="k" [selected]="k === p.kind">{{ k }}</option>
                   }
@@ -166,10 +166,10 @@ let gestureCounter = 0;
               @for (f of fields; track f.key) {
                 <label>
                   {{ f.label }}
-                  <input type="number" [value]="p[f.key]" [min]="f.key === 'w' || f.key === 'h' ? 1 : 0" (change)="setField(p, f.key, $event)" />
+                  <input class="input" type="number" [value]="p[f.key]" [min]="f.key === 'w' || f.key === 'h' ? 1 : 0" (change)="setField(p, f.key, $event)" />
                 </label>
               }
-              <button type="button" (click)="remove(p)">Remove placeholder</button>
+              <button class="btn" type="button" (click)="remove(p)">Remove placeholder</button>
             </div>
           </fieldset>
         }
@@ -179,7 +179,7 @@ let gestureCounter = 0;
         <p class="error" role="alert">{{ message }}</p>
       }
       <div class="actions">
-        <button type="button" (click)="closed.emit()">Close</button>
+        <button class="btn" type="button" (click)="closed.emit()">Close</button>
       </div>
     </div>
   `,
@@ -206,14 +206,6 @@ let gestureCounter = 0;
       margin: 0.5rem 0;
     }
     select,
-    input {
-      font: inherit;
-      padding: 0.2rem 0.35rem;
-    }
-    select:focus-visible {
-      outline: 3px solid #ffbf47;
-      outline-offset: 2px;
-    }
     h3 {
       margin: 1rem 0 0.25rem;
       font-size: 1rem;
@@ -221,7 +213,7 @@ let gestureCounter = 0;
     .note {
       margin: 0.25rem 0;
       font-size: 0.85rem;
-      color: #4d5560;
+      color: var(--text-muted);
     }
     .question {
       display: flex;
@@ -230,8 +222,8 @@ let gestureCounter = 0;
       gap: 0.5rem;
       margin: 0.5rem 0;
       padding: 0.5rem 0.75rem;
-      background: #fff4e0;
-      border-left: 4px solid #8a5a00;
+      background: var(--warning-subtle);
+      border-left: 4px solid var(--warning-ink);
     }
     .question p {
       flex: 1 1 100%;
@@ -240,7 +232,7 @@ let gestureCounter = 0;
     .preview {
       position: relative;
       overflow: hidden;
-      border: 1px solid #5a5a5a;
+      border: 1px solid var(--border-control);
       margin: 0.5rem 0;
     }
     .stage {
@@ -248,16 +240,16 @@ let gestureCounter = 0;
       left: 0;
       top: 0;
       transform-origin: 0 0;
-      background-color: var(--deck-color-background, #fff);
+      background-color: var(--deck-color-background, var(--surface-raised));
     }
     .ph {
       position: absolute;
       box-sizing: border-box;
       padding: 0;
-      border: 6px dashed #2457d6;
+      border: 6px dashed var(--accent);
       border-radius: 0;
-      background: rgb(36 87 214 / 0.12);
-      color: #0b2a78;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent-ink);
       font-size: 48px;
       font-weight: 700;
       touch-action: none;
@@ -265,10 +257,10 @@ let gestureCounter = 0;
     }
     .ph.selected {
       border-style: solid;
-      background: rgb(36 87 214 / 0.25);
+      background: color-mix(in srgb, var(--accent) 25%, transparent);
     }
     .ph:focus-visible {
-      outline: 8px solid #ffbf47;
+      outline: 8px solid var(--focus);
       outline-offset: 4px;
     }
     .handle {
@@ -276,14 +268,14 @@ let gestureCounter = 0;
       width: 48px;
       height: 48px;
       margin: -24px 0 0 -24px;
-      background: #2457d6;
-      border: 6px solid #fff;
+      background: var(--accent);
+      border: 6px solid var(--surface-raised);
       touch-action: none;
       cursor: nwse-resize;
     }
     fieldset {
       margin: 0.5rem 0;
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
     }
     .grid {
       display: flex;
@@ -296,7 +288,7 @@ let gestureCounter = 0;
     }
     .error {
       margin: 0.5rem 0 0;
-      color: #8a1c14;
+      color: var(--danger-ink);
     }
   `,
 })

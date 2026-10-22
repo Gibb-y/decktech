@@ -1,12 +1,12 @@
 :host {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-dialog);
   display: block;
   overflow: hidden;
-  background: #000;
-  color: #fff;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--present-bg);
+  color: var(--present-text);
+  font-family: var(--font-ui);
 }
 
 :host:focus {
@@ -84,18 +84,18 @@
 
 .controls {
   position: absolute;
-  right: 1rem;
-  bottom: 1rem;
+  right: var(--space-4);
+  bottom: var(--space-4);
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 0.5rem;
-  background: rgb(0 0 0 / 0.85);
-  color: #fff;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--present-overlay);
+  color: var(--present-text);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-slow) var(--ease);
 }
 
 .controls.visible,
@@ -109,24 +109,23 @@
   }
 }
 
-.controls button {
-  font: inherit;
-  padding: 0.3rem 0.8rem;
-  border: 1px solid #fff;
-  border-radius: 0.25rem;
-  background: #000;
-  color: #fff;
-  cursor: pointer;
+/* The floating controls sit on black whatever the colour scheme: the shared button, in presentation colours. */
+.controls .btn {
+  border-color: var(--present-text);
+  background: var(--present-bg);
+  color: var(--present-text);
 }
 
-.controls button[aria-disabled='true'] {
+.controls .btn:hover {
+  background: var(--present-overlay);
+}
+
+.controls .btn[aria-disabled='true'] {
   opacity: 0.6;
-  cursor: default;
 }
 
-.controls button:focus-visible {
-  outline: 3px solid #ffbf47;
-  outline-offset: 2px;
+.controls .btn:focus-visible {
+  outline-color: var(--present-text);
 }
 
 .position {

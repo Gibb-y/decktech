@@ -22,8 +22,8 @@ type Direction = 'earlier' | 'later';
         <ol aria-describedby="reading-order-hint">
           @for (element of store.currentSlide().elements; track element.id; let i = $index; let first = $first; let last = $last) {
             <li [class.selected]="isSelected(element.id)">
-              <button type="button" class="name" [attr.aria-pressed]="isSelected(element.id)" (click)="store.select([element.id])">{{ describe(element) }}</button>
-              <button
+              <button type="button" class="btn btn-sm name" [attr.aria-pressed]="isSelected(element.id)" (click)="store.select([element.id])">{{ describe(element) }}</button>
+              <button class="btn"
                 type="button"
                 [attr.data-move]="element.id + ':earlier'"
                 [attr.aria-label]="'Move ' + describe(element) + ' earlier'"
@@ -32,7 +32,7 @@ type Direction = 'earlier' | 'later';
               >
                 ↑
               </button>
-              <button
+              <button class="btn"
                 type="button"
                 [attr.data-move]="element.id + ':later'"
                 [attr.aria-label]="'Move ' + describe(element) + ' later'"
@@ -51,9 +51,9 @@ type Direction = 'earlier' | 'later';
     .order {
       margin-top: 1rem;
       padding-top: 0.5rem;
-      border-top: 1px solid #c3c6cc;
-      color: #111;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-ui);
     }
     h3 {
       margin: 0 0 0.25rem;
@@ -61,7 +61,7 @@ type Direction = 'earlier' | 'later';
     }
     .note {
       margin: 0.25rem 0 0.5rem;
-      color: #4b4b4b;
+      color: var(--text-muted);
       font-size: 0.85rem;
     }
     ol {
@@ -76,15 +76,6 @@ type Direction = 'earlier' | 'later';
       grid-template-columns: minmax(0, 1fr) auto auto;
       gap: 0.25rem;
     }
-    button {
-      font: inherit;
-      padding: 0.2rem 0.5rem;
-      border: 1px solid #5a5a5a;
-      border-radius: 0.25rem;
-      background: #fff;
-      color: #111;
-      cursor: pointer;
-    }
     .name {
       overflow: hidden;
       text-align: left;
@@ -92,16 +83,8 @@ type Direction = 'earlier' | 'later';
       white-space: nowrap;
     }
     li.selected .name {
-      border-color: #1f4fc4;
-      box-shadow: 0 0 0 2px #1f4fc4;
-    }
-    button[aria-disabled='true'] {
-      color: #595959;
-      cursor: not-allowed;
-    }
-    button:focus-visible {
-      outline: 3px solid #ffbf47;
-      outline-offset: 2px;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent);
     }
   `,
 })

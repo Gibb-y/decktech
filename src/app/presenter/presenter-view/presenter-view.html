@@ -34,10 +34,10 @@
   </div>
 }
 <div class="controls" role="group" aria-label="Presenter controls">
-  <button type="button" [attr.aria-disabled]="state() === null || atStart()" (click)="state() !== null && !atStart() && send({ type: 'command', action: 'prev' })">Previous</button>
-  <button type="button" [attr.aria-disabled]="state() === null || atEnd()" (click)="state() !== null && !atEnd() && send({ type: 'command', action: 'next' })">Next</button>
+  <button class="btn" type="button" [attr.aria-disabled]="state() === null || atStart()" (click)="state() !== null && !atStart() && send({ type: 'command', action: 'prev' })">Previous</button>
+  <button class="btn" type="button" [attr.aria-disabled]="state() === null || atEnd()" (click)="state() !== null && !atEnd() && send({ type: 'command', action: 'next' })">Next</button>
   <span class="timer-face" role="timer" aria-label="Elapsed time">{{ elapsed() }}</span>
-  <button type="button" [attr.aria-disabled]="state() === null" (click)="state() !== null && toggleTimer()">{{ running() ? 'Pause timer' : 'Start timer' }}</button>
-  <button type="button" [attr.aria-disabled]="state() === null" (click)="state() !== null && send({ type: 'timer', action: 'reset' })">Reset timer</button>
+  <button class="btn" type="button" [attr.aria-disabled]="state() === null" (click)="state() !== null && toggleTimer()">{{ running() ? 'Pause timer' : 'Start timer' }}</button>
+  <button class="btn" type="button" [attr.aria-disabled]="state() === null" (click)="state() !== null && send({ type: 'timer', action: 'reset' })">Reset timer</button>
 </div>
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ position() }}</div>

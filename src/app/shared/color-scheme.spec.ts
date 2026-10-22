@@ -23,7 +23,8 @@ describe('ColorScheme', () => {
   it('starts with the default and applies it', () => {
     const scheme = fresh();
     expect(scheme.mode()).toBe(DEFAULT_COLOR_SCHEME);
-    expect(root.getAttribute('data-theme')).toBe(DEFAULT_COLOR_SCHEME);
+    // The default follows the system, which is no attribute at all.
+    expect(root.getAttribute('data-theme')).toBe(DEFAULT_COLOR_SCHEME === 'system' ? null : DEFAULT_COLOR_SCHEME);
   });
 
   it.each(['light', 'dark'] as const)('sets %s on the document and stores it', (mode) => {

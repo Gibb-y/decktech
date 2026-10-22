@@ -31,7 +31,7 @@ const MAX_READ = 5 * 1024 * 1024;
       @if (inspected(); as def) {
         <header>
           <h2 id="trust-title" tabindex="-1">Code of {{ def.name }}</h2>
-          <button type="button" id="trust-back" data-autofocus (click)="back()">Back to the list</button>
+          <button class="btn" type="button" id="trust-back" data-autofocus (click)="back()">Back to the list</button>
         </header>
         <p class="note">Read only. Nothing here runs: the code is shown as text.</p>
         <app-code-inspector class="grow" [component]="def" [base]="baseOf(def.id)" [libraries]="reportOf(def.id)?.libs ?? []" [fileList]="reportOf(def.id)?.files ?? []" [readAsset]="readAsset" />
@@ -51,7 +51,7 @@ const MAX_READ = 5 * 1024 * 1024;
                 @if (row.change; as change) {
                   <span class="badge" [class]="'badge ' + change">{{ changeText(change) }}</span>
                 }
-                <button type="button" [id]="'read-' + row.id" (click)="inspect(row.id)">Read code<span class="sr-only"> of {{ row.name }}</span></button>
+                <button class="btn" type="button" [id]="'read-' + row.id" (click)="inspect(row.id)">Read code<span class="sr-only"> of {{ row.name }}</span></button>
               </div>
               <dl>
                 <dt>Used on</dt>
@@ -85,11 +85,11 @@ const MAX_READ = 5 * 1024 * 1024;
           <p class="errors" role="alert">{{ message }}</p>
         }
         <footer>
-          <button type="button" class="primary" [attr.aria-disabled]="selected().size === 0 || busy() ? 'true' : null" (click)="runSelected()">Run selected components ({{ selected().size }})</button>
-          <button type="button" [attr.aria-disabled]="busy() ? 'true' : null" (click)="trustAll()">Trust whole deck</button>
-          <button type="button" [attr.aria-disabled]="busy() ? 'true' : null" (click)="disableAll()">Open with code disabled</button>
+          <button type="button" class="btn btn-primary" [attr.aria-disabled]="selected().size === 0 || busy() ? 'true' : null" (click)="runSelected()">Run selected components ({{ selected().size }})</button>
+          <button class="btn" type="button" [attr.aria-disabled]="busy() ? 'true' : null" (click)="trustAll()">Trust whole deck</button>
+          <button class="btn" type="button" [attr.aria-disabled]="busy() ? 'true' : null" (click)="disableAll()">Open with code disabled</button>
           <span class="spacer"></span>
-          <button type="button" (click)="closed.emit()">Cancel</button>
+          <button class="btn" type="button" (click)="closed.emit()">Cancel</button>
         </footer>
       }
     </div>
@@ -116,7 +116,7 @@ const MAX_READ = 5 * 1024 * 1024;
     }
     .component {
       padding: 0.5rem 0.75rem;
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
       border-radius: 0.25rem;
     }
     .head {
@@ -133,16 +133,16 @@ const MAX_READ = 5 * 1024 * 1024;
       font-size: 0.9rem;
     }
     dt {
-      color: #404040;
+      color: var(--text-muted);
     }
     dd {
       margin: 0;
     }
     .flags {
       padding: 0.35rem 0.75rem;
-      border-left: 4px solid #7a5200;
-      background: #fff4d6;
-      color: #3d2a00;
+      border-left: 4px solid var(--warning-ink);
+      background: var(--warning-subtle);
+      color: var(--text);
       font-size: 0.9rem;
     }
     .flags p,
@@ -156,13 +156,13 @@ const MAX_READ = 5 * 1024 * 1024;
       font-size: 0.8rem;
     }
     .badge.changed {
-      color: #7a2d00;
+      color: var(--warning-ink);
     }
     .badge.new {
-      color: #0a2a63;
+      color: var(--text);
     }
     .badge.unchanged {
-      color: #1f5f2a;
+      color: var(--success-ink);
     }
     .sr-only {
       position: absolute;

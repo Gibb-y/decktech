@@ -171,7 +171,7 @@ describe('the keyboard shortcut help', () => {
 
   it('closes with its button and gives focus back', async () => {
     const { fixture, root } = await openEditor();
-    const open = root.querySelector<HTMLButtonElement>('app-editor-toolbar button:last-child')!;
+    const open = Array.from(root.querySelectorAll<HTMLButtonElement>('app-editor-toolbar button')).find((b) => b.textContent?.trim().startsWith('Keyboard shortcuts'))!;
     open.focus();
     open.click();
     await settle(fixture);
@@ -179,7 +179,7 @@ describe('the keyboard shortcut help', () => {
     (document.activeElement as HTMLButtonElement).click();
     await settle(fixture);
     expect(dialog(root)).toBeNull();
-    expect(document.activeElement).toBe(open);
+    expect(document.activeElement).toBe(root.querySelector('app-menu [aria-haspopup="menu"]'));
   });
 
   it('closes with Escape', async () => {

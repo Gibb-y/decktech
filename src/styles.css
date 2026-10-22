@@ -49,6 +49,12 @@
   --success-subtle: #e2f4e7;
 
   --focus: #1d4ed8;
+  --guide: #c2188f;
+
+  /* Presentation mode is black whatever the scheme: the stage is letterboxed on black and the controls float on it. */
+  --present-bg: #000000;
+  --present-text: #ffffff;
+  --present-overlay: rgb(0 0 0 / 0.85);
 
   /* Type */
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -133,6 +139,7 @@
     --success-ink: #7ad493;
     --success-subtle: #13301c;
     --focus: #8fb2ff;
+    --guide: #ff7ad1;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
     --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
@@ -168,6 +175,7 @@
   --success-ink: #7ad493;
   --success-subtle: #13301c;
   --focus: #8fb2ff;
+  --guide: #ff7ad1;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
@@ -216,6 +224,11 @@ body {
 * {
   scrollbar-color: var(--border-control) transparent;
   scrollbar-width: thin;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
 }
 
 code,

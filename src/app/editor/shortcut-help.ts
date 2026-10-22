@@ -27,7 +27,7 @@ import { SCOPE_LABELS, ShortcutRegistry } from './shortcut-registry';
         </section>
       }
       <div class="actions">
-        <button type="button" data-autofocus (click)="closed.emit()">Close</button>
+        <button class="btn" type="button" data-autofocus (click)="closed.emit()">Close</button>
       </div>
     </div>
   `,
@@ -49,9 +49,9 @@ import { SCOPE_LABELS, ShortcutRegistry } from './shortcut-registry';
     }
     kbd {
       padding: 0.1rem 0.4rem;
-      border: 1px solid #5a5a5a;
+      border: 1px solid var(--border-control);
       border-radius: 0.25rem;
-      background: #f1f2f4;
+      background: var(--surface-sunken);
       font: 0.875rem ui-monospace, Consolas, monospace;
     }
   `,

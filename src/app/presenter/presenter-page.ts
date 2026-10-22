@@ -38,9 +38,9 @@ type PageState = { status: 'loading' } | { status: 'ready' } | { status: 'unavai
     }
     .error {
       padding: 0.75rem 1rem;
-      background: #fde8e6;
-      color: #5c0f0a;
-      border-left: 4px solid #8a1c14;
+      background: var(--danger-subtle);
+      color: var(--text);
+      border-left: 4px solid var(--danger-ink);
     }
   `,
 })

@@ -1,54 +1,45 @@
-/* Shared by the modal dialogs of the editor (insert menu, shortcut help). */
+/* Shell of the modal dialogs of the editor (insert menu, shortcut help, theme and layout editors); the look is that of `.dialog-*` in ui.css. Buttons and inputs use the shared `.btn` / `.input` classes. */
 :host {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: var(--z-dialog);
   display: grid;
   place-items: center;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: #111;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-md);
+  color: var(--text);
 }
 .backdrop {
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / 0.5);
+  background: var(--scrim);
+  animation: ui-fade-in var(--duration-base) var(--ease);
 }
 .dialog {
   position: relative;
-  width: min(36rem, calc(100vw - 2rem));
-  max-height: calc(100vh - 4rem);
+  box-sizing: border-box;
+  width: min(36rem, calc(100vw - var(--space-5)));
+  max-height: calc(100vh - var(--space-6));
   overflow-y: auto;
-  padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid #5a5a5a;
-  border-radius: 0.5rem;
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: ui-pop-in var(--duration-base) var(--ease);
 }
 .dialog:focus {
   outline: none;
 }
 h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.25rem;
-}
-button,
-input {
-  font: inherit;
-}
-button {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid #5a5a5a;
-  border-radius: 0.25rem;
-  background: #fff;
-  color: #111;
-  cursor: pointer;
-}
-button:focus-visible,
-input:focus-visible {
-  outline: 3px solid #ffbf47;
-  outline-offset: 2px;
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
 }
 .actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 1rem;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }

@@ -4,6 +4,7 @@ export * from './focus-trap';
 export * from './icon';
 export * from './icons';
 export * from './live-announcer';
+export * from './menu';
 export * from './notice';
 export * from './skip-link';
 export * from './tabs';

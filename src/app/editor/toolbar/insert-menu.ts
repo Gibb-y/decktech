@@ -14,7 +14,7 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="insert-title" appFocusTrap (keydown.escape)="closed.emit(); $event.preventDefault()">
       <h2 id="insert-title">Insert</h2>
       <label for="insert-filter">Find an element</label>
-      <input
+      <input class="input"
         id="insert-filter"
         type="search"
         autocomplete="off"
@@ -28,7 +28,7 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
       <ul aria-label="Elements" (keydown)="onListKey($event)">
         @for (item of matches(); track item.kind) {
           <li>
-            <button type="button" (click)="chosen.emit(item.kind)">
+            <button class="btn" type="button" (click)="chosen.emit(item.kind)">
               <span class="label">{{ item.label }}</span>
               <span class="description">{{ item.description }}</span>
             </button>
@@ -36,7 +36,7 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
         }
       </ul>
       <div class="actions">
-        <button type="button" (click)="closed.emit()">Cancel</button>
+        <button class="btn" type="button" (click)="closed.emit()">Cancel</button>
       </div>
     </div>
   `,
@@ -46,17 +46,9 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
       display: block;
       font-weight: 600;
     }
-    input {
-      box-sizing: border-box;
-      width: 100%;
-      margin-top: 0.25rem;
-      padding: 0.4rem 0.5rem;
-      border: 1px solid #5a5a5a;
-      border-radius: 0.25rem;
-    }
     .count {
       margin: 0.35rem 0;
-      color: #4b4b4b;
+      color: var(--text-muted);
       font-size: 0.875rem;
     }
     ul {
@@ -75,7 +67,7 @@ import { INSERT_ITEMS, type InsertKind } from '../insert-actions';
       font-weight: 600;
     }
     .description {
-      color: #4b4b4b;
+      color: var(--text-muted);
       font-size: 0.875rem;
     }
   `,

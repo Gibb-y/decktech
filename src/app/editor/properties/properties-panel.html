@@ -14,7 +14,7 @@
               @if (field.key === 'fontSize' && textElement(element); as sized) {
                 <div class="field">
                   <label for="prop-sizeToken">Size</label>
-                  <select id="prop-sizeToken" (change)="setSizeToken(sized, $event)">
+                  <select class="input" id="prop-sizeToken" (change)="setSizeToken(sized, $event)">
                     <option value="" [selected]="sized.sizeToken === undefined">Custom size</option>
                     @for (size of sizeNames(); track size.key) {
                       <option [value]="size.key" [selected]="sized.sizeToken === size.key">{{ size.key }} ({{ size.value }})</option>
@@ -25,7 +25,7 @@
               @if (field.key !== 'fontSize' || sizeTokenOf(element) === undefined) {
                 <div class="field">
                   <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                  <input
+                  <input class="input"
                     type="number"
                     [id]="'prop-' + field.key"
                     [formField]="form.numbers[field.key]"
@@ -43,7 +43,7 @@
             @case ('text') {
               <div class="field">
                 <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                <input type="text" [id]="'prop-' + field.key" [formField]="form.texts[field.key]" />
+                <input class="input" type="text" [id]="'prop-' + field.key" [formField]="form.texts[field.key]" />
               </div>
             }
             @case ('textarea') {
@@ -52,7 +52,7 @@
               } @else {
                 <div class="field">
                   <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                  <textarea rows="5" [id]="'prop-' + field.key" [formField]="form.texts[field.key]"></textarea>
+                  <textarea class="input" rows="5" [id]="'prop-' + field.key" [formField]="form.texts[field.key]"></textarea>
                 </div>
               }
             }
@@ -65,7 +65,7 @@
             @case ('select') {
               <div class="field">
                 <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                <select [id]="'prop-' + field.key" [formField]="form.texts[field.key]">
+                <select class="input" [id]="'prop-' + field.key" [formField]="form.texts[field.key]">
                   @for (option of field.options; track option) {
                     <option [value]="option">{{ option }}</option>
                   }
@@ -75,7 +75,7 @@
             @case ('font') {
               <div class="field">
                 <label [for]="'prop-' + field.key">{{ field.label }}</label>
-                <select [id]="'prop-' + field.key" [formField]="form.texts[field.key]">
+                <select class="input" [id]="'prop-' + field.key" [formField]="form.texts[field.key]">
                   <option value="">Body (default)</option>
                   @for (name of fontNames(); track name) {
                     <option [value]="name">{{ name }}</option>
@@ -120,7 +120,7 @@
       <legend>Layout and background</legend>
       <div class="field">
         <label for="slide-layout">Layout</label>
-        <select id="slide-layout" (change)="setLayout($event)">
+        <select class="input" id="slide-layout" (change)="setLayout($event)">
           @for (layout of layouts(); track layout.id) {
             <option [value]="layout.id" [selected]="layout.id === store.currentSlide().layoutId">{{ layout.name }}</option>
           }

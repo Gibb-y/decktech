@@ -31,28 +31,28 @@ function normalizeHref(value: string): string {
       @if (active()) {
         <div class="controls" role="group" aria-label="Text format" data-keeps-text-editing (mousedown)="keepFocus($event)" (focusout)="onFocusOut($event)">
           <div class="row" role="group" aria-label="Character style">
-            <button type="button" [attr.aria-pressed]="format()?.bold" (click)="run('bold')"><b>Bold</b></button>
-            <button type="button" [attr.aria-pressed]="format()?.italic" (click)="run('italic')"><i>Italic</i></button>
-            <button type="button" [attr.aria-pressed]="format()?.underline" (click)="run('underline')"><u>Underline</u></button>
-            <button type="button" [attr.aria-pressed]="format()?.code" (click)="run('code')"><code>Code</code></button>
+            <button class="btn" type="button" [attr.aria-pressed]="format()?.bold" (click)="run('bold')"><b>Bold</b></button>
+            <button class="btn" type="button" [attr.aria-pressed]="format()?.italic" (click)="run('italic')"><i>Italic</i></button>
+            <button class="btn" type="button" [attr.aria-pressed]="format()?.underline" (click)="run('underline')"><u>Underline</u></button>
+            <button class="btn" type="button" [attr.aria-pressed]="format()?.code" (click)="run('code')"><code>Code</code></button>
           </div>
           <div class="field">
             <label for="rt-block">Block style</label>
-            <select id="rt-block" [value]="format()?.block ?? 'paragraph'" (change)="setBlock($event)">
+            <select class="input" id="rt-block" [value]="format()?.block ?? 'paragraph'" (change)="setBlock($event)">
               @for (b of blocks; track b.value) {
                 <option [value]="b.value" [selected]="b.value === (format()?.block ?? 'paragraph')">{{ b.label }}</option>
               }
             </select>
           </div>
           <div class="row" role="group" aria-label="Lists">
-            <button type="button" [attr.aria-pressed]="format()?.list === 'bullet'" (click)="run('bullet')">Bulleted</button>
-            <button type="button" [attr.aria-pressed]="format()?.list === 'ordered'" (click)="run('ordered')">Numbered</button>
-            <button type="button" (click)="run('indent')">Indent</button>
-            <button type="button" (click)="run('outdent')">Outdent</button>
+            <button class="btn" type="button" [attr.aria-pressed]="format()?.list === 'bullet'" (click)="run('bullet')">Bulleted</button>
+            <button class="btn" type="button" [attr.aria-pressed]="format()?.list === 'ordered'" (click)="run('ordered')">Numbered</button>
+            <button class="btn" type="button" (click)="run('indent')">Indent</button>
+            <button class="btn" type="button" (click)="run('outdent')">Outdent</button>
           </div>
           <div class="field">
             <label for="rt-color">Text colour</label>
-            <select id="rt-color" (change)="setColor($event)">
+            <select class="input" id="rt-color" (change)="setColor($event)">
               <option value="" [selected]="!format()?.color">Element colour</option>
               @for (name of colors(); track name) {
                 <option [value]="name" [selected]="name === format()?.color">{{ name }}</option>
@@ -61,7 +61,7 @@ function normalizeHref(value: string): string {
           </div>
           <div class="field">
             <label for="rt-size">Text size</label>
-            <select id="rt-size" (change)="setSize($event)">
+            <select class="input" id="rt-size" (change)="setSize($event)">
               <option value="" [selected]="!format()?.size">Element size</option>
               @for (name of sizes(); track name) {
                 <option [value]="name" [selected]="name === format()?.size">{{ name }}</option>
@@ -70,21 +70,21 @@ function normalizeHref(value: string): string {
           </div>
           <div class="field">
             <label for="rt-link">Link address</label>
-            <input id="rt-link" type="text" inputmode="url" autocomplete="off" [value]="format()?.link ?? ''" [attr.aria-invalid]="linkError() ? 'true' : null" [attr.aria-describedby]="linkError() ? 'rt-link-error' : null" (keydown.enter)="applyLink($event, link.value)" #link />
+            <input class="input" id="rt-link" type="text" inputmode="url" autocomplete="off" [value]="format()?.link ?? ''" [attr.aria-invalid]="linkError() ? 'true' : null" [attr.aria-describedby]="linkError() ? 'rt-link-error' : null" (keydown.enter)="applyLink($event, link.value)" #link />
             @if (linkError(); as message) {
               <span class="error" id="rt-link-error" role="alert">{{ message }}</span>
             }
             <div class="row">
-              <button type="button" (click)="applyLink($event, link.value)">Set link</button>
-              <button type="button" (click)="removeLink(link)">Remove link</button>
+              <button class="btn" type="button" (click)="applyLink($event, link.value)">Set link</button>
+              <button class="btn" type="button" (click)="removeLink(link)">Remove link</button>
             </div>
           </div>
-          <button type="button" (click)="editing.focusEditor()">Back to text</button>
+          <button class="btn" type="button" (click)="editing.focusEditor()">Back to text</button>
         </div>
         <p class="note">Ctrl+B, Ctrl+I, Ctrl+U and Ctrl+K work in the text. Escape finishes editing.</p>
       } @else {
         <p class="note">The text is formatted while you edit it on the slide.</p>
-        <button type="button" (click)="edit()">Edit text</button>
+        <button class="btn" type="button" (click)="edit()">Edit text</button>
       }
     </fieldset>
   `,
@@ -97,7 +97,7 @@ function normalizeHref(value: string): string {
       gap: 0.5rem;
       margin: 0.75rem 0;
       padding: 0.5rem 0.75rem 0.75rem;
-      border: 1px solid #c3c6cc;
+      border: 1px solid var(--border);
       border-radius: 0.25rem;
     }
     legend {
@@ -119,34 +119,15 @@ function normalizeHref(value: string): string {
     }
     .note {
       margin: 0;
-      color: #4b4b4b;
+      color: var(--text-muted);
       font-size: 0.9rem;
     }
     .error {
-      color: #8a1c14;
+      color: var(--danger-ink);
       font-size: 0.85rem;
-    }
-    button {
-      font: inherit;
-      font-size: 0.85rem;
-      padding: 0.25rem 0.6rem;
-      border: 1px solid #5a5a5a;
-      border-radius: 0.25rem;
-      background: #fff;
-      color: #111;
-      cursor: pointer;
-    }
-    button[aria-pressed='true'] {
-      background: #1f4fc4;
-      border-color: #1f4fc4;
-      color: #fff;
     }
     button:focus-visible,
     select:focus-visible,
-    input:focus-visible {
-      outline: 3px solid #ffbf47;
-      outline-offset: 2px;
-    }
     fieldset:disabled {
       opacity: 0.7;
     }
