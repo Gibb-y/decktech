@@ -147,6 +147,7 @@ describe('elements', () => {
     expect((await ok('set_z_order', { deckId, elementId: a.id, move: 'front' })).order).toEqual([b.id, a.id]);
     expect((await call('move_element', { deckId, elementId: a.id })).error).toMatch(/at least one/);
     expect((await call('update_element', { deckId, elementId: a.id, changes: { bogus: 1 } })).error).toMatch(/not a settable property/);
+    expect((await call('update_element', { deckId, elementId: a.id, changes: JSON.parse('{"__proto__": {"x": 1}}') })).error).toMatch(/at least one property/);
     expect((await call('update_element', { deckId, elementId: a.id, changes: { x: 'far' } })).error).toMatch(/finite number/);
     expect((await call('update_element', { deckId, elementId: a.id, changes: { text: 'x' } })).error).toMatch(/dedicated tool/);
     expect((await call('add_shape', { deckId, slideId: firstSlide, w: Number.NaN })).error).toMatch(/invalid input/);

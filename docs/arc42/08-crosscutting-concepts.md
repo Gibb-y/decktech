@@ -82,6 +82,8 @@ Residual risks (CPU/memory exhaustion, side-channel timing, audio nuisance) are 
 - **Navigation.** The runtime cancels link clicks and form submits and turns `window.open` into a `link` message; the host refuses anything but `http(s):` and `mailto:` (`isSafeHref`), asks with a confirm dialog and opens with `noopener,noreferrer`. A second `load` of the frame (it navigated itself, for example with a meta refresh) destroys the frame.
 - **Residual risk.** A component can still navigate its own frame (`location = ...`, a meta refresh): the request to that address leaves before the host notices the second `load`, so it can carry data the component already has (props, state) to a server; browsers have no CSP directive to forbid it. Nothing of the host or other decks is reachable. A separate sandbox origin (11.3) would not change this; a trust decision (ADR-008) is the control. The frame's CPU and memory use is not limited either.
 
+**Code written by an agent (DT-46, ADR-013).** The MCP server treats component code as untrusted data: it parses it (acorn, as a module) and never runs it, and it never writes a trust record, so a deck it exports reads back with `hasCode` and DeckTech shows the trust dialog before anything runs. Its file access is limited to the workspace folder (symbolic links followed); the workspace and library locations come from the client's configuration, not from tool input.
+
 ## 8.3 Code component API
 
 Authors write ordinary web code. The runtime script injected into every frame exposes a global `deck` object. The protocol version is `apiVersion` (semver major in the handshake); the host supports the current and previous major.

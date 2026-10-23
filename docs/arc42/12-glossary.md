@@ -18,6 +18,8 @@
 | Component library | The built-in example components plus the components the author saved (store `components`, `ComponentLibrary`), reusable across decks; inserting copies the definition into the deck. |
 | Design token | A named CSS custom property of the app chrome (colour role, spacing step, radius, ...) defined in `src/styles.css`, with a light and a dark value. Not a deck `Theme` token (8.11). |
 | Primitive | A shared piece of the app chrome in `src/ui.css` and `app/shared/` (button, input, tab, dialog shell, notice, icon, tooltip) that screens use instead of styling their own (8.11). |
+| MCP server | The program in `mcp/` that lets an AI agent build decks through tools (Model Context Protocol over stdio); it works on `.deck` files and never runs component code (ADR-013). |
+| Workspace folder | The folder an MCP server may read from and write to (`DECKTECH_WORKSPACE`). |
 | Vendored library | A JavaScript module stored as an asset of the deck, listed in a definition's `libs` and imported by its asset id through the frame's import map, so the component works offline. |
 | Prop / property schema | Typed, declared inputs of a code component; generates its form in the properties panel. |
 | Host | The DeckTech Angular application, as opposed to the sandboxed frame. |

@@ -343,3 +343,22 @@ Decisions where the model left room: images are plain `img` elements, not `NgOpt
 | `shared/` primitives | The classes of `src/ui.css` (buttons, controls, tabs, badge, notice, kbd, dialog shell) and the components `app-icon` (`ICONS`, one inline-SVG icon set), `appTooltip` (`Tooltip`, with an optional shortcut hint), `app-dialog`, `app-tabs` (`tabId` / `panelId`) and `app-notice`. `uniqueId(prefix)` makes ids for ARIA links. `app-menu` is the overflow / dropdown menu (WAI-ARIA menu button). Described in 8.11. Every screen uses them. |
 
 Decisions where the issue left room: the list is not virtualised by a scroller. It draws 60 decks and adds 60 more on "Show more" (a real button, keyboard operable, reset by a new search), and rows use `content-visibility: auto`, so a long list opens fast without a windowing library that would hide rows from keyboard and assistive technology. Thumbnails are placeholders because `library` may not import `renderer` (4.4); rendering real slide thumbnails here needs the rule to change or a thumbnail provider in `shared`, and is recorded in 11.2. The library reads and writes through `DeckRepository` directly and never touches `DeckStore` or `AutosaveService`.
+
+## 5.9 Level 2: MCP server (DT-46)
+
+A separate program in `mcp/` (ADR-013), outside `src/app` and outside the dependency rule table of 4.4: it imports only pure files of `core`, `library/archive` and `components/trust/analysis` by relative path, never the Angular services. Built by `npm run build:mcp`, type-checked by `npm run typecheck:mcp`, tested by `npm run test:mcp` (Vitest, real files in a temporary folder).
+
+| Block | Responsibility |
+|-------|----------------|
+| `main.ts`, `server.ts` | Stdio entry (`DECKTECH_WORKSPACE`, `DECKTECH_LIBRARY` from the environment) and the adapter from the `TOOLS` list to `McpServer.registerTool`. `callTool` turns `ToolError` / `CommandError` into `isError` results and anything unexpected into a message without a stack trace. |
+| `Workspace`, `DeckSession` (`workspace.ts`) | Open decks (at most 20) by deck id. A session holds the immutable `Deck`, the bytes of its assets and undo/redo stacks of earlier documents (200). `apply` runs commands as one `Batch`, checks `validateDeck` and only then commits. |
+| `paths.ts` | `resolveInside(root, path)`: relative to the workspace folder, symbolic links followed (also for a file that does not exist yet), refusing a result outside it. |
+| `tools/deck.ts` | `create_deck`, `open_deck`, `list_decks`, `close_deck`, `get_deck` (outline or full), `set_deck_metadata`, `export_deck`, `undo`, `redo`. |
+| `tools/slides.ts` | `add_slide` (instantiates the layout's placeholders), `duplicate_slide`, `delete_slide`, `move_slide`, `set_layout`, `set_speaker_notes`. |
+| `tools/elements.ts` | `add_text`, `set_text`, `add_image` (file in the workspace: extension, magic-number check, SHA-256 asset, alt text or `decorative` required), `add_shape`, `update_element`, `move_element`, `delete_element`, `set_z_order`, `set_alt_text`, `check_accessibility` (missing alt, empty text, text contrast against the slide background). |
+| `tools/components.ts` | `create_component`, `update_component` (reports `instances` and `usedOn`), `list_components`, `get_component`, `insert_code_element`, `update_code_element_props` (`SetCodeProps`), `detach_component`, `validate_component`, `save_to_library`, `import_from_library`. |
+| `component-check.ts` | `checkComponentDef`: `validateComponent`, acorn parse as an ES module, heuristic sandbox warnings and the trust flags. Reads source only; `executed` is always `false`. |
+| `library.ts` | `FileLibrary`: `<id>.json` `LibraryComponent` records, written atomically, damaged files ignored, entries with asset files refused. |
+| `tools/schema.ts` | `describe_schema`: overview, element fields (from `ELEMENT_SCHEMAS`), layouts, themes, the component API and the limits. |
+
+Decisions where the issue left room: file-based rather than driving the app; a colour that is a theme token name stays a token, anything else must be a CSS colour; `add_slide` keeps the sample text of the placeholders (the agent replaces it with `set_text`); `set_reading_order` is `set_z_order` because the array order is the reading order (8.8); `import_deck` is `open_deck`; the library is a file folder separate from the browser's. Not built: `render_preview` and executing `validate_component` (they need a browser), tables, video and line tools.

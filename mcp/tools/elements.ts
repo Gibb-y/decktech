@@ -210,11 +210,12 @@ export const elementTools = [
     run(workspace, { deckId, elementId, changes }) {
       const session = workspace.get(deckId);
       const { element } = elementOf(session.deck, elementId);
+      if (Object.keys(changes).length === 0) throw new ToolError('Give at least one property in changes');
       const forbidden = ['text', 'rich', 'alt', 'props', 'componentId', 'assetId'].filter((k) => Object.hasOwn(changes, k));
       if (forbidden.length > 0) {
         throw new ToolError(`Use the dedicated tool for ${forbidden.join(', ')}: set_text, set_alt_text, update_code_element_props. Assets and components cannot be re-pointed; add a new element instead.`);
       }
-      const prepared: Record<string, unknown> = {};
+      const prepared: Record<string, unknown> = Object.create(null); // a "__proto__" key must stay a (refused) key, not set the prototype
       for (const [key, value] of Object.entries(changes)) {
         if (value === null) prepared[key] = undefined;
         else if (['color', 'stroke'].includes(key) && typeof value === 'string') prepared[key] = toColor(session.deck, value);
