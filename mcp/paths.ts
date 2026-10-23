@@ -24,13 +24,17 @@ export function resolveInside(root: string, path: string): string {
   // A file that does not exist yet is judged by where its nearest existing folder really is.
   // A link whose target is missing looks absent to existsSync but would be followed by a write.
   if (!existsSync(full) && lstatSync(full, { throwIfNoEntry: false })?.isSymbolicLink()) {
-    throw new ToolError(`"${path}" is a link that points nowhere; choose a path that is not a link`);
+    throw new ToolError(
+      `"${path}" is a link that points nowhere; choose a path that is not a link`,
+    );
   }
   const ancestor = existingAncestor(full);
   const real = resolve(realpathSync(ancestor), relative(ancestor, full));
   const rel = relative(base, real);
   if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
-    throw new ToolError(`The path "${path}" is outside the workspace folder (${root}). Use a path inside it.`);
+    throw new ToolError(
+      `The path "${path}" is outside the workspace folder (${root}). Use a path inside it.`,
+    );
   }
   return full;
 }

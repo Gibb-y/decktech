@@ -11,7 +11,9 @@ import { resolveInside } from '../paths';
 import { deckOutline } from '../summary';
 import { ToolError, defineTool } from '../tool';
 
-export const deckId = z.string().describe('Id of an open deck (from create_deck, open_deck or list_decks).');
+export const deckId = z
+  .string()
+  .describe('Id of an open deck (from create_deck, open_deck or list_decks).');
 const themeIds = BUILT_IN_THEMES.map((t) => t.id) as [string, ...string[]];
 
 /** What an agent must know about a deck that came from a file. */
@@ -22,9 +24,15 @@ export const deckTools = [
   defineTool({
     name: 'create_deck',
     title: 'Create deck',
-    description: 'Creates a new deck with one empty slide on the Blank layout and opens it. Returns the deck id to pass to every other tool.',
+    description:
+      'Creates a new deck with one empty slide on the Blank layout and opens it. Returns the deck id to pass to every other tool.',
     input: z.object({
-      title: z.string().min(1).max(1000).optional().describe('Deck title; "Untitled deck" when omitted.'),
+      title: z
+        .string()
+        .min(1)
+        .max(1000)
+        .optional()
+        .describe('Deck title; "Untitled deck" when omitted.'),
       theme: z.enum(themeIds).optional().describe('Built-in theme; "light" when omitted.'),
     }),
     run(workspace, { title, theme }) {
@@ -39,7 +47,9 @@ export const deckTools = [
     title: 'Open deck file',
     description:
       'Reads a .deck file from the workspace folder and opens it for editing. The file is verified completely (size limits, hashes, schema) and a rejected file is reported with the reason. A deck with code components is flagged: its code is untrusted and is never run by this server.',
-    input: z.object({ path: z.string().min(1).describe('Path of the .deck file, relative to the workspace folder.') }),
+    input: z.object({
+      path: z.string().min(1).describe('Path of the .deck file, relative to the workspace folder.'),
+    }),
     async run(workspace, { path }) {
       const full = resolveInside(workspace.root, path);
       let size: number;
@@ -49,14 +59,21 @@ export const deckTools = [
         throw new ToolError(`The file "${path}" does not exist`);
       }
       if (size > DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes) {
-        throw new ToolError(`The file is too large to open (limit ${DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes / 1024 / 1024} MiB)`);
+        throw new ToolError(
+          `The file is too large to open (limit ${DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes / 1024 / 1024} MiB)`,
+        );
       }
       const read = await readArchive(new Uint8Array(await readFile(full)));
       if (!read.ok) throw new ToolError(`This file cannot be opened. ${read.error.message}`);
       const { deck, assets, hasCode, migrated } = read.value;
       const bytes = new Map([...assets].map(([id, a]) => [id, a.bytes]));
       const added = workspace.add(deck, bytes);
-      return { ...deckOutline(added.deck), hasCode, migrated, ...(hasCode ? { note: UNTRUSTED_NOTE } : {}) };
+      return {
+        ...deckOutline(added.deck),
+        hasCode,
+        migrated,
+        ...(hasCode ? { note: UNTRUSTED_NOTE } : {}),
+      };
     },
   }),
 
@@ -67,7 +84,13 @@ export const deckTools = [
     input: z.object({}),
     readOnly: true,
     run(workspace) {
-      return workspace.list().map((s) => ({ deckId: s.deck.id, title: s.deck.title, slides: s.deck.slides.length, canUndo: s.canUndo, canRedo: s.canRedo }));
+      return workspace.list().map((s) => ({
+        deckId: s.deck.id,
+        title: s.deck.title,
+        slides: s.deck.slides.length,
+        canUndo: s.canUndo,
+        canRedo: s.canRedo,
+      }));
     },
   }),
 
@@ -100,17 +123,26 @@ export const deckTools = [
     title: 'Set deck title and theme',
     description:
       'Renames the deck and/or switches it to a built-in theme. Switching the theme restyles every element that uses theme colour tokens; custom colours stay. Give at least one field.',
-    input: z.object({ deckId, title: z.string().min(1).max(1000).optional(), theme: z.enum(themeIds).optional() }),
+    input: z.object({
+      deckId,
+      title: z.string().min(1).max(1000).optional(),
+      theme: z.enum(themeIds).optional(),
+    }),
     run(workspace, { deckId, title, theme }) {
-      if (title === undefined && theme === undefined) throw new ToolError('Give a title, a theme or both');
+      if (title === undefined && theme === undefined)
+        throw new ToolError('Give a title, a theme or both');
       const session = workspace.get(deckId);
       const commands: Command[] = [];
       if (title !== undefined) commands.push(new SetDeckTitle(title));
       if (theme !== undefined) {
         // Colour tokens that a custom theme added stay, as in the theme picker.
         const next = createTheme(theme);
-        const kept = Object.fromEntries(Object.entries(session.deck.theme.colors).filter(([k]) => !Object.hasOwn(next.colors, k)));
-        const fonts = session.deck.theme.fontFaces ? { fonts: session.deck.theme.fonts, fontFaces: session.deck.theme.fontFaces } : {};
+        const kept = Object.fromEntries(
+          Object.entries(session.deck.theme.colors).filter(([k]) => !Object.hasOwn(next.colors, k)),
+        );
+        const fonts = session.deck.theme.fontFaces
+          ? { fonts: session.deck.theme.fonts, fontFaces: session.deck.theme.fontFaces }
+          : {};
         commands.push(new SetTheme({ ...next, colors: { ...next.colors, ...kept }, ...fonts }));
       }
       const deck = session.apply('SetDeckMetadata', ...commands);
@@ -125,7 +157,11 @@ export const deckTools = [
       'Writes the deck as a .deck file (a ZIP, ADR-007) inside the workspace folder. DeckTech opens it with its import: a deck with code components shows the trust prompt before any code runs. Refuses to overwrite an existing file unless overwrite is true.',
     input: z.object({
       deckId,
-      path: z.string().min(1).regex(/\.deck$/i, 'must end in .deck').describe('Target path relative to the workspace folder, e.g. "talk.deck".'),
+      path: z
+        .string()
+        .min(1)
+        .regex(/\.deck$/i, 'must end in .deck')
+        .describe('Target path relative to the workspace folder, e.g. "talk.deck".'),
       overwrite: z.boolean().default(false),
     }),
     async run(workspace, { deckId, path, overwrite }) {
@@ -137,18 +173,28 @@ export const deckTools = [
       try {
         await writeFile(full, packed.value, { flag: overwrite ? 'w' : 'wx' });
       } catch (e) {
-        if ((e as NodeJS.ErrnoException).code === 'EEXIST') throw new ToolError(`"${path}" exists already; choose another name or pass overwrite: true`);
+        if ((e as NodeJS.ErrnoException).code === 'EEXIST')
+          throw new ToolError(
+            `"${path}" exists already; choose another name or pass overwrite: true`,
+          );
         throw e;
       }
       const components = session.deck.components.length;
-      return { path, bytes: packed.value.length, slides: session.deck.slides.length, components, hasCode: components > 0 };
+      return {
+        path,
+        bytes: packed.value.length,
+        slides: session.deck.slides.length,
+        components,
+        hasCode: components > 0,
+      };
     },
   }),
 
   defineTool({
     name: 'undo',
     title: 'Undo',
-    description: 'Undoes the last change to a deck (every tool call that changes a deck is one step, 200 steps are kept).',
+    description:
+      'Undoes the last change to a deck (every tool call that changes a deck is one step, 200 steps are kept).',
     input: z.object({ deckId }),
     run(workspace, { deckId }) {
       const session = workspace.get(deckId);

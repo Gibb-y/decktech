@@ -10,7 +10,7 @@
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
     "test:scripts": "node --test scripts/",
-    "build:mcp": "esbuild mcp/main.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist-mcp/decktech-mcp.mjs --banner:js=\"#!/usr/bin/env node\"",
+    "build:mcp": "esbuild mcp/main.ts --bundle --platform=node --format=esm --target=node20 --external:playwright --outfile=dist-mcp/decktech-mcp.mjs --banner:js=\"#!/usr/bin/env node\"",
     "test:mcp": "vitest run --config mcp/vitest.config.mts",
     "typecheck:mcp": "tsc --noEmit -p mcp/tsconfig.json"
   },
@@ -55,6 +55,7 @@
     "axe-core": "^4.14.0",
     "fake-indexeddb": "^6.2.6",
     "jsdom": "^30.0.0",
+    "playwright": "^1.64.1",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
     "vitest": "^5.0.0",

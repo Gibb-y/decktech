@@ -4,7 +4,10 @@ import { ToolError } from './tool';
 
 export function slideOf(deck: Deck, slideId: string): Slide {
   const slide = deck.slides.find((s) => s.id === slideId);
-  if (!slide) throw new ToolError(`Slide "${slideId}" does not exist. Slides: ${deck.slides.map((s) => s.id).join(', ')}`);
+  if (!slide)
+    throw new ToolError(
+      `Slide "${slideId}" does not exist. Slides: ${deck.slides.map((s) => s.id).join(', ')}`,
+    );
   return slide;
 }
 
@@ -16,7 +19,8 @@ export function elementOf(deck: Deck, elementId: string): { element: Element; sl
   throw new ToolError(`Element "${elementId}" does not exist. Use get_deck to list element ids.`);
 }
 
-const clip = (text: string, max = 80): string => (text.length > max ? `${text.slice(0, max)}…` : text);
+const clip = (text: string, max = 80): string =>
+  text.length > max ? `${text.slice(0, max)}…` : text;
 
 /** One line that tells an agent what an element is without sending its whole content. */
 export function describeElement(e: Element): string {
@@ -58,8 +62,16 @@ export function deckOutline(deck: Deck) {
     title: deck.title,
     stage: deck.stage,
     slides: deck.slides.map((s, i) => slideSummary(deck, s, i)),
-    components: deck.components.map((c) => ({ id: c.id, name: c.name, instances: componentUses(deck, c.id) })),
-    layouts: deck.layouts.map((l) => ({ id: l.id, name: l.name, placeholders: l.placeholders.map((p) => p.kind) })),
+    components: deck.components.map((c) => ({
+      id: c.id,
+      name: c.name,
+      instances: componentUses(deck, c.id),
+    })),
+    layouts: deck.layouts.map((l) => ({
+      id: l.id,
+      name: l.name,
+      placeholders: l.placeholders.map((p) => p.kind),
+    })),
     assets: Object.keys(deck.assets).length,
   };
 }

@@ -9,6 +9,14 @@ export class ToolError extends Error {
   }
 }
 
+/** A tool result with pictures next to the data (PNG, base64 in the MCP reply). */
+export class ToolImages {
+  constructor(
+    readonly data: unknown,
+    readonly images: readonly Uint8Array[],
+  ) {}
+}
+
 export interface ToolDef<S extends z.ZodObject = z.ZodObject> {
   name: string;
   title: string;
@@ -21,4 +29,5 @@ export interface ToolDef<S extends z.ZodObject = z.ZodObject> {
 }
 
 /** Keeps the type of `input` for `run` while letting a list hold tools of different shapes. */
-export const defineTool = <S extends z.ZodObject>(tool: ToolDef<S>): ToolDef => tool as unknown as ToolDef;
+export const defineTool = <S extends z.ZodObject>(tool: ToolDef<S>): ToolDef =>
+  tool as unknown as ToolDef;

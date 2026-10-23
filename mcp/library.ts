@@ -15,7 +15,10 @@ export class FileLibrary {
   constructor(private readonly dir: string) {}
 
   private fileOf(id: string): string {
-    if (!ID_PATTERN.test(id)) throw new ToolError(`"${id}" is not a valid library id (letters, digits, "_" and "-", at most 128)`);
+    if (!ID_PATTERN.test(id))
+      throw new ToolError(
+        `"${id}" is not a valid library id (letters, digits, "_" and "-", at most 128)`,
+      );
     return join(this.dir, `${id}.json`);
   }
 
@@ -48,12 +51,16 @@ export class FileLibrary {
     } catch {
       return undefined;
     }
-    return libraryEntryProblem(entry) === null && (entry as LibraryComponent).def.id === id ? (entry as LibraryComponent) : undefined;
+    return libraryEntryProblem(entry) === null && (entry as LibraryComponent).def.id === id
+      ? (entry as LibraryComponent)
+      : undefined;
   }
 
   async save(def: ComponentDef): Promise<LibraryComponent> {
     if (def.files.length > 0 || def.libs.length > 0) {
-      throw new ToolError('Components with asset files or vendored libraries cannot be saved to the file library, because their files would not travel with them');
+      throw new ToolError(
+        'Components with asset files or vendored libraries cannot be saved to the file library, because their files would not travel with them',
+      );
     }
     const entry: LibraryComponent = { def: structuredClone(def), assets: {}, savedAt: Date.now() };
     const problem = libraryEntryProblem(entry);

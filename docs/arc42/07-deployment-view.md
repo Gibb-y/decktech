@@ -55,4 +55,4 @@ User data is only on the user's device. Backup is by exporting `.deck` files. Th
 
 ## 7.3 MCP server (optional, developer machine)
 
-The MCP server is not deployed with the app. It is a Node (20+) process that an MCP client starts over stdio from the built bundle `dist-mcp/decktech-mcp.mjs` (`npm run build:mcp`). It needs read/write access to one workspace folder and no network. Setup for clients is in the README.
+The MCP server is not deployed with the app. It is a Node (20+) process that an MCP client starts over stdio from the built bundle `dist-mcp/decktech-mcp.mjs` (`npm run build:mcp`). It needs read/write access to one workspace folder and no network. For the optional previews (`DECKTECH_PREVIEW=1`) it also needs the built app (`npm run build`, served on `127.0.0.1` by the server itself), the `playwright` package next to the bundle and a Chromium (`npx playwright install chromium`). Setup for clients is in the README.

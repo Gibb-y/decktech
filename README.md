@@ -70,6 +70,8 @@ Settings, given as environment variables in the client's configuration (the agen
 |----------|---------|---------|
 | `DECKTECH_WORKSPACE` | The only folder the server reads from and writes to (decks, images). | working directory |
 | `DECKTECH_LIBRARY` | Folder of the component library (`<id>.json` files). | `<workspace>/.decktech/library` |
+| `DECKTECH_PREVIEW` | `1` allows previews, which run the deck's code in a headless browser (see Previews). | off |
+| `DECKTECH_APP_DIR` | The built app the preview browser loads. | `dist/decktech/browser` next to `dist-mcp` |
 
 ### Claude Code
 
@@ -104,7 +106,20 @@ Start with `describe_schema` (topic `component-api` before writing a code compon
 - Elements: `add_text`, `set_text`, `add_image`, `add_shape`, `update_element`, `move_element`, `delete_element`, `set_z_order`, `set_alt_text`, `check_accessibility`
 - Code components: `create_component`, `update_component`, `list_components`, `get_component`, `insert_code_element`, `update_code_element_props`, `detach_component`, `validate_component`, `save_to_library`, `import_from_library`
 
-Code written by an agent is untrusted. The server only parses it and never runs it, so `validate_component` reports syntax and structure problems but not runtime errors, and there is no `render_preview` yet. A deck with code shows DeckTech's trust dialog when it is imported; review the code there before running it.
+- Previews (off by default): `render_preview`, and `validate_component` with `run: true`
+
+Code written by an agent is untrusted. By default the server only parses it and never runs it, so `validate_component` reports syntax and structure problems but not runtime errors. A deck with code shows DeckTech's trust dialog when it is imported; review the code there before running it.
+
+### Previews
+
+`render_preview` returns a PNG of a slide (or one element) drawn by DeckTech's own renderer, plus what the code components logged and the errors they raised; `validate_component` with `run: true` runs one component full-stage the same way. This **runs the deck's code** in the sandboxed frames of the app, inside a throwaway headless browser profile with no network, so it is off unless you enable it in the client's configuration:
+
+```bash
+npm run build                       # the app the browser loads (dist/decktech/browser)
+npx playwright install chromium     # once
+```
+
+and add `"DECKTECH_PREVIEW": "1"` to the server's `env` (`DECKTECH_APP_DIR` overrides the app folder). Run the bundle from the repository (or a folder where `playwright` is installed): it is loaded on first use, not bundled.
 
 ## Additional Resources
 

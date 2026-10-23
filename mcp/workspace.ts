@@ -2,6 +2,7 @@ import { generateId, validateDeck, type Deck } from '../src/app/core/model';
 import { CommandError, type Command } from '../src/app/core/store/command';
 import { Batch } from '../src/app/core/store/commands';
 import { FileLibrary } from './library';
+import { Previewer, type PreviewOptions } from './preview';
 import { ToolError } from './tool';
 
 /** Undo steps kept per deck, as in the editor. */
@@ -47,7 +48,10 @@ export class DeckSession {
     if (next === this.current) return next;
     const checked = validateDeck(next);
     if (!checked.ok) {
-      const first = checked.error.slice(0, 5).map((p) => `${p.path} ${p.message}`).join('; ');
+      const first = checked.error
+        .slice(0, 5)
+        .map((p) => `${p.path} ${p.message}`)
+        .join('; ');
       throw new ToolError(`The change would make the deck invalid and was not applied: ${first}`);
     }
     this.undoStack.push(this.current);
@@ -75,6 +79,8 @@ export class DeckSession {
 }
 
 export interface WorkspaceOptions {
+  /** Draws slides in a browser; omitted = previews are off. */
+  preview?: PreviewOptions;
   /** Folder the agent may read from and write to; paths are resolved inside it. */
   root: string;
   /** Folder of the file-based component library (`<id>.json` per component). */
@@ -85,9 +91,11 @@ export interface WorkspaceOptions {
 export class Workspace {
   private readonly sessions = new Map<string, DeckSession>();
   readonly library: FileLibrary;
+  readonly previewer: Previewer;
 
   constructor(readonly options: WorkspaceOptions) {
     this.library = new FileLibrary(options.libraryDir);
+    this.previewer = new Previewer(options.preview ?? { enabled: false, appDir: '' });
   }
 
   get root(): string {
@@ -101,7 +109,9 @@ export class Workspace {
   /** Registers a deck. A taken deck id is replaced by a new one: opening never replaces an open deck. */
   add(deck: Deck, assets?: Map<string, Uint8Array>): { session: DeckSession; deck: Deck } {
     if (this.sessions.size >= MAX_OPEN_DECKS) {
-      throw new ToolError(`${MAX_OPEN_DECKS} decks are open already; close one with close_deck first`);
+      throw new ToolError(
+        `${MAX_OPEN_DECKS} decks are open already; close one with close_deck first`,
+      );
     }
     const stored = this.sessions.has(deck.id) ? { ...deck, id: generateId('deck') } : deck;
     const session = new DeckSession(stored, assets);
@@ -113,7 +123,9 @@ export class Workspace {
     const session = this.sessions.get(deckId);
     if (!session) {
       const open = [...this.sessions.keys()];
-      throw new ToolError(`No deck "${deckId}" is open. ${open.length > 0 ? `Open decks: ${open.join(', ')}.` : 'Create one with create_deck or open one with open_deck.'}`);
+      throw new ToolError(
+        `No deck "${deckId}" is open. ${open.length > 0 ? `Open decks: ${open.join(', ')}.` : 'Create one with create_deck or open one with open_deck.'}`,
+      );
     }
     return session;
   }

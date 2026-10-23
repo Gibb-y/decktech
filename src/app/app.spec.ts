@@ -95,7 +95,7 @@ describe('routes', () => {
   it('are all lazy, so no feature is in the initial bundle', () => {
     const real = routes.filter((r) => r.redirectTo === undefined);
     // `dev/stress` exists only in dev mode, which is what tests run in.
-    expect(real.map((r) => r.path)).toEqual(['', 'deck/:id', 'deck/:id/present', 'deck/:id/presenter-view', 'dev/stress']);
+    expect(real.map((r) => r.path)).toEqual(['', 'deck/:id', 'deck/:id/present', 'deck/:id/presenter-view', 'preview', 'dev/stress']);
     for (const route of real) {
       expect(route.component).toBeUndefined();
       expect(route.loadComponent ?? route.loadChildren).toBeTypeOf('function');

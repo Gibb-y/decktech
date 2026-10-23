@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { BUILT_IN_LAYOUTS, BUILT_IN_THEMES, DEFAULT_VALIDATION_OPTIONS, ELEMENT_SCHEMAS, STAGE_HEIGHT, STAGE_WIDTH } from '../../src/app/core/model';
+import {
+  BUILT_IN_LAYOUTS,
+  BUILT_IN_THEMES,
+  DEFAULT_VALIDATION_OPTIONS,
+  ELEMENT_SCHEMAS,
+  STAGE_HEIGHT,
+  STAGE_WIDTH,
+} from '../../src/app/core/model';
 import { defineTool } from '../tool';
 
 const TOPICS = ['overview', 'elements', 'layouts', 'themes', 'component-api', 'limits'] as const;
@@ -40,7 +47,11 @@ export const schemaTools = [
       switch (topic) {
         case 'overview':
           return {
-            stage: { width: STAGE_WIDTH, height: STAGE_HEIGHT, note: 'All positions and sizes are in these logical units, origin top-left.' },
+            stage: {
+              width: STAGE_WIDTH,
+              height: STAGE_HEIGHT,
+              note: 'All positions and sizes are in these logical units, origin top-left.',
+            },
             workflow: [
               'create_deck (or open_deck) -> deckId',
               'add_slide with a layoutId, then set_text / add_text / add_image / add_shape',
@@ -50,21 +61,38 @@ export const schemaTools = [
             ],
             topics: TOPICS,
             elementTypes: Object.keys(ELEMENT_SCHEMAS),
-            zOrder: 'The element order of a slide is stacking order, DOM order and reading order. Later = in front.',
+            zOrder:
+              'The element order of a slide is stacking order, DOM order and reading order. Later = in front.',
           };
         case 'elements':
           return Object.fromEntries(
-            Object.entries(ELEMENT_SCHEMAS).map(([type, schema]) => [type, { fields: schema.fields, defaults: schema.defaults }]),
+            Object.entries(ELEMENT_SCHEMAS).map(([type, schema]) => [
+              type,
+              { fields: schema.fields, defaults: schema.defaults },
+            ]),
           );
         case 'layouts':
-          return BUILT_IN_LAYOUTS.map((l) => ({ id: l.id, name: l.name, placeholders: l.placeholders.map(({ kind, x, y, w, h }) => ({ kind, x, y, w, h })) }));
+          return BUILT_IN_LAYOUTS.map((l) => ({
+            id: l.id,
+            name: l.name,
+            placeholders: l.placeholders.map(({ kind, x, y, w, h }) => ({ kind, x, y, w, h })),
+          }));
         case 'themes':
-          return BUILT_IN_THEMES.map((t) => ({ id: t.id, name: t.name, ...t.theme, note: 'Elements refer to colours as { token } and sizes by sizeToken, so a theme switch restyles them.' }));
+          return BUILT_IN_THEMES.map((t) => ({
+            id: t.id,
+            name: t.name,
+            ...t.theme,
+            note: 'Elements refer to colours as { token } and sizes by sizeToken, so a theme switch restyles them.',
+          }));
         case 'component-api':
           return COMPONENT_API;
         case 'limits': {
           const { allowedMimeTypes: _mimes, ...limits } = DEFAULT_VALIDATION_OPTIONS;
-          return { ...limits, imageTypes: ['png', 'jpeg', 'gif', 'webp', 'avif', 'svg'], maxComponentSourceChars: 1_000_000 };
+          return {
+            ...limits,
+            imageTypes: ['png', 'jpeg', 'gif', 'webp', 'avif', 'svg'],
+            maxComponentSourceChars: 1_000_000,
+          };
         }
       }
     },
