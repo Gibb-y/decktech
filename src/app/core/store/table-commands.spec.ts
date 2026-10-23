@@ -218,3 +218,11 @@ describe('table commands and gestures', () => {
     expect(new SetTableColumnWidths(table.id, [1, 1, 1], { coalesceKey: 'w' }).coalesceKey).toBe('w');
   });
 });
+
+describe('SetProps and table structure', () => {
+  it.each(['rows', 'columnWidths', 'cellFills'])('refuses %s: the table commands own it', async (key) => {
+    const { SetProps } = await import('./commands');
+    const { deck, table } = fixture();
+    expect(error(deck, new SetProps([table.id], { [key]: [] }))).toBe(`"${key}" is not a settable property of a table element`);
+  });
+});

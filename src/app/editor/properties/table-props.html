@@ -30,7 +30,7 @@
   @for (width of widths(); track $index; let c = $index) {
     <div class="field">
       <label [for]="'prop-column-width-' + c">Column {{ c + 1 }}</label>
-      <input class="input" type="number" min="0.1" step="0.1" [id]="'prop-column-width-' + c" [value]="width" (input)="setWidth(c, $event)" />
+      <input class="input" type="number" min="0.1" step="0.1" [id]="'prop-column-width-' + c" [value]="width" (input)="setWidth(c, $event)" (change)="showWidth(c, $event)" />
     </div>
   }
   @if (element().columnWidths) {

@@ -1,11 +1,11 @@
-import { type Color, type Deck, type Element, type TableEl } from '../model';
+import { DEFAULT_VALIDATION_OPTIONS, type Color, type Deck, type Element, type TableEl } from '../model';
 import { CommandError, deepEqual, resultOf, updateElements, type Command, type CommandResult } from './command';
 import type { GestureOptions } from './commands';
 
 /** Table edits keep `rows`, `columnWidths` and `cellFills` the same shape, which `validateDeck` requires. */
 
 /** A table's size is capped by the validator (`maxTableCells`); the commands refuse a growth beyond the same limit. */
-const MAX_CELLS = 10_000;
+const MAX_CELLS = DEFAULT_VALIDATION_OPTIONS.maxTableCells;
 
 const asTable = (e: Element): TableEl => {
   if (e.type !== 'table') throw new CommandError(`Element "${e.id}" is not a table`);

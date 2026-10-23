@@ -84,6 +84,11 @@ export class TableProps {
     this.run(new SetTableColumnWidths(this.element().id, this.widths().map((w, c) => (c === col ? value : w)), { coalesceKey: `table-widths:${this.element().id}` }));
   }
 
+  /** After an edit that was not applied (empty, zero, negative) the field shows the width the table really has. */
+  protected showWidth(col: number, event: Event): void {
+    (event.target as HTMLInputElement).value = String(this.widths()[col]);
+  }
+
   protected equalWidths(): void {
     this.run(new SetTableColumnWidths(this.element().id, undefined), undefined, 'Columns have equal widths');
   }

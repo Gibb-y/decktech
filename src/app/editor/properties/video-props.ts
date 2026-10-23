@@ -1,6 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import type { VideoEl } from '../../core/model';
-import { DeckStore, SetProps } from '../../core/store';
+import { CommandError, DeckStore, SetProps } from '../../core/store';
+import { LiveAnnouncer } from '../../shared';
 import { InsertActions } from '../insert-actions';
 
 /**
@@ -18,6 +19,7 @@ export class VideoProps {
 
   private readonly store = inject(DeckStore);
   private readonly insert = inject(InsertActions);
+  private readonly announcer = inject(LiveAnnouncer);
 
   protected readonly locked = computed(() => this.element().locked === true);
   protected readonly videoSize = computed(() => formatSize(this.store.deck().assets[this.element().assetId]?.size));
@@ -31,7 +33,12 @@ export class VideoProps {
   }
 
   protected removePoster(): void {
-    this.store.execute(new SetProps([this.element().id], { poster: undefined }));
+    try {
+      this.store.execute(new SetProps([this.element().id], { poster: undefined }));
+    } catch (e) {
+      if (!(e instanceof CommandError)) throw e;
+      this.announcer.announce(e.message);
+    }
   }
 }
 

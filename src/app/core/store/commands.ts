@@ -531,6 +531,7 @@ function allowedKeys(element: Element): Set<string> {
   keys.delete('id');
   keys.delete('type');
   keys.delete('rich'); // validated and mirrored into `text` by SetText only
+  if (element.type === 'table') for (const key of ['rows', 'columnWidths', 'cellFills']) keys.delete(key); // the table commands keep these in step
   return keys;
 }
 
