@@ -99,7 +99,7 @@ Any client that starts a stdio server works with the same `command`, `args` and 
 
 ### Tools
 
-Start with `describe_schema` (topic `component-api` before writing a code component), then `create_deck`.
+Agents are pointed to the guide `mcp/guide.md` (workflow, accessibility rules, writing code components, reading errors). The server sends it as the resource `decktech://guide` and as `describe_schema` with topic `guide`, and its instructions tell the agent to read it first. Humans can read the file as well. Then `describe_schema` (topic `component-api` before writing a code component) and `create_deck`.
 
 - Deck: `create_deck`, `open_deck`, `list_decks`, `close_deck`, `get_deck`, `set_deck_metadata`, `export_deck`, `undo`, `redo`
 - Slides: `add_slide`, `duplicate_slide`, `delete_slide`, `move_slide`, `set_layout`, `set_speaker_notes`

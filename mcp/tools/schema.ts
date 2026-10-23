@@ -7,9 +7,18 @@ import {
   STAGE_HEIGHT,
   STAGE_WIDTH,
 } from '../../src/app/core/model';
+import guide from '../guide.md';
 import { defineTool } from '../tool';
 
-const TOPICS = ['overview', 'elements', 'layouts', 'themes', 'component-api', 'limits'] as const;
+const TOPICS = [
+  'guide',
+  'overview',
+  'elements',
+  'layouts',
+  'themes',
+  'component-api',
+  'limits',
+] as const;
 
 const COMPONENT_API = {
   summary:
@@ -45,6 +54,8 @@ export const schemaTools = [
     readOnly: true,
     run(_workspace, { topic }) {
       switch (topic) {
+        case 'guide':
+          return guide;
         case 'overview':
           return {
             stage: {
@@ -60,6 +71,8 @@ export const schemaTools = [
               'export_deck to a .deck file; DeckTech asks the person to review any code before it runs',
             ],
             topics: TOPICS,
+            guide:
+              'Call describe_schema with topic "guide" for the workflow, accessibility rules, how to write code components and how to read errors.',
             elementTypes: Object.keys(ELEMENT_SCHEMAS),
             zOrder:
               'The element order of a slide is stacking order, DOM order and reading order. Later = in front.',

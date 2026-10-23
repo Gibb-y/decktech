@@ -10,7 +10,7 @@
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
     "test:scripts": "node --test scripts/",
-    "build:mcp": "esbuild mcp/main.ts --bundle --platform=node --format=esm --target=node20 --external:playwright --outfile=dist-mcp/decktech-mcp.mjs --banner:js=\"#!/usr/bin/env node\"",
+    "build:mcp": "esbuild mcp/main.ts --bundle --platform=node --format=esm --target=node20 --loader:.md=text --external:playwright --outfile=dist-mcp/decktech-mcp.mjs --banner:js=\"#!/usr/bin/env node\"",
     "test:mcp": "vitest run --config mcp/vitest.config.mts",
     "typecheck:mcp": "tsc --noEmit -p mcp/tsconfig.json"
   },
