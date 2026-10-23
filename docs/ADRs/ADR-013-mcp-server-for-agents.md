@@ -20,7 +20,11 @@ Agents can write code but have no structured way to produce a valid deck; hand-e
 
 ## Not built (follow-up)
 
-`set_reading_order` (the element order is the reading order, `set_z_order` moves elements), tables and video elements (the renderer drew neither when the server was written, so a tool would have created invisible elements; since DT-20 it draws both and the tools can be added, with the table commands of `table-commands.ts`), and `import_deck` as a second name of `open_deck`.
+Sections, slide backgrounds and layout editing, and merging a deck file into an open deck.
+
+## Added later
+
+The renderer drew neither tables nor videos when the server was written, so a tool would have created invisible elements. Since DT-20 it draws both, and the server has `add_table`, `edit_table` (the table commands of `table-commands.ts`, a list of operations as one undo step), `add_video` (MP4 or WebM and an optional poster, read from the workspace folder with the same checks as images; `label` is required and autoplay needs `muted`), `set_reading_order` (the whole order of a slide at once, as `ReorderElements` steps in one undo step) and `import_deck`, which is `open_deck` under a second name. `check_accessibility` also reports videos without a label and tables without a header row.
 
 ## Alternatives considered
 

@@ -8,6 +8,7 @@ import { elementTools } from './tools/elements';
 import { previewTools } from './tools/preview';
 import { schemaTools } from './tools/schema';
 import { slideTools } from './tools/slides';
+import { tableVideoTools } from './tools/table-video';
 import { Workspace, type WorkspaceOptions } from './workspace';
 
 export const TOOLS: readonly ToolDef[] = [
@@ -15,6 +16,7 @@ export const TOOLS: readonly ToolDef[] = [
   ...deckTools,
   ...slideTools,
   ...elementTools,
+  ...tableVideoTools,
   ...componentTools,
   ...previewTools,
 ];

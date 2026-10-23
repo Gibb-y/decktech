@@ -28,6 +28,7 @@ import { contentProblem } from '../../src/app/library/archive/sniff';
 import { resolveInside } from '../paths';
 import { elementOf, elementSummary, slideOf } from '../summary';
 import { ToolError, defineTool } from '../tool';
+import type { DeckSession, Workspace } from '../workspace';
 import { deckId } from './deck';
 
 const slideId = z.string().describe('Id of a slide (see get_deck).');
@@ -72,7 +73,7 @@ const ROLE_TOKENS = {
 } as const;
 
 /** File extensions an agent may use for images; the mime type must be on the deck's allow-list. */
-const IMAGE_MIMES: Readonly<Record<string, string>> = {
+export const IMAGE_MIMES: Readonly<Record<string, string>> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -81,6 +82,47 @@ const IMAGE_MIMES: Readonly<Record<string, string>> = {
   '.avif': 'image/avif',
   '.svg': 'image/svg+xml',
 };
+
+/** Reads a file of the workspace as an asset: checks type, size, content and the per-deck budget. Nothing is stored in the session yet. */
+export async function loadAsset(
+  workspace: Workspace,
+  session: DeckSession,
+  path: string,
+  mimes: Readonly<Record<string, string>>,
+  noun: string,
+  limit = 64 * 1024 * 1024,
+): Promise<{ hash: string; mime: string; bytes: Uint8Array }> {
+  const mime = Object.hasOwn(mimes, extname(path).toLowerCase())
+    ? mimes[extname(path).toLowerCase()]
+    : undefined;
+  if (!mime)
+    throw new ToolError(
+      `"${path}" is not a supported ${noun} type; use ${Object.keys(mimes).join(', ')}`,
+    );
+  const full = resolveInside(workspace.root, path);
+  let size: number;
+  try {
+    size = (await stat(full)).size;
+  } catch {
+    throw new ToolError(`The file "${path}" does not exist`);
+  }
+  if (size > limit) throw new ToolError(`The ${noun} is larger than ${limit / 1024 / 1024} MiB`);
+  const held = [...session.assets.values()].reduce((sum, b) => sum + b.length, 0);
+  if (held + size > MAX_SESSION_ASSET_BYTES)
+    throw new ToolError(
+      `This deck already holds ${Math.round(held / 1024 / 1024)} MiB of files; the limit is ${MAX_SESSION_ASSET_BYTES / 1024 / 1024} MiB`,
+    );
+  const bytes = new Uint8Array(await readFile(full));
+  const problem = contentProblem(bytes, mime);
+  if (problem) throw new ToolError(`"${path}" is not a valid ${mime} file: ${problem}`);
+  if (
+    !DEFAULT_VALIDATION_OPTIONS.allowedMimeTypes.includes(mime) ||
+    !Object.hasOwn(MIME_EXTENSIONS, mime)
+  )
+    throw new ToolError(`Files of type ${mime} are not allowed`);
+  const hash = await sha256Hex(bytes as BufferSource);
+  return { hash, mime, bytes };
+}
 
 function resolvedColor(deck: Deck, value: Color | undefined): string | undefined {
   if (value === undefined) return undefined;
@@ -105,6 +147,18 @@ export function accessibilityProblems(deck: Deck) {
           slideId: slide.id,
           elementId: e.id,
           problem: `${label}: image has no alt text. Use set_alt_text.`,
+        });
+      if (e.type === 'video' && (e.label ?? '').trim() === '')
+        problems.push({
+          slideId: slide.id,
+          elementId: e.id,
+          problem: `${label}: video has no label (its accessible name). Use update_element with label.`,
+        });
+      if (e.type === 'table' && e.header !== true && e.rows.length > 1)
+        problems.push({
+          slideId: slide.id,
+          elementId: e.id,
+          problem: `${label}: table has no header row. Use update_element with header: true if the first row names the columns.`,
         });
       if (e.type === 'text' && e.text.trim() === '')
         problems.push({
@@ -138,6 +192,8 @@ export function accessibilityProblems(deck: Deck) {
   });
   return { problems, notChecked };
 }
+
+export { toColor, given, geometry, slideId, elementId, color };
 
 export const elementTools = [
   defineTool({
@@ -219,36 +275,7 @@ export const elementTools = [
         throw new ToolError('A decorative image has an empty alt text; remove alt or decorative');
       const session = workspace.get(deckId);
       slideOf(session.deck, slideId);
-      const mime = Object.hasOwn(IMAGE_MIMES, extname(path).toLowerCase())
-        ? IMAGE_MIMES[extname(path).toLowerCase()]
-        : undefined;
-      if (!mime)
-        throw new ToolError(
-          `"${path}" is not a supported image type; use ${Object.keys(IMAGE_MIMES).join(', ')}`,
-        );
-      const full = resolveInside(workspace.root, path);
-      let size: number;
-      try {
-        size = (await stat(full)).size;
-      } catch {
-        throw new ToolError(`The file "${path}" does not exist`);
-      }
-      const limit = 64 * 1024 * 1024;
-      if (size > limit) throw new ToolError(`The image is larger than ${limit / 1024 / 1024} MiB`);
-      const held = [...session.assets.values()].reduce((sum, b) => sum + b.length, 0);
-      if (held + size > MAX_SESSION_ASSET_BYTES)
-        throw new ToolError(
-          `This deck already holds ${Math.round(held / 1024 / 1024)} MiB of files; the limit is ${MAX_SESSION_ASSET_BYTES / 1024 / 1024} MiB`,
-        );
-      const bytes = new Uint8Array(await readFile(full));
-      const problem = contentProblem(bytes, mime);
-      if (problem) throw new ToolError(`"${path}" is not a valid ${mime} file: ${problem}`);
-      if (
-        !DEFAULT_VALIDATION_OPTIONS.allowedMimeTypes.includes(mime) ||
-        !Object.hasOwn(MIME_EXTENSIONS, mime)
-      )
-        throw new ToolError(`Images of type ${mime} are not allowed`);
-      const hash = await sha256Hex(bytes as BufferSource);
+      const { hash, mime, bytes } = await loadAsset(workspace, session, path, IMAGE_MIMES, 'image');
       const element = createElement('image', {
         assetId: hash,
         alt: alt.trim(),
@@ -434,6 +461,38 @@ export const elementTools = [
   }),
 
   defineTool({
+    name: 'set_reading_order',
+    title: 'Set reading order',
+    description:
+      'Sets the complete reading order of a slide: elementIds lists every element of the slide exactly once, first read to last. The order is also the stacking order (later = in front) and the tab order. Prefer this over repeated set_z_order calls.',
+    input: z.object({ deckId, slideId, elementIds: z.array(z.string()).max(2000) }),
+    run(workspace, { deckId, slideId, elementIds }) {
+      const session = workspace.get(deckId);
+      const slide = slideOf(session.deck, slideId);
+      const have = new Set(slide.elements.map((e) => e.id));
+      const unknown = elementIds.filter((id) => !have.has(id));
+      if (unknown.length > 0)
+        throw new ToolError(`Not elements of slide "${slideId}": ${unknown.join(', ')}`);
+      const seen = new Set(elementIds);
+      if (seen.size !== elementIds.length) throw new ToolError('elementIds lists an element twice');
+      const missing = slide.elements.filter((e) => !seen.has(e.id)).map((e) => e.id);
+      if (missing.length > 0)
+        throw new ToolError(
+          `elementIds must list every element of the slide; missing: ${missing.join(', ')}`,
+        );
+      // Moving each element to the front in turn leaves them in the given order.
+      const next =
+        elementIds.length === 0
+          ? session.deck
+          : session.apply(
+              'SetReadingOrder',
+              ...elementIds.map((id) => new ReorderElements(slideId, [id], 'front')),
+            );
+      return { slideId, order: slideOf(next, slideId).elements.map((e: Element) => e.id) };
+    },
+  }),
+
+  defineTool({
     name: 'set_alt_text',
     title: 'Set alt text',
     description:
@@ -455,7 +514,7 @@ export const elementTools = [
     name: 'check_accessibility',
     title: 'Check accessibility',
     description:
-      'Lists WCAG AA problems found in the document without rendering it: images without alt text, empty text elements and text whose colour has too little contrast against the slide background. Empty list = nothing found (it does not prove the deck is accessible).',
+      'Lists WCAG AA problems found in the document without rendering it: images without alt text, videos without a label, tables without a header row, empty text elements and text whose colour has too little contrast against the slide background. Empty list = nothing found (it does not prove the deck is accessible).',
     input: z.object({ deckId }),
     readOnly: true,
     run(workspace, { deckId }) {

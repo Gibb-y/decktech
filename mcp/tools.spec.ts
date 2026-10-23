@@ -832,6 +832,237 @@ describe('review fixes', () => {
   });
 });
 
+const MP4 = Uint8Array.from([
+  0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 1, 2, 3,
+]);
+
+describe('tables, videos and reading order', () => {
+  const rows = [
+    ['Name', 'Score'],
+    ['Ada', '10'],
+    ['Bob', '7'],
+  ];
+
+  async function withTable() {
+    const { deckId, firstSlide } = await newDeck();
+    const table = await ok('add_table', { deckId, slideId: firstSlide, rows });
+    return { deckId, firstSlide, id: table.id as string };
+  }
+
+  const tableOf = async (deckId: string, id: string) =>
+    (await ok('get_deck', { deckId, detail: 'full' })).slides[0].elements.find(
+      (e: { id: string }) => e.id === id,
+    );
+
+  it('adds a table with a header row by default and rejects ragged or oversized input', async () => {
+    const { deckId, firstSlide, id } = await withTable();
+    const full = await tableOf(deckId, id);
+    expect(full.header).toBe(true);
+    expect(full.rows).toEqual(rows);
+    expect(
+      (await call('add_table', { deckId, slideId: firstSlide, rows: [['a', 'b'], ['c']] })).error,
+    ).toMatch(/row 1 has 1/);
+    expect(
+      (
+        await call('add_table', {
+          deckId,
+          slideId: firstSlide,
+          rows: [['a']],
+          columnWidths: [1, 2],
+        })
+      ).error,
+    ).toMatch(/needs 1 columnWidths/);
+    expect((await call('add_table', { deckId, slideId: firstSlide, rows: [] })).error).toMatch(
+      /invalid input/,
+    );
+    expect((await call('add_table', { deckId, slideId: 'nope', rows: [['a']] })).error).toMatch(
+      /does not exist/,
+    );
+  });
+
+  it('edits cells, rows, columns, fills and widths as one undo step', async () => {
+    const { deckId, id } = await withTable();
+    const result = await ok('edit_table', {
+      deckId,
+      elementId: id,
+      edits: [
+        { op: 'set_cell', row: 1, col: 1, text: '11' },
+        { op: 'add_row', at: 3 },
+        { op: 'add_column', at: 0 },
+        { op: 'set_cell_fill', row: 0, col: 1, fill: 'accent' },
+        { op: 'set_column_widths', widths: [1, 2, 2] },
+      ],
+    });
+    expect(result).toMatchObject({ rows: 4, columns: 3 });
+    const table = await tableOf(deckId, id);
+    expect(table.rows[1]).toEqual(['', 'Ada', '11']);
+    expect(table.cellFills[0][1]).toEqual({ token: 'accent' });
+    expect(table.columnWidths).toEqual([1, 2, 2]);
+    await ok('undo', { deckId });
+    expect((await tableOf(deckId, id)).rows).toEqual(rows);
+  });
+
+  it('applies none of the edits when one is refused', async () => {
+    const { deckId, id } = await withTable();
+    const r = await call('edit_table', {
+      deckId,
+      elementId: id,
+      edits: [
+        { op: 'set_cell', row: 0, col: 0, text: 'changed' },
+        { op: 'remove_row', at: 9 },
+      ],
+    });
+    expect(r.error).toMatch(/Row 9 is out of range/);
+    expect((await tableOf(deckId, id)).rows).toEqual(rows);
+  });
+
+  it.each([
+    [{ op: 'set_cell', row: 0, col: 5, text: 'x' }, /Column 5 is out of range/],
+    [{ op: 'set_cell', row: -1, col: 0, text: 'x' }, /invalid input/],
+    [{ op: 'add_row', at: 4 }, /Row 4 is out of range/],
+    [{ op: 'set_column_widths', widths: [1] }, /needs 2 widths/],
+    [{ op: 'set_column_widths', widths: [1, 0] }, /invalid input/],
+    [{ op: 'explode' }, /invalid input/],
+  ])('refuses the table edit %j', async (edit, message) => {
+    const { deckId, id } = await withTable();
+    expect((await call('edit_table', { deckId, elementId: id, edits: [edit] })).error).toMatch(
+      message,
+    );
+  });
+
+  it('keeps at least one row and column, and edits only tables', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    const one = await ok('add_table', { deckId, slideId: firstSlide, rows: [['x']] });
+    for (const op of ['remove_row', 'remove_column'])
+      expect(
+        (await call('edit_table', { deckId, elementId: one.id, edits: [{ op, at: 0 }] })).error,
+      ).toMatch(/needs at least one/);
+    const shape = await ok('add_shape', { deckId, slideId: firstSlide });
+    expect(
+      (await call('edit_table', { deckId, elementId: shape.id, edits: [{ op: 'add_row', at: 0 }] }))
+        .error,
+    ).toMatch(/not a table/);
+  });
+
+  it('adds a video with a poster, deduplicates assets and exports it', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    writeFileSync(join(workspace.root, 'clip.mp4'), MP4);
+    writeFileSync(join(workspace.root, 'poster.png'), PNG);
+    const video = await ok('add_video', {
+      deckId,
+      slideId: firstSlide,
+      path: 'clip.mp4',
+      poster: 'poster.png',
+      label: 'Demo of the editor',
+      muted: true,
+      autoplay: true,
+    });
+    await ok('add_video', { deckId, slideId: firstSlide, path: 'clip.mp4', label: 'Same clip' });
+    const deck = await ok('get_deck', { deckId, detail: 'full' });
+    expect(Object.keys(deck.assets)).toHaveLength(2);
+    expect(deck.slides[0].elements[0]).toMatchObject({
+      type: 'video',
+      assetId: video.assetId,
+      label: 'Demo of the editor',
+      muted: true,
+      autoplay: true,
+      loop: false,
+    });
+    await ok('export_deck', { deckId, path: 'v.deck' });
+    const read = await readArchive(new Uint8Array(readFileSync(join(workspace.root, 'v.deck'))));
+    expect(read.ok).toBe(true);
+  });
+
+  it('refuses invalid videos and leaves the deck unchanged', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    writeFileSync(join(workspace.root, 'clip.mp4'), MP4);
+    writeFileSync(join(workspace.root, 'fake.mp4'), 'not a video');
+    writeFileSync(join(workspace.root, 'clip.mov'), MP4);
+    writeFileSync(join(workspace.root, 'fake.png'), 'nope');
+    const base = { deckId, slideId: firstSlide, label: 'x' };
+    expect((await call('add_video', { ...base, path: 'clip.mp4', label: ' ' })).error).toMatch(
+      /invalid input/,
+    );
+    expect((await call('add_video', { ...base, path: 'clip.mp4', autoplay: true })).error).toMatch(
+      /only autoplay muted/,
+    );
+    expect((await call('add_video', { ...base, path: 'fake.mp4' })).error).toMatch(
+      /not a valid video\/mp4/,
+    );
+    expect((await call('add_video', { ...base, path: 'clip.mov' })).error).toMatch(
+      /not a supported video type/,
+    );
+    expect((await call('add_video', { ...base, path: 'missing.mp4' })).error).toMatch(
+      /does not exist/,
+    );
+    expect((await call('add_video', { ...base, path: '../x.mp4' })).error).toMatch(/outside/);
+    expect(
+      (await call('add_video', { ...base, path: 'clip.mp4', poster: 'fake.png' })).error,
+    ).toMatch(/not a valid image\/png/);
+    const deck = await ok('get_deck', { deckId, detail: 'full' });
+    expect(deck.slides[0].elements).toHaveLength(0);
+    expect(Object.keys(deck.assets)).toHaveLength(0);
+  });
+
+  it('sets the complete reading order of a slide in one undo step', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    const [a, b, c] = [
+      await ok('add_shape', { deckId, slideId: firstSlide }),
+      await ok('add_shape', { deckId, slideId: firstSlide }),
+      await ok('add_shape', { deckId, slideId: firstSlide }),
+    ].map((e) => e.id as string);
+    const done = await ok('set_reading_order', {
+      deckId,
+      slideId: firstSlide,
+      elementIds: [c, a, b],
+    });
+    expect(done.order).toEqual([c, a, b]);
+    await ok('undo', { deckId });
+    expect(
+      (await ok('get_deck', { deckId })).slides[0].elements.map((e: { id: string }) => e.id),
+    ).toEqual([a, b, c]);
+  });
+
+  it('refuses an incomplete, duplicated or foreign reading order', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    const a = (await ok('add_shape', { deckId, slideId: firstSlide })).id as string;
+    const b = (await ok('add_shape', { deckId, slideId: firstSlide })).id as string;
+    const run = (elementIds: string[]) =>
+      call('set_reading_order', { deckId, slideId: firstSlide, elementIds });
+    expect((await run([a])).error).toMatch(/missing: /);
+    expect((await run([a, a, b])).error).toMatch(/twice/);
+    expect((await run([a, b, 'el_nope'])).error).toMatch(/Not elements of slide/);
+    expect((await run([])).error).toMatch(/missing: /);
+  });
+
+  it('check_accessibility reports a video without label and a table without header row', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    writeFileSync(join(workspace.root, 'clip.mp4'), MP4);
+    const video = await ok('add_video', {
+      deckId,
+      slideId: firstSlide,
+      path: 'clip.mp4',
+      label: 'Clip',
+    });
+    const table = await ok('add_table', { deckId, slideId: firstSlide, rows, header: false });
+    expect((await ok('check_accessibility', { deckId })).problems).toHaveLength(1);
+    await ok('update_element', { deckId, elementId: video.id, changes: { label: null } });
+    await ok('update_element', { deckId, elementId: table.id, changes: { header: true } });
+    const problems = (await ok('check_accessibility', { deckId })).problems;
+    expect(problems).toHaveLength(1);
+    expect(problems[0].problem).toMatch(/video has no label/);
+  });
+
+  it('import_deck opens a file like open_deck', async () => {
+    const { deckId } = await newDeck('Imported');
+    await ok('export_deck', { deckId, path: 'i.deck' });
+    const outline = await ok('import_deck', { path: 'i.deck' });
+    expect(outline.title).toBe('Imported');
+    expect(outline.deckId).not.toBe(deckId);
+    expect(TOOLS.map((t) => t.name)).toContain('import_deck');
+  });
+});
+
 describe('describe_schema', () => {
   it.each(['overview', 'elements', 'layouts', 'themes', 'component-api', 'limits'])(
     'answers topic %s',
