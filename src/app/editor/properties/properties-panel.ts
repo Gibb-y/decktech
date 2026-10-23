@@ -1,6 +1,6 @@
 import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { FormField, form, validate } from '@angular/forms/signals';
-import { ELEMENT_SCHEMAS, effectiveFontSize, type CodeEl, type Color, type Element, type Fill, type TextEl } from '../../core/model';
+import { ELEMENT_SCHEMAS, effectiveFontSize, type CodeEl, type Color, type Element, type Fill, type TableEl, type TextEl, type VideoEl } from '../../core/model';
 import { CommandError, DeckStore, SetProps, SetSlideBackground, type Command } from '../../core/store';
 import { LiveAnnouncer } from '../../shared';
 import { describeElement } from '../describe';
@@ -13,6 +13,8 @@ import { ColorControl } from './color-control';
 import { BASE_FIELDS, fieldsOf, sectionsOf, typeFields, type FieldDef } from './field-defs';
 import { FillControl } from './fill-control';
 import { EMPTY_VALUES, changesFrom, numberProblem, valuesOf, type PanelValues } from './panel-values';
+import { TableProps } from './table-props';
+import { VideoProps } from './video-props';
 
 /** Every number field of any element type; the form's validators are declared once for all of them. */
 const NUMBER_FIELDS: readonly FieldDef[] = [
@@ -30,7 +32,7 @@ const NUMBER_FIELDS: readonly FieldDef[] = [
  */
 @Component({
   selector: 'app-properties-panel',
-  imports: [ColorControl, FillControl, ReadingOrder, FormField, TextFormat, CodeProps],
+  imports: [ColorControl, FillControl, ReadingOrder, FormField, TextFormat, CodeProps, TableProps, VideoProps],
   templateUrl: './properties-panel.html',
   styleUrl: './properties-panel.css',
 })
@@ -111,6 +113,14 @@ export class PropertiesPanel {
 
   protected codeElement(element: Element): CodeEl | null {
     return element.type === 'code' ? element : null;
+  }
+
+  protected tableElement(element: Element): TableEl | null {
+    return element.type === 'table' ? element : null;
+  }
+
+  protected videoElement(element: Element): VideoEl | null {
+    return element.type === 'video' ? element : null;
   }
 
   protected readonly sizeNames = computed(() => Object.entries(this.theme().typeScale).map(([key, value]) => ({ key, value })));

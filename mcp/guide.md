@@ -101,4 +101,4 @@ Errors are sentences meant for you. Common ones:
 
 ## Not available
 
-Tables and video elements (DeckTech cannot draw them yet), sections, slide backgrounds and layout editing, importing a deck into another deck. Do not fake them with shapes if a code component or text would do better.
+Tables and video elements (DeckTech draws them, but this server has no tools for them yet), sections, slide backgrounds and layout editing, importing a deck into another deck. Do not fake them with shapes if a code component or text would do better.

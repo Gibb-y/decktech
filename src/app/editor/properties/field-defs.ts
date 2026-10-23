@@ -45,6 +45,11 @@ const LABELS: Record<string, string> = {
   alt: 'Alt text',
   fit: 'Fit',
   strokeWidth: 'Stroke width',
+  header: 'Header row',
+  autoplay: 'Play when it appears',
+  loop: 'Loop',
+  muted: 'Muted',
+  label: 'Accessible name',
 };
 
 /** "strokeWidth" → "Stroke width" for fields without an entry in `LABELS`. */
@@ -74,7 +79,7 @@ export const BASE_FIELDS: readonly FieldDef[] = [
   { key: 'locked', label: LABELS['locked'], control: 'checkbox', section: 'arrange', optional: true },
 ];
 
-/** The panel control for one schema field, or `undefined` for kinds that have no inline editor (asset, component, table, props). */
+/** The panel control for one schema field, or `undefined` for kinds that have no inline editor (asset, component, table and its column widths and fills, props). */
 function controlFor(key: string, spec: FieldSpec): FieldDef | undefined {
   const base = { key, label: LABELS[key] ?? humanize(key), section: SECTION_OF[key] ?? 'content' } satisfies Partial<FieldDef>;
   const optional = spec.optional === true;
@@ -97,6 +102,8 @@ function controlFor(key: string, spec: FieldSpec): FieldDef | undefined {
     case 'asset':
     case 'component':
     case 'table':
+    case 'columnWidths':
+    case 'cellFills':
     case 'rich':
     case 'props':
       return undefined;

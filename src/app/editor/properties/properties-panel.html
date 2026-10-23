@@ -111,6 +111,12 @@
     @if (textElement(element); as text) {
       <app-text-format [element]="text" />
     }
+    @if (tableElement(element); as table) {
+      <app-table-props [element]="table" />
+    }
+    @if (videoElement(element); as video) {
+      <app-video-props [element]="video" />
+    }
   } @else if (selected().length > 1) {
     <h2>Properties</h2>
     <p class="note">{{ selected().length }} elements selected. Use the align and arrange tools above the canvas, or select a single element to edit its properties.</p>

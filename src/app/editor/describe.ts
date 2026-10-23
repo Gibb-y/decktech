@@ -21,7 +21,7 @@ export function describeElement(element: Element): string {
     case 'table':
       return 'Table';
     case 'video':
-      return 'Video';
+      return element.label?.trim() ? `Video “${element.label.trim()}”` : 'Video';
     case 'code':
       return 'Code component';
   }

@@ -1,0 +1,41 @@
+<fieldset [disabled]="locked()">
+  <legend>Table cells</legend>
+  <div class="grid" role="group" aria-label="Cells" [style.--columns]="columns()">
+    @for (row of rows(); track $index; let r = $index) {
+      @for (cell of row; track $index; let c = $index) {
+        <input
+          class="input"
+          type="text"
+          [id]="'prop-cell-' + r + '-' + c"
+          [attr.aria-label]="'Row ' + (r + 1) + ', column ' + (c + 1)"
+          [value]="cell"
+          (focus)="focus(r, c)"
+          (input)="setCell(r, c, $event)"
+        />
+      }
+    }
+  </div>
+  <p class="note">Buttons act on {{ activeName() }}.</p>
+  <div class="buttons">
+    <button class="btn" type="button" (click)="addRow()">Add row below</button>
+    <button class="btn" type="button" (click)="removeRow()" [disabled]="rows().length === 1">Remove row</button>
+    <button class="btn" type="button" (click)="addColumn()">Add column after</button>
+    <button class="btn" type="button" (click)="removeColumn()" [disabled]="columns() === 1">Remove column</button>
+  </div>
+  <app-color-control [label]="'Fill of ' + activeName()" [value]="activeFill()" [theme]="theme()" [optional]="true" (changed)="setFill($event)" />
+</fieldset>
+<fieldset [disabled]="locked()">
+  <legend>Column widths</legend>
+  <p class="note">Relative widths: a column of 2 is twice as wide as a column of 1.</p>
+  @for (width of widths(); track $index; let c = $index) {
+    <div class="field">
+      <label [for]="'prop-column-width-' + c">Column {{ c + 1 }}</label>
+      <input class="input" type="number" min="0.1" step="0.1" [id]="'prop-column-width-' + c" [value]="width" (input)="setWidth(c, $event)" />
+    </div>
+  }
+  @if (element().columnWidths) {
+    <div class="buttons">
+      <button class="btn" type="button" (click)="equalWidths()">Equal widths</button>
+    </div>
+  }
+</fieldset>

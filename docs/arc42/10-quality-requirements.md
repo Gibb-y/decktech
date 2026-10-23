@@ -47,7 +47,7 @@ mindmap
 | Q10 | Performance | Advance to the next slide containing code components. | Visible within 100 ms (preloaded). |
 | Q11 | Performance | Open a 200-slide deck. | List shown < 1 s; thumbnails lazily rendered. |
 | Q12 | Portability | Open a deck exported by an older app version. | Migrated automatically, no data loss. |
-| Q13 | Maintainability | Add a new built-in element type. | Touches one renderer and one schema entry; the properties-panel section is generated from the schema entry (a special control, like colour or fill, is the only reason to touch the panel); no changes in core store or history. |
+| Q13 | Maintainability | Add a new built-in element type. | Touches one renderer and one schema entry; the properties-panel section is generated from the schema entry (a special control, like colour or fill, is the only reason to touch the panel); no changes in core store or history. As built for table and video (DT-20): one renderer each, one schema entry each, the panel fields generated from the schema, and `DeckStore` / `History` untouched; they needed more than the minimum because a table is a structure and a video is a file: seven table commands (`table-commands.ts`, a new file in the store folder), a panel part each (`TableProps`, `VideoProps`, for what the generated fields cannot express), a `case` in `SlideRenderer` and two insert items. |
 
 ## 10.3 Measuring Q9 (drag performance)
 

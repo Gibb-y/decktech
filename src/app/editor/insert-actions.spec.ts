@@ -22,7 +22,7 @@ const last = (store: DeckStore): Element => store.currentSlide().elements.at(-1)
 afterEach(() => vi.unstubAllGlobals());
 
 describe('InsertActions.insert', () => {
-  const kinds = INSERT_ITEMS.map((i) => i.kind).filter((k): k is Exclude<InsertKind, 'image'> => k !== 'image');
+  const kinds = INSERT_ITEMS.map((i) => i.kind).filter((k): k is Exclude<InsertKind, 'image' | 'video'> => k !== 'image' && k !== 'video');
 
   it.each(kinds)('%s adds one element to the current slide, selects it and is one undo step', (kind) => {
     const { store, announce, insert } = setup();
@@ -46,6 +46,7 @@ describe('InsertActions.insert', () => {
     ['ellipse', 'shape'],
     ['triangle', 'shape'],
     ['line', 'line'],
+    ['table', 'table'],
     ['code', 'code'],
   ] as const)('%s is a %s element that lies on the stage', (kind, type) => {
     const { store, insert } = setup();
