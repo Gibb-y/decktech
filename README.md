@@ -103,7 +103,7 @@ Start with `describe_schema` (topic `component-api` before writing a code compon
 
 - Deck: `create_deck`, `open_deck`, `list_decks`, `close_deck`, `get_deck`, `set_deck_metadata`, `export_deck`, `undo`, `redo`
 - Slides: `add_slide`, `duplicate_slide`, `delete_slide`, `move_slide`, `set_layout`, `set_speaker_notes`
-- Elements: `add_text`, `set_text`, `add_image`, `add_shape`, `update_element`, `move_element`, `delete_element`, `set_z_order`, `set_alt_text`, `check_accessibility`
+- Elements: `add_text`, `set_text`, `add_image`, `add_shape`, `add_line`, `update_element`, `move_element`, `delete_element`, `set_z_order`, `set_alt_text`, `check_accessibility`
 - Code components: `create_component`, `update_component`, `list_components`, `get_component`, `insert_code_element`, `update_code_element_props`, `detach_component`, `validate_component`, `save_to_library`, `import_from_library`
 
 - Previews (off by default): `render_preview`, and `validate_component` with `run: true`

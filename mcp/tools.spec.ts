@@ -244,6 +244,62 @@ describe('elements', () => {
     );
   });
 
+  it('adds lines between two points as a rotated horizontal box', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    const diagonal = await ok('add_line', {
+      deckId,
+      slideId: firstSlide,
+      x1: 100,
+      y1: 100,
+      x2: 400,
+      y2: 500,
+      stroke: 'accent',
+      strokeWidth: 6,
+    });
+    const horizontal = await ok('add_line', {
+      deckId,
+      slideId: firstSlide,
+      x1: 500,
+      y1: 300,
+      x2: 100,
+      y2: 300,
+      stroke: '#00ff00',
+    });
+    const els = (await ok('get_deck', { deckId, detail: 'full' })).slides[0].elements;
+    expect(els[0]).toMatchObject({
+      id: diagonal.id,
+      type: 'line',
+      w: 500,
+      h: 0,
+      strokeWidth: 6,
+      stroke: { token: 'accent' },
+    });
+    expect(els[0].rotation).toBeCloseTo(53.13, 1);
+    // The centre of the box is the middle of the two points, so the rotated line ends where asked.
+    expect(els[0].x + els[0].w / 2).toBeCloseTo(250);
+    expect(els[0].y).toBeCloseTo(300);
+    expect(els[1]).toMatchObject({ id: horizontal.id, rotation: 180, stroke: '#00ff00' });
+    expect(
+      (await call('add_line', { deckId, slideId: firstSlide, x1: 5, y1: 5, x2: 5, y2: 5 })).error,
+    ).toMatch(/no length/);
+    expect(
+      (
+        await call('add_line', {
+          deckId,
+          slideId: firstSlide,
+          x1: 0,
+          y1: 0,
+          x2: 1,
+          y2: 1,
+          stroke: 'nope!',
+        })
+      ).error,
+    ).toMatch(/invalid|not applied/i);
+    expect(
+      (await call('add_line', { deckId, slideId: 'x', x1: 0, y1: 0, x2: 1, y2: 1 })).error,
+    ).toMatch(/does not exist/);
+  });
+
   it('embeds images from the workspace, deduplicates them and requires alt text', async () => {
     const { deckId, firstSlide } = await newDeck();
     writeFileSync(join(workspace.root, 'pic.png'), PNG);

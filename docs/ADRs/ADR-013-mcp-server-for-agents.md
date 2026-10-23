@@ -20,7 +20,7 @@ Agents can write code but have no structured way to produce a valid deck; hand-e
 
 ## Not built (follow-up)
 
-`set_reading_order` (the element order is the reading order, `set_z_order` moves elements), tables, video and line elements, and `import_deck` as a second name of `open_deck`.
+`set_reading_order` (the element order is the reading order, `set_z_order` moves elements), tables and video elements (DeckTech's renderer has no view for them yet, so a tool would create invisible elements; they wait for the renderer), and `import_deck` as a second name of `open_deck`.
 
 ## Alternatives considered
 

@@ -304,6 +304,41 @@ export const elementTools = [
   }),
 
   defineTool({
+    name: 'add_line',
+    title: 'Add line',
+    description:
+      'Adds a straight line from (x1, y1) to (x2, y2) on the 1920x1080 stage. It is stored as a horizontal box of the line length, rotated about its centre. stroke is a theme colour token or a CSS colour (default: the theme text colour). A line is decoration: it has no alt text and screen readers skip it.',
+    input: z.object({
+      deckId,
+      slideId,
+      x1: z.number(),
+      y1: z.number(),
+      x2: z.number(),
+      y2: z.number(),
+      stroke: color.optional(),
+      strokeWidth: z.number().min(0).max(1000).optional(),
+    }),
+    run(workspace, { deckId, slideId, x1, y1, x2, y2, stroke, strokeWidth }) {
+      const session = workspace.get(deckId);
+      const { deck } = session;
+      slideOf(deck, slideId);
+      const length = Math.hypot(x2 - x1, y2 - y1);
+      if (length === 0) throw new ToolError('The line has no length: give two different points');
+      const element = createElement('line', {
+        x: (x1 + x2) / 2 - length / 2,
+        y: (y1 + y2) / 2,
+        w: length,
+        h: 0,
+        rotation: (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI,
+        ...(stroke !== undefined ? { stroke: toColor(deck, stroke) } : {}),
+        ...given({ strokeWidth }),
+      });
+      const next = session.apply('AddLine', new AddElement(slideId, element));
+      return elementSummary(elementOf(next, element.id).element);
+    },
+  }),
+
+  defineTool({
     name: 'update_element',
     title: 'Update element properties',
     description:
