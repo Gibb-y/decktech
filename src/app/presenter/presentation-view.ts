@@ -1,9 +1,9 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { DOCUMENT, Location } from '@angular/common';
 import { Router } from '@angular/router';
 import type { Deck, Layout, Slide, Transition } from '../core/model';
-import { ALL_STEPS, CodeHostEvents, SlideRenderer } from '../renderer';
-import { slidesToMount } from './preloader';
+import { ALL_STEPS, CodeHostEvents, PRELOAD_DISTANCE, SlideRenderer } from '../renderer';
+import { assignSlots, slidesToMount } from './preloader';
 import { PresenterSync, type SyncConnection } from './presenter-view/presenter-sync';
 import { PresenterTimer } from './presenter-view/presenter-timer';
 import type { SyncMessage } from './presenter-view/sync-protocol';
@@ -21,12 +21,16 @@ const WINDOW_OPEN_GRACE_MS = 2000;
 const transitionMs = (transition: Transition | undefined): number =>
   transition && transition.type !== 'none' && transition.durationMs > 0 ? Math.min(transition.durationMs, MAX_TRANSITION_MS) : 0;
 
+/** The shown slide, a code neighbour on each side within `PRELOAD_DISTANCE`, and one that is leaving. */
+const LAYER_PLACES = 2 * PRELOAD_DISTANCE + 2;
+
 export const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', 'Enter', ' ']);
 export const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace']);
 
 interface Layer {
   slide: Slide;
-  layout: Layout | undefined;
+  /** Position of the slide in the deck; the layers are stacked by it (CSS `order`), not by their place in the DOM. */
+  index: number;  layout: Layout | undefined;
   current: boolean;
   leaving: boolean;
   /** Steps to draw: the shown slide as stepped to, the next as it starts, an earlier one complete. */
@@ -89,7 +93,7 @@ export class PresentationView {
   private readonly deckId = computed(() => this.deck().id);
   protected readonly ratio = computed(() => this.deck().stage.width / this.deck().stage.height);
 
-  protected readonly layers = computed<Layer[]>(() => {
+  private readonly wantedLayers = computed<Layer[]>(() => {
     const deck = this.deck();
     const current = this.engine.slide();
     const mounted = slidesToMount(deck.slides, current);
@@ -104,6 +108,7 @@ export class PresentationView {
       const isCurrent = index === current;
       return {
         slide,
+        index,
         layout: deck.layouts.find((layout) => layout.id === slide.layoutId),
         current: isCurrent,
         leaving: !isCurrent && slide.id === leavingId,
@@ -112,6 +117,16 @@ export class PresentationView {
         transition: isCurrent && animate && slide.transition && slide.transition.type !== 'none' ? slide.transition.type : null,
       };
     });
+  });
+
+  /**
+   * The layers in a fixed pool of places. A slide keeps its place while it is in the page: a layer
+   * that the `@for` moves is reloaded by the browser, and a code component's frame with it (it would
+   * report that it navigated away). `Layer.index` stacks the layers instead of their DOM order.
+   */
+  protected readonly layers = linkedSignal<Layer[], (Layer | null)[]>({
+    source: this.wantedLayers,
+    computation: (next, previous) => assignSlots(next, previous?.value ?? [], LAYER_PLACES, (layer) => layer.slide.id),
   });
 
   /** Length of the transition of the slide shown, as a CSS time. */

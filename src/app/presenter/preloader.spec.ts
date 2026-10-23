@@ -1,6 +1,6 @@
 import { createElement, createSlide, type Slide } from '../core/model';
 import { PRELOAD_DISTANCE } from '../renderer';
-import { hasCode, slidesToMount } from './preloader';
+import { assignSlots, hasCode, slidesToMount } from './preloader';
 
 const plain = (): Slide => createSlide('layout');
 const withCode = (hidden?: boolean): Slide => ({ ...createSlide('layout'), elements: [createElement('code', { hidden })] });
@@ -41,5 +41,34 @@ describe('slidesToMount', () => {
     const slides = [withCode(), withCode()];
     expect(slidesToMount([], 0)).toEqual([]);
     expect(slidesToMount(slides, 9)).toEqual([]);
+  });
+});
+
+describe('assignSlots', () => {
+  const key = (item: string) => item;
+
+  it('puts new items into the first free places', () => {
+    expect(assignSlots(['a', 'b'], [], 4, key)).toEqual(['a', 'b', null, null]);
+  });
+
+  it('keeps an item in its place when others come and go (no node moves)', () => {
+    const first = assignSlots(['a', 'b'], [], 4, key);
+    expect(assignSlots(['b', 'c'], first, 4, key)).toEqual(['c', 'b', null, null]);
+    expect(assignSlots(['b', 'c', 'd'], ['c', 'b', null, null], 4, key)).toEqual(['c', 'b', 'd', null]);
+  });
+
+  it('hands the place of a leaving item to a new one', () => {
+    expect(assignSlots(['b', 'c'], ['a', 'b', null], 3, key)).toEqual(['c', 'b', null]);
+  });
+
+  it('uses the newest value of an item it keeps', () => {
+    const before = { id: 'a', n: 1 };
+    const after = { id: 'a', n: 2 };
+    expect(assignSlots([after], [before], 2, (item) => item.id)[0]).toBe(after);
+  });
+
+  it('drops what does not fit and never changes the size', () => {
+    expect(assignSlots(['a', 'b', 'c'], [], 2, key)).toEqual(['a', 'b']);
+    expect(assignSlots([], ['a', 'b'], 2, key)).toEqual([null, null]);
   });
 });

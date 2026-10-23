@@ -7,27 +7,30 @@
   (pointerdown)="onPointerDown($event)"
   (pointerup)="onPointerUp($event)"
 >
-  @for (layer of layers(); track layer.slide.id) {
-    <div
-      class="layer"
-      [class.current]="layer.current"
-      [class.leaving]="layer.leaving"
-      [attr.data-transition]="layer.transition"
-      [attr.aria-hidden]="layer.current ? null : 'true'"
-      [attr.inert]="layer.current ? null : ''"
-    >
-      <app-slide-renderer
-        mode="present"
-        [slide]="layer.slide"
-        [theme]="deck().theme"
-        [layout]="layer.layout"
-        [stage]="deck().stage"
-        [step]="layer.step"
-        [components]="deck().components"
-        [deckId]="deck().id"
-        [distance]="layer.distance"
-      />
-    </div>
+  @for (layer of layers(); track $index) {
+    @if (layer; as layer) {
+      <div
+        class="layer"
+        [style.order]="layer.index"
+        [class.current]="layer.current"
+        [class.leaving]="layer.leaving"
+        [attr.data-transition]="layer.transition"
+        [attr.aria-hidden]="layer.current ? null : 'true'"
+        [attr.inert]="layer.current ? null : ''"
+      >
+        <app-slide-renderer
+          mode="present"
+          [slide]="layer.slide"
+          [theme]="deck().theme"
+          [layout]="layer.layout"
+          [stage]="deck().stage"
+          [step]="layer.step"
+          [components]="deck().components"
+          [deckId]="deck().id"
+          [distance]="layer.distance"
+        />
+      </div>
+    }
   }
 </div>
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement() }}</div>
