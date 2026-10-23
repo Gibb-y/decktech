@@ -18,6 +18,7 @@ import {
   type ComponentSettings,
 } from '../../src/app/core/store/component-commands';
 import { deepEqual, type Command } from '../../src/app/core/store/command';
+import { isLibraryName } from '../../src/app/components/editor/vendor';
 import { checkComponentDef } from '../component-check';
 import { importProblems, resolveSpecifiers, specifierNames } from '../libraries';
 import type { DeckSession } from '../workspace';
@@ -137,6 +138,22 @@ function resolveLibs(session: DeckSession, entries: readonly string[]): string[]
 const withResolvedImports = (session: DeckSession, js: string, libs: readonly string[]) =>
   resolveSpecifiers(js, specifierNames(session, libs).names).js;
 
+/** A library that imports another vendored library (react-dom on react) needs that one attached too, or the import map cannot resolve it. */
+function peerProblems(session: DeckSession, def: ComponentDef): string[] {
+  const problems: string[] = [];
+  for (const id of def.libs) {
+    const bytes = session.assets.get(id);
+    if (!bytes) continue;
+    const text = new TextDecoder().decode(bytes);
+    for (const m of new Set(text.match(/(?<=["'])[0-9a-f]{64}(?=["'])/g) ?? [])) {
+      if (m === id || def.libs.includes(m) || !Object.hasOwn(session.deck.assets, m)) continue;
+      const name = (id2: string) => session.libraries.get(id2)?.label ?? `${id2.slice(0, 12)}…`;
+      problems.push(`The library ${name(id)} imports ${name(m)}, which is not in this component's libs, so the sandbox cannot load it; add ${name(m)} to libs.`);
+    }
+  }
+  return problems;
+}
+
 /**
  * Refuses a definition whose script does not parse or that is structurally invalid, with every
  * reason at once. Warnings include scripts that import something the sandbox cannot resolve.
@@ -148,7 +165,7 @@ function assertValid(session: DeckSession, def: ComponentDef, incoming: Iterable
     throw new ToolError(
       `The component is not valid and was not saved:\n- ${check.errors.join('\n- ')}`,
     );
-  return [...check.warnings, ...importProblems(def, session, assetIds)];
+  return [...check.warnings, ...importProblems(def, session, assetIds), ...peerProblems(session, def)];
 }
 
 export const componentTools = [
@@ -503,7 +520,7 @@ export const componentTools = [
         if (Object.hasOwn(session.deck.assets, id) && bytes)
           held.set(id, { ref: session.deck.assets[id], bytes });
       }
-      const entry = await workspace.library.save(def, held);
+      const entry = await workspace.library.save(def, held, session.libraries);
       return {
         id: entry.def.id,
         name: entry.def.name,
@@ -547,6 +564,12 @@ export const componentTools = [
       const warnings = assertValid(session, def, incoming.keys());
       const next = session.apply('ImportComponent', ...adds, new AddComponent(def));
       for (const [id, bytes] of incoming) session.assets.set(id, bytes);
+      // The names come from a file anyone can edit: keep only well-formed ones for libraries of this component.
+      for (const id of def.libs) {
+        const lib = Object.hasOwn(entry.names ?? {}, id) ? entry.names![id] : undefined;
+        if (lib && typeof lib.name === 'string' && typeof lib.label === 'string' && lib.label.length <= 300 && isLibraryName(lib.name) && !session.libraries.has(id))
+          session.libraries.set(id, { name: lib.name, label: lib.label });
+      }
       return { ...summaryOf(next, def, session), warnings };
     },
   }),

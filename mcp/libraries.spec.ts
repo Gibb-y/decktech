@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MAX_LIBRARY_BYTES } from '../src/app/components/editor/vendor';
@@ -258,6 +258,16 @@ describe('attaching libraries to components', () => {
     expect(cleared.warnings.join('\n')).toMatch(/imports "[0-9a-f]{64}", an asset of the deck that is not in this component's libs/);
   });
 
+  it('warns when a library imports another vendored library that is not attached', async () => {
+    const { deckId, react, dom } = await reactDeck();
+    const only = await ok('create_component', { deckId, name: 'A', libs: ['react-dom/client'] });
+    expect(only.warnings.join(' ')).toMatch(/react-dom\/client@1\.0\.0 imports react@1\.0\.0, which is not in this component's libs/);
+    const both = await ok('create_component', { deckId, name: 'B', libs: ['react-dom/client', 'react'] });
+    expect(both.warnings).toEqual([]);
+    void react;
+    void dom;
+  });
+
   it('is one undo step and a refused update changes nothing', async () => {
     const { deckId, react } = await reactDeck();
     const made = await ok('create_component', { deckId, name: 'A' });
@@ -327,11 +337,32 @@ describe('the component library keeps libraries with the component', () => {
     expect(readdirSync(join(dir, 'work', '.decktech', 'library', 'assets'))).toEqual([react]);
     const other = await newDeck();
     const imported = await ok('import_from_library', { deckId: other, libraryId: id });
-    expect(imported.libs).toEqual([{ assetId: react, bytes: MINI_REACT.length }]);
+    expect(imported.libs).toEqual([{ assetId: react, name: 'react', label: 'react@1.0.0', bytes: MINI_REACT.length }]);
     expect(imported.warnings).toEqual([]);
     const session = workspace.get(other);
     expect(session.deck.assets[react]).toMatchObject({ mime: 'text/javascript' });
     expect(new TextDecoder().decode(session.assets.get(react))).toBe(MINI_REACT);
+  });
+
+  it('remembers the names of the libraries, so an imported component can be edited by name', async () => {
+    const { id, react } = await savedComponent();
+    const other = await newDeck();
+    await ok('import_from_library', { deckId: other, libraryId: id });
+    const [component] = await ok('list_components', { deckId: other });
+    expect(component.libs).toEqual([{ assetId: react, name: 'react', label: 'react@1.0.0', bytes: MINI_REACT.length }]);
+    const updated = await ok('update_component', { deckId: other, componentId: id, libs: ['react'] });
+    expect(updated.libs).toHaveLength(1);
+  });
+
+  it('ignores malformed names in a library file', async () => {
+    const { id, react } = await savedComponent();
+    const file = join(dir, 'work', '.decktech', 'library', `${id}.json`);
+    const entry = JSON.parse(readFileSync(file, 'utf8'));
+    entry.names = { [react]: { name: '../evil', label: 'x' } };
+    writeFileSync(file, JSON.stringify(entry));
+    const other = await newDeck();
+    await ok('import_from_library', { deckId: other, libraryId: id });
+    expect(workspace.get(other).libraries.size).toBe(0);
   });
 
   it('importing twice adds the component and asset once', async () => {

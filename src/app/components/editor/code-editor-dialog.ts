@@ -400,7 +400,13 @@ export class CodeEditorDialog implements OnInit {
   /** The libraries of this component by package name (`react` for `react@19.3.1`), so a new one that builds on another imports that copy. */
   private peers(): ReadonlyMap<string, string> {
     const labels = this.libLabels();
-    return new Map(this.libs().flatMap((id) => (labels[id] === undefined ? [] : [[labels[id].slice(0, labels[id].lastIndexOf('@')), id] as const])));
+    return new Map(
+      this.libs().flatMap((id) => {
+        const at = labels[id]?.lastIndexOf('@') ?? -1;
+        // Only labels of the form name@version are packages; a file's label has no version to cut off.
+        return at > 0 ? [[labels[id].slice(0, at), id] as const] : [];
+      }),
+    );
   }
 
   private async vendor(blob: Blob, label: string): Promise<void> {
