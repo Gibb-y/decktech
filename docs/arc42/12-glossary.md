@@ -21,7 +21,7 @@
 | Primitive | A shared piece of the app chrome in `src/ui.css` and `app/shared/` (button, input, tab, dialog shell, notice, icon, tooltip) that screens use instead of styling their own (8.11). |
 | MCP server | The program in `mcp/` that lets an AI agent build decks through tools (Model Context Protocol over stdio); it works on `.deck` files and never runs component code (ADR-013). |
 | Workspace folder | The folder an MCP server may read from and write to (`DECKTECH_WORKSPACE`). |
-| Vendored library | A JavaScript module stored as an asset of the deck, listed in a definition's `libs` and imported by its asset id through the frame's import map, so the component works offline. |
+| Vendored library | A JavaScript module stored as an asset of the deck, listed in a definition's `libs` and imported by its asset id through the frame's import map, so the component works offline. The MCP server lets an agent write the package name; it stores the id when it saves the script. |
 | Prop / property schema | Typed, declared inputs of a code component; generates its form in the properties panel. |
 | Host | The DeckTech Angular application, as opposed to the sandboxed frame. |
 | Sandbox | An `<iframe sandbox="allow-scripts">` with an opaque origin and restrictive CSP. |

@@ -53,7 +53,7 @@ Run `check_accessibility` before exporting. It reports images without alt text, 
 A code component is a small web page (HTML, CSS, a JavaScript ES module) that runs in a sandboxed frame on the slide: charts, diagrams, animations, interactive demos. The **definition** is shared; each **instance** on a slide has its own `props`.
 
 1. Read `describe_schema` with topic `component-api`. In the script, everything starts in `deck.ready(({ props, theme, mode }) => { ... })`. There is no network, no `localStorage`, no inline `<script>`.
-2. `create_component` with `name`, `html`, `css`, `js`, `propSchema` (the settings a person can change) and `permissions` (leave empty unless needed; each one is flagged to whoever opens the deck).
+2. `create_component` with `name`, `html`, `css`, `js`, `propSchema` (the settings a person can change) and `permissions` (leave empty unless needed; each one is flagged to whoever opens the deck), and `libs` (vendored libraries, see Libraries below).
 3. `insert_code_element` with `slideId`, `componentId`, optional `props` and a position/size. Props are checked against the schema: unknown keys and values of the wrong type or range are refused with the prop's label.
 4. `update_code_element_props` changes one instance. `update_component` changes the shared definition and **all instances with it**; the result says how many instances share it and on which slides. To change just one, `detach_component` it first (it gets its own copy).
 5. Reuse across decks: `save_to_library`, then `import_from_library` in the other deck.
@@ -74,6 +74,33 @@ Create it with `create_component` (add `deckId`):
   "permissions": []
 }
 ```
+
+### Libraries (React, charts, ...)
+
+A component can use a JavaScript library, stored **inside the deck** so it works offline. The sandbox has no network, so you vendor the library first, with a tool, and never edit the `.deck` file.
+
+1. `add_library_from_package` with `package` and an exact `version` (downloads a bundled build from esm.sh, at most 5 MiB; needs a connection) or `add_library_from_file` for a `.js` / `.mjs` file in the workspace folder. Both return the `assetId` and the `name` to import it by. The same content is stored once.
+2. Attach it: `libs: ["react"]` on `create_component` / `update_component` (names from step 1, or asset ids). `get_component` and `list_components` show the attached libraries.
+3. In the script import it **by that name**: `import React from "react"`. The sandbox only resolves asset ids, so the server replaces the name by the id when it saves the script; what `get_component` returns therefore holds ids. Names are matched exactly (`react-dom/client`), or with the version (`react@19.3.1`). Imports of anything else (a URL, a relative path, a package you did not attach) cannot load; `validate_component` and `render_preview` list them as warnings / `libraryProblems`.
+4. A library that builds on another must be added **after** it: `react-dom/client` imports `react`, and when `react` is already in the deck that import is pointed at it, so both share one copy. Two copies of React give "invalid hook call". Add `react` first, then `react-dom/client`, and attach both. A library whose imports cannot be resolved this way is refused.
+
+There is no build step: no JSX and no TypeScript. Use `React.createElement` (or vendor a template library). Start the app inside `deck.ready`:
+
+```js
+import React from "react";
+import { createRoot } from "react-dom/client";
+
+deck.ready(({ props }) => {
+  const h = React.createElement;
+  function Counter() {
+    const [n, setN] = React.useState(props.start);
+    return h("button", { onClick: () => setN(n + 1) }, "Clicked " + n);
+  }
+  createRoot(document.getElementById("app")).render(h(Counter));
+});
+```
+
+with `html` `<div id="app"></div>`, `libs: ["react", "react-dom/client"]` and a `start` number prop. Check it with `validate_component` (`run: true`) before inserting it. `save_to_library` keeps a component's libraries with it and `import_from_library` brings them back. Libraries are code like the rest: the trust dialog lists them for whoever opens the deck, so mention them in your reply.
 
 ### Checking a component
 
