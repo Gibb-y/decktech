@@ -43,3 +43,5 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 /dist-mcp
+# Decks the project MCP server (.mcp.json) works on
+/decks

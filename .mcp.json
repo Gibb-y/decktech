@@ -2,7 +2,20 @@
   "mcpServers": {
     "angular-cli": {
       "command": "npx",
-      "args": ["-y", "@angular/cli", "mcp"]
+      "args": [
+        "-y",
+        "@angular/cli",
+        "mcp"
+      ]
+    },
+    "decktech": {
+      "command": "node",
+      "args": [
+        "dist-mcp/decktech-mcp.mjs"
+      ],
+      "env": {
+        "DECKTECH_WORKSPACE": "decks"
+      }
     }
   }
 }
