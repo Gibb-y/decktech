@@ -91,6 +91,8 @@ export async function loadAsset(
   mimes: Readonly<Record<string, string>>,
   noun: string,
   limit = 64 * 1024 * 1024,
+  /** Bytes of files loaded earlier in the same call, which count against the deck budget too. */
+  alreadyLoaded = 0,
 ): Promise<{ hash: string; mime: string; bytes: Uint8Array }> {
   const mime = Object.hasOwn(mimes, extname(path).toLowerCase())
     ? mimes[extname(path).toLowerCase()]
@@ -108,7 +110,7 @@ export async function loadAsset(
   }
   if (size > limit) throw new ToolError(`The ${noun} is larger than ${limit / 1024 / 1024} MiB`);
   const held = [...session.assets.values()].reduce((sum, b) => sum + b.length, 0);
-  if (held + size > MAX_SESSION_ASSET_BYTES)
+  if (held + alreadyLoaded + size > MAX_SESSION_ASSET_BYTES)
     throw new ToolError(
       `This deck already holds ${Math.round(held / 1024 / 1024)} MiB of files; the limit is ${MAX_SESSION_ASSET_BYTES / 1024 / 1024} MiB`,
     );

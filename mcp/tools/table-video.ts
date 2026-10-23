@@ -103,11 +103,11 @@ export const tableVideoTools = [
       deckId,
       slideId,
       rows: z
-        .array(z.array(z.string().max(10_000)).min(1).max(1000))
+        .array(z.array(z.string().max(2000)).min(1).max(50))
         .min(1)
-        .max(1000),
+        .max(200),
       header: z.boolean().default(true),
-      columnWidths: z.array(z.number().positive()).max(1000).optional(),
+      columnWidths: z.array(z.number().positive()).max(50).optional(),
       ...geometry,
     }),
     run(workspace, { deckId, slideId, rows, header, columnWidths, x, y, w, h }) {
@@ -198,7 +198,15 @@ export const tableVideoTools = [
         MAX_VIDEO_BYTES,
       );
       const picture = poster
-        ? await loadAsset(workspace, session, poster, IMAGE_MIMES, 'poster')
+        ? await loadAsset(
+            workspace,
+            session,
+            poster,
+            IMAGE_MIMES,
+            'poster',
+            undefined,
+            video.bytes.length,
+          )
         : undefined;
       const files = [video, ...(picture ? [picture] : [])];
       const commands: Command[] = [];
