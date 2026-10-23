@@ -17,8 +17,6 @@ export class DeckSession {
   constructor(
     private current: Deck,
     readonly assets: Map<string, Uint8Array> = new Map(),
-    /** The deck came from a file: it may carry code nobody has reviewed (ADR-008). */
-    readonly imported = false,
   ) {}
 
   get deck(): Deck {
@@ -101,12 +99,12 @@ export class Workspace {
   }
 
   /** Registers a deck. A taken deck id is replaced by a new one: opening never replaces an open deck. */
-  add(deck: Deck, assets?: Map<string, Uint8Array>, imported = false): { session: DeckSession; deck: Deck } {
+  add(deck: Deck, assets?: Map<string, Uint8Array>): { session: DeckSession; deck: Deck } {
     if (this.sessions.size >= MAX_OPEN_DECKS) {
       throw new ToolError(`${MAX_OPEN_DECKS} decks are open already; close one with close_deck first`);
     }
     const stored = this.sessions.has(deck.id) ? { ...deck, id: generateId('deck') } : deck;
-    const session = new DeckSession(stored, assets, imported);
+    const session = new DeckSession(stored, assets);
     this.sessions.set(stored.id, session);
     return { session, deck: stored };
   }

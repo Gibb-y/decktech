@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { ToolError } from './tool';
 
@@ -22,6 +22,10 @@ export function resolveInside(root: string, path: string): string {
   const base = realpathSync(root);
   const full = resolve(base, path);
   // A file that does not exist yet is judged by where its nearest existing folder really is.
+  // A link whose target is missing looks absent to existsSync but would be followed by a write.
+  if (!existsSync(full) && lstatSync(full, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    throw new ToolError(`"${path}" is a link that points nowhere; choose a path that is not a link`);
+  }
   const ancestor = existingAncestor(full);
   const real = resolve(realpathSync(ancestor), relative(ancestor, full));
   const rel = relative(base, real);

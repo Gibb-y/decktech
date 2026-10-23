@@ -407,6 +407,52 @@ describe('files: export, open, trust and path safety', () => {
   });
 });
 
+describe('review fixes', () => {
+  it('add_slide without a layout uses the Blank layout even when it is not the first one', async () => {
+    const { deckId } = await newDeck();
+    const deck = workspace.get(deckId);
+    const reordered = { ...deck.deck, layouts: [...deck.deck.layouts].reverse() };
+    const other = workspace.add(reordered).session;
+    const added = await ok('add_slide', { deckId: other.deck.id });
+    expect(added.layoutId).toBe('ly_blank');
+  });
+
+  it('validate_component checks a revision of a stored component and rejects a stray deckId', async () => {
+    const { deckId } = await newDeck();
+    const { id } = await ok('create_component', { deckId, ...COUNTER });
+    const revised = await ok('validate_component', { deckId, componentId: id, js: 'let let =' });
+    expect(revised.valid).toBe(false);
+    expect((await ok('get_component', { deckId, componentId: id })).js).toBe(COUNTER.js);
+    expect((await call('validate_component', { deckId, js: 'x' })).error).toMatch(/only used together with componentId/);
+  });
+
+  it('does not warn about ordinary property chains or visible text', async () => {
+    const { warnings } = await ok('validate_component', { html: '<p>Turn on = "yes"</p>', js: 'deck.ready(() => { node.parent.x = layout.top.px; });' });
+    expect(warnings.join(' ')).not.toMatch(/Inline event attributes|parent\/top/);
+  });
+
+  it('refuses a dangling link inside the workspace instead of writing through it', async () => {
+    const { deckId } = await newDeck();
+    try {
+      symlinkSync(join(dir, 'nowhere.deck'), join(workspace.root, 'out.deck'), 'file');
+    } catch {
+      return;
+    }
+    expect((await call('export_deck', { deckId, path: 'out.deck' })).error).toMatch(/points nowhere/);
+  });
+
+  it('reports contrast it could not check', async () => {
+    const { deckId, firstSlide } = await newDeck();
+    await ok('add_text', { deckId, slideId: firstSlide, text: 'hi', color: 'var(--x)' }).catch(() => undefined);
+    const text = await ok('add_text', { deckId, slideId: firstSlide, text: 'hi' });
+    await ok('update_element', { deckId, elementId: text.id, changes: { color: 'rebeccapurple' } });
+    const session = workspace.get(deckId);
+    session.apply('bg', new (await import('../src/app/core/store/commands')).SetSlideBackground(firstSlide, { kind: 'gradient', angle: 0, stops: [{ offset: 0, color: '#000' }, { offset: 1, color: '#fff' }] }));
+    const result = await ok('check_accessibility', { deckId });
+    expect(result.notChecked[0]).toMatch(/was not checked/);
+  });
+});
+
 describe('describe_schema', () => {
   it.each(['overview', 'elements', 'layouts', 'themes', 'component-api', 'limits'])('answers topic %s', async (topic) => {
     expect(await ok('describe_schema', { topic })).toBeTruthy();

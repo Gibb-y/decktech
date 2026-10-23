@@ -22,7 +22,7 @@ export const slideTools = [
     run(workspace, { deckId, layoutId, index, notes }) {
       const session = workspace.get(deckId);
       const { deck } = session;
-      const layout = layoutId === undefined ? deck.layouts[0] : deck.layouts.find((l) => l.id === layoutId);
+      const layout = layoutId === undefined ? (deck.layouts.find((l) => l.id === 'ly_blank') ?? deck.layouts[0]) : deck.layouts.find((l) => l.id === layoutId);
       if (!layout) throw new ToolError(`Layout "${layoutId}" does not exist. Layouts: ${deck.layouts.map((l) => `${l.id} (${l.name})`).join(', ')}`);
       const slide = { ...instantiateLayout(createSlide(layout.id), layout, deck.theme), ...(notes ? { notes } : {}) };
       const next = session.apply('AddSlide', new AddSlide(slide, index));

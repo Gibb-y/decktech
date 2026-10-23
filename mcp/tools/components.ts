@@ -252,8 +252,12 @@ export const componentTools = [
       if (componentId !== undefined) {
         if (deckId === undefined) throw new ToolError('Give the deckId that contains the component');
         const { deck } = workspace.get(deckId);
-        return checkComponentDef(definitionOf(deck, componentId), Object.keys(deck.assets));
+        // Inline fields replace the stored ones, so a revision can be checked before update_component.
+        const stored = definitionOf(deck, componentId);
+        const revised: ComponentDef = { ...stored, ...given({ html, css, js, propSchema: propSchema as PropSpec[] | undefined, permissions }) };
+        return checkComponentDef(revised, Object.keys(deck.assets));
       }
+      if (deckId !== undefined) throw new ToolError('deckId is only used together with componentId; remove it to check inline sources');
       if (html === undefined && css === undefined && js === undefined) throw new ToolError('Give deckId + componentId, or at least one of html, css, js');
       const def: ComponentDef = {
         id: 'cp_inline',
@@ -273,7 +277,7 @@ export const componentTools = [
   defineTool({
     name: 'save_to_library',
     title: 'Save component to library',
-    description: 'Copies a component definition to the file library (a folder next to the workspace), so other decks can reuse it with import_from_library. Saving an id again replaces the entry. Components with asset files or vendored libraries are refused.',
+    description: 'Copies a component definition to the file library (a folder of files, by default .decktech/library inside the workspace folder), so other decks can reuse it with import_from_library. Saving an id again replaces the entry. Components with asset files or vendored libraries are refused.',
     input: z.object({ deckId, componentId }),
     async run(workspace, { deckId, componentId }) {
       const def = definitionOf(workspace.get(deckId).deck, componentId);

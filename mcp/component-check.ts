@@ -36,11 +36,11 @@ export function sandboxWarnings(def: Source & Pick<ComponentDef, 'permissions'>)
     warnings.push('The script uses deck.fetch but the component does not request the "network" permission, so deck.fetch does not exist.');
   }
   if (/<script\b/i.test(html)) warnings.push('Inline <script> in the HTML is blocked by the content security policy; put the code in the JS source.');
-  if (/\bon[a-z]+\s*=\s*["']/i.test(html)) warnings.push('Inline event attributes (onclick="...") are blocked by the content security policy; attach handlers in the JS source.');
+  if (/<[a-z][^>]*\son[a-z]+\s*=\s*["']/i.test(html)) warnings.push('Inline event attributes (onclick="...") are blocked by the content security policy; attach handlers in the JS source.');
   if (/<link\b[^>]*\brel\s*=\s*["']?stylesheet/i.test(html) || /@import\b/i.test(css)) {
     warnings.push('External stylesheets cannot be loaded (no network); put the CSS in the CSS source.');
   }
-  if (/\b(?:window\.)?(?:parent|top)\s*\./.test(js) || /\bdocument\s*\.\s*cookie\b/.test(js) || /\b(?:localStorage|sessionStorage|indexedDB)\b/.test(js)) {
+  if (/(?<![.\w$])(?:window\.)?(?:parent|top)\s*\./.test(js) || /\bdocument\s*\.\s*cookie\b/.test(js) || /\b(?:localStorage|sessionStorage|indexedDB)\b/.test(js)) {
     warnings.push('The sandbox has an opaque origin: parent/top access, cookies, localStorage and IndexedDB are unavailable. Use deck.state for small persisted state.');
   }
   return warnings;

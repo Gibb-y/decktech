@@ -1,4 +1,5 @@
-import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ID_PATTERN, type ComponentDef } from '../src/app/core/model';
 import { libraryEntryProblem, type LibraryComponent } from '../src/app/core/persistence/library';
@@ -59,9 +60,14 @@ export class FileLibrary {
     if (problem) throw new ToolError(`This component cannot be saved to the library: ${problem}`);
     await mkdir(this.dir, { recursive: true });
     const file = this.fileOf(def.id);
-    const temp = `${file}.${process.pid}.tmp`;
-    await writeFile(temp, JSON.stringify(entry, null, 2));
-    await rename(temp, file);
+    const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temp, JSON.stringify(entry, null, 2));
+      await rename(temp, file);
+    } catch (e) {
+      await rm(temp, { force: true });
+      throw e;
+    }
     return entry;
   }
 }

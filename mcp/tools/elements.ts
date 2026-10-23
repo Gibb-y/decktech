@@ -46,6 +46,9 @@ const toFill = (deck: Deck, value: string): Fill => ({ kind: 'solid', color: toC
 /** Only the fields that were given, so defaults of `createElement` survive. */
 const given = <T extends object>(values: T): Partial<T> => Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined)) as Partial<T>;
 
+/** Bytes of embedded files one open deck may hold; bytes of removed images stay until the deck is closed. */
+const MAX_SESSION_ASSET_BYTES = 256 * 1024 * 1024;
+
 const ROLE_TOKENS = { title: 'title', heading: 'heading', body: 'body', caption: 'caption' } as const;
 
 /** File extensions an agent may use for images; the mime type must be on the deck's allow-list. */
@@ -67,15 +70,18 @@ function resolvedColor(deck: Deck, value: Color | undefined): string | undefined
 /** WCAG problems the model can see without rendering: missing alt text, empty text, text colour against the background. */
 export function accessibilityProblems(deck: Deck) {
   const problems: { slideId: string; elementId?: string; problem: string }[] = [];
+  const notChecked: string[] = [];
   deck.slides.forEach((slide, index) => {
     const label = `Slide ${index + 1}`;
     const background = slide.background?.kind === 'solid' ? resolvedColor(deck, slide.background.color) : slide.background === undefined ? deck.theme.colors['background'] : undefined;
     for (const e of slide.elements) {
       if (e.type === 'image' && e.alt.trim() === '') problems.push({ slideId: slide.id, elementId: e.id, problem: `${label}: image has no alt text. Use set_alt_text.` });
       if (e.type === 'text' && e.text.trim() === '') problems.push({ slideId: slide.id, elementId: e.id, problem: `${label}: text element is empty.` });
-      if (e.type === 'text' && e.text.trim() !== '' && background !== undefined && !e.hidden) {
+      if (e.type === 'text' && e.text.trim() !== '' && !e.hidden) {
         const text = resolvedColor(deck, e.color);
-        if (text !== undefined && relativeLuminance(text) !== null && relativeLuminance(background) !== null) {
+        if (background === undefined || text === undefined || relativeLuminance(text) === null || relativeLuminance(background) === null) {
+          notChecked.push(`${label}: contrast of text element ${e.id} was not checked (gradient or image background, or a colour that is not a plain CSS colour)`);
+        } else {
           const ratio = contrastRatio(text, background);
           if (ratio < AA_TEXT_CONTRAST) {
             problems.push({ slideId: slide.id, elementId: e.id, problem: `${label}: text contrast is ${ratio.toFixed(2)}:1 against the slide background; WCAG AA needs ${AA_TEXT_CONTRAST}:1.` });
@@ -84,7 +90,7 @@ export function accessibilityProblems(deck: Deck) {
       }
     }
   });
-  return problems;
+  return { problems, notChecked };
 }
 
 export const elementTools = [
@@ -160,6 +166,8 @@ export const elementTools = [
       }
       const limit = 64 * 1024 * 1024;
       if (size > limit) throw new ToolError(`The image is larger than ${limit / 1024 / 1024} MiB`);
+      const held = [...session.assets.values()].reduce((sum, b) => sum + b.length, 0);
+      if (held + size > MAX_SESSION_ASSET_BYTES) throw new ToolError(`This deck already holds ${Math.round(held / 1024 / 1024)} MiB of files; the limit is ${MAX_SESSION_ASSET_BYTES / 1024 / 1024} MiB`);
       const bytes = new Uint8Array(await readFile(full));
       const problem = contentProblem(bytes, mime);
       if (problem) throw new ToolError(`"${path}" is not a valid ${mime} file: ${problem}`);
@@ -287,8 +295,8 @@ export const elementTools = [
     input: z.object({ deckId }),
     readOnly: true,
     run(workspace, { deckId }) {
-      const problems = accessibilityProblems(workspace.get(deckId).deck);
-      return { problems, count: problems.length };
+      const { problems, notChecked } = accessibilityProblems(workspace.get(deckId).deck);
+      return { problems, count: problems.length, notChecked };
     },
   }),
 ];

@@ -55,7 +55,7 @@ export const deckTools = [
       if (!read.ok) throw new ToolError(`This file cannot be opened. ${read.error.message}`);
       const { deck, assets, hasCode, migrated } = read.value;
       const bytes = new Map([...assets].map(([id, a]) => [id, a.bytes]));
-      const added = workspace.add(deck, bytes, true);
+      const added = workspace.add(deck, bytes);
       return { ...deckOutline(added.deck), hasCode, migrated, ...(hasCode ? { note: UNTRUSTED_NOTE } : {}) };
     },
   }),
