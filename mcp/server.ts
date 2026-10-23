@@ -5,6 +5,7 @@ import { ToolError, ToolImages, type ToolDef } from './tool';
 import { componentTools } from './tools/components';
 import { deckTools } from './tools/deck';
 import { elementTools } from './tools/elements';
+import { libraryTools } from './tools/libraries';
 import { previewTools } from './tools/preview';
 import { schemaTools } from './tools/schema';
 import { slideTools } from './tools/slides';
@@ -17,6 +18,7 @@ export const TOOLS: readonly ToolDef[] = [
   ...slideTools,
   ...elementTools,
   ...tableVideoTools,
+  ...libraryTools,
   ...componentTools,
   ...previewTools,
 ];

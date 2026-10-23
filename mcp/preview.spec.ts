@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fakeCdn, MINI_REACT_DOM_WITH_OWN_REACT, REACT_CDN, REACT_COUNTER_JS } from './library-fixtures';
 import { callTool, TOOLS } from './server';
 import { Workspace } from './workspace';
 
@@ -31,6 +32,7 @@ function setup(enabled: boolean): void {
     root: join(dir, 'work'),
     libraryDir: join(dir, 'lib'),
     preview: { enabled, appDir },
+    fetcher: fakeCdn(REACT_CDN).fetcher,
   });
 }
 
@@ -248,5 +250,65 @@ describe.skipIf(!available)('previews in a browser', () => {
     await ok('add_image', { deckId, slideId, path: 'dot.png', alt: 'a dot' });
     const r = await ok('render_preview', { deckId, slideId, settleMs: 200 });
     expect(r.data.errors).toEqual([]);
+  });
+
+  describe('vendored libraries', () => {
+    const COUNTER = {
+      name: 'React counter',
+      html: '<div id="app"></div>',
+      js: REACT_COUNTER_JS,
+      propSchema: [{ key: 'start', type: 'number', label: 'Start', default: 5 }],
+    };
+
+    async function reactDeck() {
+      const deck = (await ok('create_deck')).data;
+      const { deckId } = deck;
+      await ok('add_library_from_package', { deckId, package: 'react', version: '1.0.0' });
+      await ok('add_library_from_package', { deckId, package: 'react-dom/client', version: '1.0.0' });
+      return { deckId, slideId: deck.slides[0].id as string };
+    }
+
+    it('renders a component that uses hooks of a library shared with its renderer, without errors', async () => {
+      const { deckId, slideId } = await reactDeck();
+      const made = (await ok('create_component', { deckId, ...COUNTER, libs: ['react', 'react-dom/client'] })).data;
+      const checked = await ok('validate_component', { deckId, componentId: made.id, run: true, settleMs: 800 });
+      expect(checked.data.runtime.errors).toEqual([]);
+      // The click in the script re-rendered the component with a changed hook state.
+      expect(JSON.stringify(checked.data.runtime.console)).toMatch(/count 5.*count 6/);
+      expect(checked.data.ok).toBe(true);
+      await ok('insert_code_element', { deckId, slideId, componentId: made.id });
+      const r = await ok('render_preview', { deckId, slideId, settleMs: 800 });
+      expect(r.data.errors).toEqual([]);
+      expect(r.data.libraryProblems).toBeUndefined();
+    });
+
+    it('reports invalid hook calls when the renderer carries its own copy of the library', async () => {
+      const { deckId } = await reactDeck();
+      const { writeFileSync } = await import('node:fs');
+      writeFileSync(join(workspace.root, 'own.mjs'), MINI_REACT_DOM_WITH_OWN_REACT);
+      await ok('add_library_from_file', { deckId, path: 'own.mjs', name: 'own-dom' });
+      const made = (
+        await ok('create_component', {
+          deckId,
+          ...COUNTER,
+          js: REACT_COUNTER_JS.replace('"react-dom/client"', '"own-dom"'),
+          libs: ['react', 'own-dom'],
+        })
+      ).data;
+      const checked = await ok('validate_component', { deckId, componentId: made.id, run: true, settleMs: 800 });
+      expect(checked.data.ok).toBe(false);
+      expect(JSON.stringify(checked.data.runtime.errors)).toMatch(/Invalid hook call/);
+    });
+
+    it('explains a script that imports a library which is not attached', async () => {
+      const { deckId, slideId } = await reactDeck();
+      const made = (await ok('create_component', { deckId, ...COUNTER, libs: ['react'] })).data;
+      await ok('insert_code_element', { deckId, slideId, componentId: made.id });
+      const r = await ok('render_preview', { deckId, slideId, settleMs: 800 });
+      expect(r.data.errors.length).toBeGreaterThan(0);
+      expect(r.data.libraryProblems).toEqual([
+        { elementId: expect.any(String), problems: [expect.stringMatching(/"react-dom\/client", which is not an attached library.*Attached libraries: react \(/)] },
+      ]);
+    });
   });
 });

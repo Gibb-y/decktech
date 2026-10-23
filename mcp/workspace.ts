@@ -1,7 +1,9 @@
 import { generateId, validateDeck, type Deck } from '../src/app/core/model';
 import { CommandError, type Command } from '../src/app/core/store/command';
 import { Batch } from '../src/app/core/store/commands';
+import type { Fetcher } from '../src/app/components/editor/vendor';
 import { FileLibrary } from './library';
+import { cdnFetcher } from './libraries';
 import { Previewer, type PreviewOptions } from './preview';
 import { ToolError } from './tool';
 
@@ -10,8 +12,16 @@ export const MAX_HISTORY = 200;
 /** Decks open at once; each holds its asset bytes in memory. */
 export const MAX_OPEN_DECKS = 20;
 
+/** A library vendored into a deck by a tool: the name components import it by and a label for people. */
+export interface VendoredLibrary {
+  name: string;
+  label: string;
+}
+
 /** One open deck: an immutable document, the bytes of its assets and an undo history of earlier documents. */
 export class DeckSession {
+  /** Libraries added in this session by asset id; a reopened deck has the assets but not their names. */
+  readonly libraries = new Map<string, VendoredLibrary>();
   private readonly undoStack: Deck[] = [];
   private redoStack: Deck[] = [];
 
@@ -85,6 +95,8 @@ export interface WorkspaceOptions {
   root: string;
   /** Folder of the file-based component library (`<id>.json` per component). */
   libraryDir: string;
+  /** Downloads libraries for `add_library_from_package`; defaults to a guarded `fetch` of the CDN. */
+  fetcher?: Fetcher;
 }
 
 /** The decks open in this server process and where its files live. Nothing is persisted except by `export_deck`. */
@@ -92,9 +104,11 @@ export class Workspace {
   private readonly sessions = new Map<string, DeckSession>();
   readonly library: FileLibrary;
   readonly previewer: Previewer;
+  readonly fetcher: Fetcher;
 
   constructor(readonly options: WorkspaceOptions) {
     this.library = new FileLibrary(options.libraryDir);
+    this.fetcher = options.fetcher ?? cdnFetcher;
     this.previewer = new Previewer(options.preview ?? { enabled: false, appDir: '' });
   }
 

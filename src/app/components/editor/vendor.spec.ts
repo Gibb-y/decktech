@@ -1,4 +1,4 @@
-import { MAX_LIBRARY_BYTES, accessibilityHints, cdnUrl, externalImports, fetchLibrary, networkDependencies, readLibraryFile, type Fetcher } from './vendor';
+import { MAX_LIBRARY_BYTES, accessibilityHints, cdnUrl, checkLibraryText, externalImports, fetchLibrary, isLibraryName, networkDependencies, peerFor, readLibraryFile, resolvePeers, type Fetcher } from './vendor';
 
 const response = (body: string, init: { ok?: boolean; status?: number; type?: string; length?: string } = {}): Awaited<ReturnType<Fetcher>> => ({
   ok: init.ok ?? true,
@@ -13,16 +13,58 @@ describe('cdnUrl', () => {
     ['@observablehq/plot', '0.6.16', 'https://esm.sh/@observablehq/plot@0.6.16?bundle&target=es2022'],
     ['chart.js', '', 'https://esm.sh/chart.js@latest?bundle&target=es2022'],
     ['  three ', ' 0.170.0-beta.1 ', 'https://esm.sh/three@0.170.0-beta.1?bundle&target=es2022'],
+    ['react-dom/client', '19.3.1', 'https://esm.sh/react-dom@19.3.1/client?bundle&target=es2022'],
+    ['@scope/pkg/sub/path', '1.0.0', 'https://esm.sh/@scope/pkg@1.0.0/sub/path?bundle&target=es2022'],
   ])('builds the address for %s %s', (name, version, url) => {
     expect(cdnUrl(name, version)).toEqual({ ok: true, value: url });
   });
 
-  it.each(['', 'D3', '../x', 'a/b', 'https://evil.example/x', 'a b', '@scope', '@/x', 'x'.repeat(215), 'a..b/../c', '?x'])('rejects the package name %j', (name) => {
+  it.each(['', 'D3', '../x', 'a/../b', 'a/./b', 'a//b', 'a/', '@scope/', 'https://evil.example/x', 'a b', '@scope', '@/x', 'x'.repeat(215), 'a..b/../c', '?x'])('rejects the package name %j', (name) => {
     expect(cdnUrl(name, '1.0.0').ok).toBe(false);
   });
 
   it.each(['1.0.0/../../x', '1 0', '^1', '1.0.0?x=1', '#x', 'a'.repeat(65)])('rejects the version %j', (version) => {
     expect(cdnUrl('d3', version)).toMatchObject({ ok: false, error: expect.stringContaining('not a valid version') });
+  });
+});
+
+describe('isLibraryName', () => {
+  it.each(['react', 'react-dom/client', '@observablehq/plot', 'my.lib_2'])('accepts %s', (name) => expect(isLibraryName(name)).toBe(true));
+  it.each(['', 'React', '__proto__', 'a b', 'https://x', '/abs', 'a?b'])('rejects %j', (name) => expect(isLibraryName(name)).toBe(false));
+});
+
+describe('peerFor and resolvePeers', () => {
+  const peers = new Map([['react', 'abc'], ['react/jsx-runtime', 'def'], ['@scope/pkg', 'ghi']]);
+
+  it.each([
+    ['/react@19.3.1/es2022/react.mjs', 'abc'],
+    ['/v135/react@19.3.1/es2022/react.mjs', 'abc'],
+    ['/react@19.3.1/es2022/jsx-runtime.mjs', 'def'],
+    ['/@scope/pkg@1.0.0/es2022/pkg.js', 'ghi'],
+    ['/react/es2022/react.mjs', 'abc'],
+  ])('maps %s to its library', (path, id) => expect(peerFor(path, peers)).toBe(id));
+
+  it.each(['/vue@3.0.0/es2022/vue.mjs', '/react@19.3.1/es2022/other.mjs', '/react', '/', '/react@1/a/b/react.mjs', '/constructor@1/es2022/constructor.mjs'])('finds no library for %s', (path) => expect(peerFor(path, peers)).toBeUndefined());
+
+  it('rewrites every import syntax of a mapped path and leaves the rest alone', () => {
+    const source = `import a from "/react@19.3.1/es2022/react.mjs"; import "/react@1/es2022/react.mjs"; export * from '/react@1/es2022/react.mjs'; const m = await import("/react@1/es2022/react.mjs"); import v from "/vue@3/es2022/vue.mjs"; import w from "//cdn.example/react@1/es2022/react.mjs"; const s = "/react@1/es2022/react.mjs";`;
+    expect(resolvePeers(source, peers)).toBe(`import a from "abc"; import "abc"; export * from 'abc'; const m = await import("abc"); import v from "/vue@3/es2022/vue.mjs"; import w from "//cdn.example/react@1/es2022/react.mjs"; const s = "/react@1/es2022/react.mjs";`);
+  });
+
+  it('does nothing without peers', () => {
+    const source = 'import a from "/react@1/es2022/react.mjs";';
+    expect(resolvePeers(source, new Map())).toBe(source);
+  });
+});
+
+describe('checkLibraryText', () => {
+  it('accepts self-contained text and resolves peers', () => {
+    expect(checkLibraryText('export const x = 1;')).toEqual({ ok: true, value: 'export const x = 1;' });
+    expect(checkLibraryText('import r from "/react@1/es2022/react.mjs";', new Map([['react', 'abc']]))).toEqual({ ok: true, value: 'import r from "abc";' });
+  });
+
+  it('refuses what still imports from the network', () => {
+    expect(checkLibraryText('import r from "/react@1/es2022/react.mjs";')).toMatchObject({ ok: false, error: expect.stringMatching(/imports from elsewhere/) });
   });
 });
 
@@ -55,6 +97,23 @@ describe('fetchLibrary', () => {
     const nested = await fetchLibrary('x', '1', async (url) => (calls.push(url), response('export * from "/x@1/a.mjs";')));
     expect(nested).toMatchObject({ ok: false, error: expect.stringMatching(/imports from the network/) });
     expect(calls).toHaveLength(2);
+  });
+
+  it('points the imports of a vendored package at it, also when the stub names it next to the bundle', async () => {
+    const peers = new Map([['react', 'abc123']]);
+    const calls: string[] = [];
+    const result = await fetchLibrary('react-dom/client', '19.3.1', async (url) => {
+      calls.push(url);
+      return response(calls.length === 1 ? 'import "/react@19.3.1/es2022/react.mjs"; export * from "/react-dom@19.3.1/es2022/client.bundle.mjs";' : 'import { a } from "/react@19.3.1/es2022/react.mjs"; export const b = a;');
+    }, peers);
+    expect(calls).toEqual(['https://esm.sh/react-dom@19.3.1/client?bundle&target=es2022', 'https://esm.sh/react-dom@19.3.1/es2022/client.bundle.mjs']);
+    expect(result).toMatchObject({ ok: true, value: { label: 'react-dom/client@19.3.1', shared: ['/react@19.3.1/es2022/react.mjs'] } });
+    if (result.ok) expect(await result.value.blob.text()).toBe('import { a } from "abc123"; export const b = a;');
+  });
+
+  it('without the peer it fails and says to add the other library first', async () => {
+    const result = await fetchLibrary('react-dom/client', '19.3.1', async () => response('import { a } from "/react@19.3.1/es2022/react.mjs"; export const b = a;'));
+    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/add that one first/) });
   });
 
   it('returns the module as a JavaScript blob labelled with name and version', async () => {

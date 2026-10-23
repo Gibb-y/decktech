@@ -5,9 +5,11 @@ import {
   createDeck,
   createElement,
   resolveProps,
+  type CodeEl,
   type ComponentDef,
   type Deck,
 } from '../../src/app/core/model';
+import { importProblems } from '../libraries';
 import { resolveInside } from '../paths';
 import type { PreviewResult } from '../preview';
 import { elementOf, slideOf } from '../summary';
@@ -107,7 +109,24 @@ export const previewTools = [
         ...(elementId ? { elementId } : {}),
       });
       if (path !== undefined) await savePng(workspace, path, result.png);
-      return new ToolImages({ ...runtimeSummary(result), ...(path ? { path } : {}) }, [result.png]);
+      // A script that imports something the sandbox cannot resolve only reports "could not be loaded"; say why.
+      const assetIds = new Set(Object.keys(session.deck.assets));
+      const slide = slideOf(session.deck, slideId);
+      const libraryProblems = slide.elements
+        .filter((e) => e.type === 'code' && (elementId === undefined || e.id === elementId))
+        .flatMap((e) => {
+          const def = session.deck.components.find((c) => c.id === (e as CodeEl).componentId);
+          const problems = def ? importProblems(def, session, assetIds) : [];
+          return problems.length > 0 ? [{ elementId: e.id, problems }] : [];
+        });
+      return new ToolImages(
+        {
+          ...runtimeSummary(result),
+          ...(libraryProblems.length > 0 ? { libraryProblems } : {}),
+          ...(path ? { path } : {}),
+        },
+        [result.png],
+      );
     },
   }),
 ];
