@@ -1,3 +1,4 @@
+import guide from './guide.md';
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
 import { CommandError } from '../src/app/core/store/command';
 import { ToolError, ToolImages, type ToolDef } from './tool';
@@ -30,7 +31,10 @@ export async function callTool(
     const images = value instanceof ToolImages ? value.images : [];
     return {
       content: [
-        { type: 'text', text: JSON.stringify(data ?? { ok: true }, null, 2) },
+        {
+          type: 'text',
+          text: typeof data === 'string' ? data : JSON.stringify(data ?? { ok: true }, null, 2),
+        },
         ...images.map((png) => ({
           type: 'image' as const,
           data: Buffer.from(png).toString('base64'),
@@ -56,8 +60,19 @@ export function createServer(options: WorkspaceOptions): {
     { name: 'decktech', version: '0.1.0' },
     {
       instructions:
-        'Tools to build DeckTech slide decks. Start with describe_schema, then create_deck. Code components are untrusted: this server never runs them, and DeckTech asks for review when the exported deck is opened.',
+        'Tools to build DeckTech slide decks (1920x1080 stage; element order is reading order; alt text is required for images). FIRST read the guide: call describe_schema with topic "guide" (also the resource decktech://guide). Then create_deck, add slides and content, check_accessibility, export_deck. Code components are untrusted: the server only runs them for previews, which the server owner must enable, and DeckTech asks the person to review the code when the exported deck is opened.',
     },
+  );
+  server.registerResource(
+    'guide',
+    'decktech://guide',
+    {
+      title: 'DeckTech MCP guide for agents',
+      description:
+        'Workflow, accessibility rules, how to write code components and how to read errors.',
+      mimeType: 'text/markdown',
+    },
+    (uri) => ({ contents: [{ uri: uri.href, mimeType: 'text/markdown', text: guide }] }),
   );
   for (const tool of TOOLS) {
     server.registerTool(

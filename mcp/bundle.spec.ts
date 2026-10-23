@@ -10,6 +10,7 @@ describe('bundle', () => {
       platform: 'node',
       format: 'esm',
       external: ['playwright'],
+      loader: { '.md': 'text' },
       logLevel: 'silent',
     });
     const inputs = Object.keys(result.metafile.inputs).map((p) => p.replaceAll('\\', '/'));
