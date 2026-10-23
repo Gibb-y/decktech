@@ -1,0 +1,12 @@
+<fieldset [disabled]="locked()">
+  <legend>Video file</legend>
+  <p class="note">Video: {{ videoSize() }}. Poster: {{ element().poster ? posterSize() : 'none' }}.</p>
+  <div class="buttons">
+    <button class="btn" type="button" (click)="choose('assetId')">Replace video…</button>
+    <button class="btn" type="button" (click)="choose('poster')">{{ element().poster ? 'Replace poster…' : 'Choose poster…' }}</button>
+    @if (element().poster) {
+      <button class="btn" type="button" (click)="removePoster()">Remove poster</button>
+    }
+  </div>
+  <p class="note">Playback starts when the video appears on the slide while presenting; autoplay needs the video muted, so it plays without sound. The editor and thumbnails show the poster only.</p>
+</fieldset>

@@ -156,14 +156,29 @@ export interface LineEl extends ElementBase {
 
 export interface TableEl extends ElementBase {
   type: 'table';
+  /** Plain-text cells; a non-empty rectangle (every row has the same number of cells). */
   rows: string[][];
+  /** The first row is a header row (`<th scope="col">`). Absent means no header. */
+  header?: boolean;
+  /** Relative width of each column (positive numbers, one per column); equal widths when absent. */
+  columnWidths?: number[];
+  /** Background of each cell, `null` for none; same shape as `rows`. */
+  cellFills?: (Color | null)[][];
 }
 
 export interface VideoEl extends ElementBase {
   type: 'video';
+  /** A video asset (`video/mp4` or `video/webm`). */
   assetId: string;
+  /** Starts playing when the element appears (presenting only). Browsers only allow this muted. */
   autoplay: boolean;
   loop: boolean;
+  /** Silent playback; absent means with sound. */
+  muted?: boolean;
+  /** An image asset shown before playback, and in thumbnails and the editor. */
+  poster?: string;
+  /** Accessible name of the player. */
+  label?: string;
 }
 
 export interface CodeEl extends ElementBase {

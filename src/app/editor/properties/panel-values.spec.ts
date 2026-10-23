@@ -7,7 +7,7 @@ const text = (extra: Partial<Parameters<typeof createElement<'text'>>[1]> = {}) 
 
 describe('field definitions', () => {
   it('cover every editable field of every element type, straight from the schema', () => {
-    const skipped = new Set(['asset', 'component', 'table', 'props', 'rich', 'sizeToken']);
+    const skipped = new Set(['asset', 'component', 'table', 'columnWidths', 'cellFills', 'props', 'rich', 'sizeToken']);
     for (const type of ELEMENT_TYPES) {
       const expected = Object.entries(ELEMENT_SCHEMAS[type].fields).filter(([, spec]) => !skipped.has(spec.kind)).map(([key]) => key);
       expect(typeFields(type).map((f) => f.key), type).toEqual(expected);
@@ -27,7 +27,7 @@ describe('field definitions', () => {
 
   it('humanize labels that have no entry of their own', () => {
     expect(typeFields('image').find((f) => f.key === 'fit')?.label).toBe('Fit');
-    expect(typeFields('video').map((f) => f.label)).toEqual(['Autoplay', 'Loop']);
+    expect(typeFields('video').map((f) => f.label)).toEqual(['Play when it appears', 'Loop', 'Muted', 'Accessible name']);
   });
 
   it('keep numbers within what the document validator accepts', () => {

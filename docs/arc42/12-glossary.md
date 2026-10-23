@@ -7,6 +7,7 @@
 | Content hash | SHA-256 of the bytes of `deck.json` as stored in a `.deck`; checked on import, and what trust is bound to (ADR-008). Assets are covered because each is checked against the id the deck lists it under. |
 | Slide | One page of a deck, with a layout, elements, notes and optional transition. |
 | Element | An object on a slide: text, image, shape, line, table, video or code. Positioned in stage units. |
+| Poster | The picture (an image asset) a video element shows before it plays, in the editor and in thumbnails. |
 | Stage | The 1920x1080 logical coordinate space of a slide, scaled to the display. |
 | Layout / master | A reusable arrangement of placeholders and background applied to slides. Switching a slide's layout re-flows the elements bound to placeholders. |
 | Placeholder | A named slot of a layout (`title`, `body`, `image`, `footer`) with a position and size. An element that has `placeholder` set to that kind fills it. |

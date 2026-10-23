@@ -392,11 +392,11 @@ class Validator {
     this.checkKeys(path, e, [...ELEMENT_BASE_KEYS, ...Object.keys(schema.fields)]);
     for (const [name, spec] of Object.entries(schema.fields)) {
       if (e[name] === undefined && spec.optional) continue;
-      this.field(`${path}.${name}`, spec, e[name]);
+      this.field(`${path}.${name}`, spec, e[name], e);
     }
   }
 
-  private field(path: string, spec: FieldSpec, value: unknown): void {
+  private field(path: string, spec: FieldSpec, value: unknown, owner: Record<string, unknown> = {}): void {
     switch (spec.kind) {
       case 'string':
         this.string(path, value, spec.long ? this.limits.maxStringLength : MAX_SHORT_STRING, spec.min ?? 0);
@@ -435,6 +435,12 @@ class Validator {
       case 'table':
         this.table(path, value);
         break;
+      case 'columnWidths':
+        this.columnWidths(path, value, owner['rows']);
+        break;
+      case 'cellFills':
+        this.cellFills(path, value, owner['rows']);
+        break;
       case 'rich':
         for (const problem of validateRichText(value, path, { colors: this.themeColors, sizes: this.themeSizes })) this.fail(problem.path, problem.message);
         break;
@@ -448,15 +454,46 @@ class Validator {
 
   private table(path: string, value: unknown): void {
     const rows = this.array(path, value, this.limits.maxArrayLength);
+    if (rows?.length === 0) this.fail(path, 'must have at least one row');
     let cells = 0;
     rows?.forEach((row, r) => {
       const cols = this.array(`${path}[${r}]`, row, this.limits.maxArrayLength);
       cells += cols?.length ?? 0;
+      if (cols?.length === 0) this.fail(`${path}[${r}]`, 'must have at least one cell');
+      else if (cols && Array.isArray(rows[0]) && cols.length !== rows[0].length) this.fail(`${path}[${r}]`, `must have ${rows[0].length} cells like the first row`);
       cols?.forEach((cell, c) => this.string(`${path}[${r}][${c}]`, cell, this.limits.maxStringLength, 0));
     });
     if (cells > this.limits.maxTableCells) {
       this.fail(path, `has more than ${this.limits.maxTableCells} cells`);
     }
+  }
+
+  /** The number of columns of a table's `rows`, or `undefined` when they are not a usable grid (reported by `table`). */
+  private columnCount(rows: unknown): number | undefined {
+    return Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0].length : undefined;
+  }
+
+  private columnWidths(path: string, value: unknown, rows: unknown): void {
+    const widths = this.array(path, value, this.limits.maxArrayLength);
+    if (!widths) return;
+    const columns = this.columnCount(rows);
+    if (columns !== undefined && widths.length !== columns) this.fail(path, `must have one width per column (${columns})`);
+    widths.forEach((w, i) => this.number(`${path}[${i}]`, w, { min: Number.MIN_VALUE, max: MAX_COORDINATE }));
+  }
+
+  private cellFills(path: string, value: unknown, rows: unknown): void {
+    const fills = this.array(path, value, this.limits.maxArrayLength);
+    if (!fills) return;
+    if (Array.isArray(rows) && fills.length !== rows.length) this.fail(path, `must have one row per table row (${rows.length})`);
+    const columns = this.columnCount(rows);
+    fills.forEach((row, r) => {
+      const cells = this.array(`${path}[${r}]`, row, this.limits.maxArrayLength);
+      if (!cells) return;
+      if (columns !== undefined && cells.length !== columns) this.fail(`${path}[${r}]`, `must have one entry per column (${columns})`);
+      cells.forEach((fill, c) => {
+        if (fill !== null) this.color(`${path}[${r}][${c}]`, fill);
+      });
+    });
   }
 
   // --- primitives -------------------------------------------------------------------------

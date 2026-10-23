@@ -251,6 +251,7 @@ export class EditorShell {
   protected onInsert(kind: InsertKind): void {
     this.dialog.set(null);
     if (kind === 'image') this.insert.pickImage();
+    else if (kind === 'video') this.insert.pickVideo();
     else this.insert.insert(kind);
   }
 

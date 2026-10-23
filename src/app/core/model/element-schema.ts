@@ -21,6 +21,10 @@ export type FieldSpec = { optional?: boolean } & (
   /** Id in `Deck.components`. */
   | { kind: 'component' }
   | { kind: 'table' }
+  /** One positive relative width per column of the element's `rows`. */
+  | { kind: 'columnWidths' }
+  /** One colour or `null` per cell of the element's `rows`. */
+  | { kind: 'cellFills' }
   /** Restricted ProseMirror JSON, see `rich-text.ts`. */
   | { kind: 'rich' }
   | { kind: 'props' }
@@ -74,16 +78,24 @@ export const ELEMENT_SCHEMAS: Record<ElementType, ElementSchema> = {
     defaults: { h: 0, stroke: { token: 'text' }, strokeWidth: 4 },
   },
   table: {
-    fields: { rows: { kind: 'table' } },
-    defaults: { rows: [['', ''], ['', '']] },
+    fields: {
+      rows: { kind: 'table' },
+      header: { kind: 'boolean', optional: true },
+      columnWidths: { kind: 'columnWidths', optional: true },
+      cellFills: { kind: 'cellFills', optional: true },
+    },
+    defaults: { h: 240, rows: [['', ''], ['', '']], header: true },
   },
   video: {
     fields: {
       assetId: { kind: 'asset' },
+      poster: { kind: 'asset', optional: true },
       autoplay: { kind: 'boolean' },
       loop: { kind: 'boolean' },
+      muted: { kind: 'boolean', optional: true },
+      label: { kind: 'string', optional: true },
     },
-    defaults: { assetId: '', autoplay: false, loop: false },
+    defaults: { assetId: '', autoplay: false, loop: false, muted: false },
   },
   code: {
     fields: {
