@@ -4,10 +4,11 @@ import {
   resolveProps,
   type CodeEl,
   type ComponentDef,
+  type AssetRef,
   type Deck,
   type PropSpec,
 } from '../../src/app/core/model';
-import { AddCodeElement, SetComponentSource } from '../../src/app/core/store/commands';
+import { AddAsset, AddCodeElement, SetComponentSource } from '../../src/app/core/store/commands';
 import {
   AddComponent,
   DetachComponent,
@@ -18,10 +19,13 @@ import {
 } from '../../src/app/core/store/component-commands';
 import { deepEqual, type Command } from '../../src/app/core/store/command';
 import { checkComponentDef } from '../component-check';
+import { importProblems, resolveSpecifiers, specifierNames } from '../libraries';
+import type { DeckSession } from '../workspace';
 import { elementOf, elementSummary, slideOf } from '../summary';
 import { ToolError, ToolImages, defineTool } from '../tool';
 import { previewWidth, runtimeSummary, scratchDeckFor, settleMs } from './preview';
 import { deckId } from './deck';
+import { assertAssetBudget } from './elements';
 
 const slideId = z.string().describe('Id of a slide (see get_deck).');
 const componentId = z
@@ -50,6 +54,13 @@ const propSpec = z.union([
 ]);
 
 const permission = z.enum(['network', 'storage']);
+
+const libsInput = z
+  .array(z.string().min(1).max(300))
+  .max(20)
+  .describe(
+    'Libraries the script may import, by name or assetId, from add_library_from_package / add_library_from_file. In the script import them by that name (import React from "react"); the server stores the asset id in its place, because that is what the sandbox resolves.',
+  );
 
 const geometry = {
   x: z.number().optional().describe('Left edge on the 1920x1080 stage.'),
@@ -82,22 +93,62 @@ function usage(deck: Deck, id: string) {
   return { instances: componentUses(deck, id), slides };
 }
 
-const summaryOf = (deck: Deck, def: ComponentDef) => ({
+/** The libraries of a definition as the agent sees them: asset id, the name to import by (when this session added it) and size. */
+const libsOf = (session: DeckSession | undefined, deck: Deck, def: ComponentDef) =>
+  def.libs.map((id) => ({
+    assetId: id,
+    ...(session?.libraries.get(id) ?? {}),
+    bytes: Object.hasOwn(deck.assets, id) ? deck.assets[id].size : 0,
+  }));
+
+const summaryOf = (deck: Deck, def: ComponentDef, session?: DeckSession) => ({
   id: def.id,
   name: def.name,
   props: def.propSchema.map((p) => p.key),
   permissions: def.permissions,
+  libs: libsOf(session, deck, def),
   instances: componentUses(deck, def.id),
 });
 
-/** Refuses a definition whose script does not parse or that is structurally invalid, with every reason at once. */
-function assertValid(deck: Deck, def: ComponentDef): string[] {
-  const check = checkComponentDef(def, Object.keys(deck.assets));
+/**
+ * Libraries by the names an agent gives them: an asset id of the deck, or the name or label of a
+ * library this session added. Unknown or ambiguous entries are refused with the choices.
+ */
+function resolveLibs(session: DeckSession, entries: readonly string[]): string[] {
+  const { deck } = session;
+  const available = [...session.libraries]
+    .filter(([id]) => Object.hasOwn(deck.assets, id))
+    .map(([id, lib]) => ({ id, ...lib }));
+  const choices = available.map((l) => l.label).join(', ') || 'none added yet';
+  const ids = entries.map((entry) => {
+    if (/^[0-9a-f]{64}$/.test(entry) && Object.hasOwn(deck.assets, entry)) return entry;
+    const matches = available.filter((l) => l.name === entry || l.label === entry);
+    if (matches.length === 1) return matches[0].id;
+    throw new ToolError(
+      matches.length > 1
+        ? `"${entry}" names more than one library of this deck; use its assetId: ${matches.map((l) => `${l.label} = ${l.id}`).join(', ')}`
+        : `"${entry}" is not a library of this deck. Libraries: ${choices}. Add one with add_library_from_package or add_library_from_file.`,
+    );
+  });
+  return [...new Set(ids)];
+}
+
+/** Replaces the names of attached libraries in the script by the asset ids the runtime's import map is keyed by. */
+const withResolvedImports = (session: DeckSession, js: string, libs: readonly string[]) =>
+  resolveSpecifiers(js, specifierNames(session, libs).names).js;
+
+/**
+ * Refuses a definition whose script does not parse or that is structurally invalid, with every
+ * reason at once. Warnings include scripts that import something the sandbox cannot resolve.
+ */
+function assertValid(session: DeckSession, def: ComponentDef, incoming: Iterable<string> = []): string[] {
+  const assetIds = new Set([...Object.keys(session.deck.assets), ...incoming]);
+  const check = checkComponentDef(def, assetIds);
   if (!check.valid)
     throw new ToolError(
       `The component is not valid and was not saved:\n- ${check.errors.join('\n- ')}`,
     );
-  return check.warnings;
+  return [...check.warnings, ...importProblems(def, session, assetIds)];
 }
 
 export const componentTools = [
@@ -125,23 +176,25 @@ export const componentTools = [
         .array(permission)
         .default([])
         .describe('Requested permissions; each is flagged to whoever opens the deck.'),
+      libs: libsInput.default([]),
     }),
-    run(workspace, { deckId, name, html, css, js, propSchema, permissions }) {
+    run(workspace, { deckId, name, html, css, js, propSchema, permissions, libs }) {
       const session = workspace.get(deckId);
+      const attached = resolveLibs(session, libs);
       const def: ComponentDef = {
         id: generateId('component'),
         name: name.trim(),
         html,
         css,
-        js,
+        js: withResolvedImports(session, js, attached),
         propSchema: propSchema as PropSpec[],
         permissions: [...new Set(permissions)],
         files: [],
-        libs: [],
+        libs: attached,
       };
-      const warnings = assertValid(session.deck, def);
+      const warnings = assertValid(session, def);
       const next = session.apply('AddComponent', new AddComponent(def));
-      return { ...summaryOf(next, def), warnings };
+      return { ...summaryOf(next, def, session), warnings };
     },
   }),
 
@@ -159,21 +212,28 @@ export const componentTools = [
       js: source('Replacement ES module.').optional(),
       propSchema: z.array(propSpec).max(100).optional(),
       permissions: z.array(permission).optional(),
+      libs: libsInput.optional().describe(`${libsInput.description} Replaces the whole list; omit to keep the current libraries.`),
     }),
-    run(workspace, { deckId, componentId, name, html, css, js, propSchema, permissions }) {
+    run(workspace, { deckId, componentId, name, html, css, js, propSchema, permissions, libs }) {
       const session = workspace.get(deckId);
       const { deck } = session;
       const current = definitionOf(deck, componentId);
-      const sources = given({ html, css, js });
+      const attached = libs === undefined ? current.libs : resolveLibs(session, libs);
+      const sources = given({
+        html,
+        css,
+        js: js === undefined ? undefined : withResolvedImports(session, js, attached),
+      });
       const settings: ComponentSettings = given({
         name,
         propSchema: propSchema as PropSpec[] | undefined,
         permissions,
+        libs: libs === undefined ? undefined : attached,
       });
       if (Object.keys(sources).length === 0 && Object.keys(settings).length === 0)
         throw new ToolError('Give at least one field to change');
       const preview: ComponentDef = { ...current, ...sources, ...settings };
-      const warnings = assertValid(deck, preview);
+      const warnings = assertValid(session, preview);
       const commands: Command[] = [];
       if (Object.keys(sources).length > 0)
         commands.push(new SetComponentSource(componentId, sources));
@@ -182,7 +242,7 @@ export const componentTools = [
       const next = session.apply('UpdateComponent', ...commands);
       const { instances, slides } = usage(next, componentId);
       return {
-        ...summaryOf(next, definitionOf(next, componentId)),
+        ...summaryOf(next, definitionOf(next, componentId), session),
         shared: instances > 1,
         usedOn: slides,
         warnings,
@@ -217,8 +277,8 @@ export const componentTools = [
       }
       if (deckId === undefined)
         throw new ToolError('Give a deckId to list the components of a deck');
-      const { deck } = workspace.get(deckId);
-      return deck.components.map((c) => summaryOf(deck, c));
+      const session = workspace.get(deckId);
+      return session.deck.components.map((c) => summaryOf(session.deck, c, session));
     },
   }),
 
@@ -243,8 +303,15 @@ export const componentTools = [
         return { source: 'library', ...entry.def };
       }
       if (deckId === undefined) throw new ToolError('Give a deckId to read a component of a deck');
-      const { deck } = workspace.get(deckId);
-      return { source: 'deck', ...definitionOf(deck, componentId), ...usage(deck, componentId) };
+      const session = workspace.get(deckId);
+      const { deck } = session;
+      const def = definitionOf(deck, componentId);
+      return {
+        source: 'deck',
+        ...def,
+        libs: libsOf(session, deck, def),
+        ...usage(deck, componentId),
+      };
     },
   }),
 
@@ -309,7 +376,7 @@ export const componentTools = [
       const session = workspace.get(deckId);
       const command = new DetachComponent(elementId);
       const next = session.apply('DetachComponent', command);
-      return summaryOf(next, definitionOf(next, command.newId));
+      return summaryOf(next, definitionOf(next, command.newId), session);
     },
   }),
 
@@ -326,6 +393,7 @@ export const componentTools = [
       js: source('Script to check (inline).').optional(),
       propSchema: z.array(propSpec).max(100).optional(),
       permissions: z.array(permission).optional(),
+      libs: libsInput.optional().describe('Libraries to check with (only together with componentId); default: the stored ones.'),
       run: z
         .boolean()
         .default(false)
@@ -338,29 +406,34 @@ export const componentTools = [
     readOnly: true,
     async run(
       workspace,
-      { deckId, componentId, html, css, js, propSchema, permissions, run, width, settleMs },
+      { deckId, componentId, html, css, js, propSchema, permissions, libs, run, width, settleMs },
     ) {
       let def: ComponentDef;
       let assetIds: string[] = [];
       let base: Deck | undefined;
+      let libraryProblems: string[] = [];
       let assets: ReadonlyMap<string, Uint8Array> = new Map();
       if (componentId !== undefined) {
         if (deckId === undefined)
           throw new ToolError('Give the deckId that contains the component');
-        const { deck } = workspace.get(deckId);
+        const session = workspace.get(deckId);
+        const { deck } = session;
         // Inline fields replace the stored ones, so a revision can be checked before update_component.
         const stored = definitionOf(deck, componentId);
+        const attached = libs === undefined ? stored.libs : resolveLibs(session, libs);
         const revised: ComponentDef = {
           ...stored,
           ...given({
             html,
             css,
-            js,
+            js: js === undefined ? undefined : withResolvedImports(session, js, attached),
             propSchema: propSchema as PropSpec[] | undefined,
             permissions,
           }),
+          libs: attached,
         };
         def = revised;
+        libraryProblems = importProblems(revised, session, new Set(Object.keys(deck.assets)));
         assetIds = Object.keys(deck.assets);
         base = deck;
         assets = workspace.get(deckId).assets;
@@ -369,6 +442,8 @@ export const componentTools = [
           throw new ToolError(
             'deckId is only used together with componentId; remove it to check inline sources',
           );
+        if (libs !== undefined && libs.length > 0)
+          throw new ToolError('libs can only be checked together with deckId and componentId');
         if (html === undefined && css === undefined && js === undefined)
           throw new ToolError('Give deckId + componentId, or at least one of html, css, js');
         def = {
@@ -384,6 +459,7 @@ export const componentTools = [
         };
       }
       const check = checkComponentDef(def, assetIds);
+      check.warnings.push(...libraryProblems);
       if (!run) return check;
       if (!check.valid) return { ...check, runtime: 'not run: fix the errors above first' };
       const problem = workspace.previewer.problem();
@@ -416,11 +492,18 @@ export const componentTools = [
     name: 'save_to_library',
     title: 'Save component to library',
     description:
-      'Copies a component definition to the file library (a folder of files, by default .decktech/library inside the workspace folder), so other decks can reuse it with import_from_library. Saving an id again replaces the entry. Components with asset files or vendored libraries are refused.',
+      'Copies a component definition to the file library (a folder of files, by default .decktech/library inside the workspace folder), so other decks can reuse it with import_from_library. Saving an id again replaces the entry. Vendored libraries and asset files the component reads are saved with it, so import_from_library brings them along.',
     input: z.object({ deckId, componentId }),
     async run(workspace, { deckId, componentId }) {
-      const def = definitionOf(workspace.get(deckId).deck, componentId);
-      const entry = await workspace.library.save(def);
+      const session = workspace.get(deckId);
+      const def = definitionOf(session.deck, componentId);
+      const held = new Map<string, { ref: AssetRef; bytes: Uint8Array }>();
+      for (const id of [...def.files, ...def.libs]) {
+        const bytes = session.assets.get(id);
+        if (Object.hasOwn(session.deck.assets, id) && bytes)
+          held.set(id, { ref: session.deck.assets[id], bytes });
+      }
+      const entry = await workspace.library.save(def, held);
       return {
         id: entry.def.id,
         name: entry.def.name,
@@ -448,9 +531,23 @@ export const componentTools = [
       let def = entry.def;
       const taken = session.deck.components.find((c) => c.id === def.id);
       if (taken && !deepEqual(taken, def)) def = { ...def, id: generateId('component') };
-      const warnings = assertValid(session.deck, def);
-      const next = session.apply('ImportComponent', new AddComponent(def));
-      return { ...summaryOf(next, def), warnings };
+      // The bytes of its libraries and files come from the library folder, checked against their hash.
+      const incoming = new Map<string, Uint8Array>();
+      for (const id of new Set([...def.files, ...def.libs])) {
+        if (Object.hasOwn(session.deck.assets, id) && session.assets.has(id)) continue;
+        const bytes = await workspace.library.readAsset(id);
+        if (!bytes)
+          throw new ToolError(
+            `The library entry "${libraryId}" is damaged: the file for its asset ${id} is missing or does not match its hash`,
+          );
+        incoming.set(id, bytes);
+      }
+      assertAssetBudget(session, [...incoming.values()].reduce((sum, b) => sum + b.length, 0));
+      const adds = [...incoming.keys()].map((id) => new AddAsset(id, entry.assets[id]));
+      const warnings = assertValid(session, def, incoming.keys());
+      const next = session.apply('ImportComponent', ...adds, new AddComponent(def));
+      for (const [id, bytes] of incoming) session.assets.set(id, bytes);
+      return { ...summaryOf(next, def, session), warnings };
     },
   }),
 ];

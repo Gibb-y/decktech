@@ -83,6 +83,15 @@ export const IMAGE_MIMES: Readonly<Record<string, string>> = {
   '.svg': 'image/svg+xml',
 };
 
+/** Refuses to hold `extra` more bytes of files when that would pass the per-deck budget. */
+export function assertAssetBudget(session: DeckSession, extra: number): void {
+  const held = [...session.assets.values()].reduce((sum, b) => sum + b.length, 0);
+  if (held + extra > MAX_SESSION_ASSET_BYTES)
+    throw new ToolError(
+      `This deck already holds ${Math.round(held / 1024 / 1024)} MiB of files; the limit is ${MAX_SESSION_ASSET_BYTES / 1024 / 1024} MiB`,
+    );
+}
+
 /** Reads a file of the workspace as an asset: checks type, size, content and the per-deck budget. Nothing is stored in the session yet. */
 export async function loadAsset(
   workspace: Workspace,
@@ -109,11 +118,7 @@ export async function loadAsset(
     throw new ToolError(`The file "${path}" does not exist`);
   }
   if (size > limit) throw new ToolError(`The ${noun} is larger than ${limit / 1024 / 1024} MiB`);
-  const held = [...session.assets.values()].reduce((sum, b) => sum + b.length, 0);
-  if (held + alreadyLoaded + size > MAX_SESSION_ASSET_BYTES)
-    throw new ToolError(
-      `This deck already holds ${Math.round(held / 1024 / 1024)} MiB of files; the limit is ${MAX_SESSION_ASSET_BYTES / 1024 / 1024} MiB`,
-    );
+  assertAssetBudget(session, size + alreadyLoaded);
   const bytes = new Uint8Array(await readFile(full));
   const problem = contentProblem(bytes, mime);
   if (problem) throw new ToolError(`"${path}" is not a valid ${mime} file: ${problem}`);

@@ -20,7 +20,7 @@ describe('bundle', () => {
     const app = inputs.filter((p) => p.startsWith('src/app/'));
     expect(app.length).toBeGreaterThan(10);
     expect(
-      app.filter((p) => !/^src\/app\/(core|library\/archive|components\/trust\/analysis)/.test(p)),
+      app.filter((p) => !/^src\/app\/(core|library\/archive|components\/trust\/analysis|components\/editor\/vendor\.ts)/.test(p)),
     ).toEqual([]);
     expect(
       app.filter((p) =>

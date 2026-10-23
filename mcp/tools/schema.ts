@@ -40,6 +40,7 @@ const COMPONENT_API = {
     'Make the component read its size from the frame (it is 1920x1080 scaled), not from window.innerWidth.',
     'Use theme variables instead of hard-coded colours so the deck theme restyles the component, and keep text contrast at WCAG AA (4.5:1).',
     'Give the root element a role/aria-label if it conveys information (WCAG AA is a project requirement).',
+    'Libraries: add_library_from_package / add_library_from_file, list them in libs and import them by name (import React from "react"); see the guide, section Libraries. There is no JSX.',
     'Code written here is untrusted until the person opening the deck accepts it in the trust dialog; validate_component reads the code but never runs it.',
   ],
 };
