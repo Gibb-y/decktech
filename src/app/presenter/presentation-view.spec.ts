@@ -472,6 +472,31 @@ describe('PresentationView', () => {
       expect(elapsed).toBeLessThan(100);
     });
 
+    it('never moves the layer of a code slide in the page, which would reload its frame (a moved iframe reloads)', async () => {
+      const slides = [slideOf([text('a')]), slideOf([text('b')]), slideOf([code()]), slideOf([code()]), slideOf([code()]), slideOf([text('f')])];
+      const p = await present({ slides });
+      const removed = new Set<Node>();
+      const reAdded: Node[] = [];
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          record.removedNodes.forEach((node) => removed.add(node));
+          record.addedNodes.forEach((node) => removed.has(node) && reAdded.push(node));
+        }
+      });
+      observer.observe(p.root, { childList: true, subtree: true });
+      const walk = async (keys: string[]) => {
+        for (const key of keys) {
+          p.key(key);
+          await p.settle();
+        }
+      };
+      await walk(Array(5).fill('ArrowRight'));
+      await walk(Array(5).fill('ArrowLeft'));
+      observer.disconnect();
+      const holdsCode = (node: Node) => node instanceof HTMLElement && (node.matches('.layer, app-stub-code') || node.querySelector('app-stub-code') !== null);
+      expect(reAdded.filter(holdsCode)).toEqual([]);
+    });
+
     it('destroys the code of slides more than one away and makes it again on return', async () => {
       const slides = [slideOf([code()]), slideOf([text('b')]), slideOf([text('c')]), slideOf([code()])];
       const p = await present({ slides });
