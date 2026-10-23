@@ -22,6 +22,12 @@ export const routes: Routes = [
     title: 'Presenter view – DeckTech',
     loadComponent: () => import('./presenter/presenter-view/presenter-view-page').then((m) => m.PresenterViewPage),
   },
+  // Drawn from a script by the MCP server (ADR-013): a slide of a deck handed over in the page, nothing stored.
+  {
+    path: 'preview',
+    title: 'Preview – DeckTech',
+    loadComponent: () => import('./preview-page').then((m) => m.PreviewPage),
+  },
   // Profiling aid for quality scenario Q9; not part of production builds.
   // `ngDevMode` is a build-time constant (false in production), so the bundler drops this whole
   // branch, including the lazy import and its chunk; `isDevMode()` would be a runtime call it cannot fold.

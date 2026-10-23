@@ -52,3 +52,7 @@ flowchart LR
 ## 7.4 Data location and backup
 
 User data is only on the user's device. Backup is by exporting `.deck` files. The app requests persistent storage (`navigator.storage.persist()`) at startup to reduce the risk of eviction, and records per deck when it was first changed after its last export (`DeckRepository.listUnexported()`, 8.5); the periodic reminder built on that is not built yet. "Export" and "Export all decks" in the library (8.5) clear the mark.
+
+## 7.3 MCP server (optional, developer machine)
+
+The MCP server is not deployed with the app. It is a Node (20+) process that an MCP client starts over stdio from the built bundle `dist-mcp/decktech-mcp.mjs` (`npm run build:mcp`). It needs read/write access to one workspace folder and no network. For the optional previews (`DECKTECH_PREVIEW=1`) it also needs the built app (`npm run build`, served on `127.0.0.1` by the server itself), the `playwright` package next to the bundle and a Chromium (`npx playwright install chromium`). Setup for clients is in the README.
