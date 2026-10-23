@@ -89,7 +89,7 @@ describe('agent guide', () => {
   });
 
   it('has an example component that the server accepts and that can be inserted', async () => {
-    const block = /### Example component[\s\S]*?```json\n([\s\S]*?)```/.exec(guide);
+    const block = /### Example component[\s\S]*?```json\r?\n([\s\S]*?)```/.exec(guide);
     expect(block).not.toBeNull();
     const example = JSON.parse(block![1]) as Record<string, unknown>;
     const deck = JSON.parse((await call('create_deck')).text);

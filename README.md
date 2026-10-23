@@ -101,9 +101,9 @@ Any client that starts a stdio server works with the same `command`, `args` and 
 
 Agents are pointed to the guide `mcp/guide.md` (workflow, accessibility rules, writing code components, reading errors). The server sends it as the resource `decktech://guide` and as `describe_schema` with topic `guide`, and its instructions tell the agent to read it first. Humans can read the file as well. Then `describe_schema` (topic `component-api` before writing a code component) and `create_deck`.
 
-- Deck: `create_deck`, `open_deck`, `list_decks`, `close_deck`, `get_deck`, `set_deck_metadata`, `export_deck`, `undo`, `redo`
+- Deck: `create_deck`, `open_deck` (or `import_deck`), `list_decks`, `close_deck`, `get_deck`, `set_deck_metadata`, `export_deck`, `undo`, `redo`
 - Slides: `add_slide`, `duplicate_slide`, `delete_slide`, `move_slide`, `set_layout`, `set_speaker_notes`
-- Elements: `add_text`, `set_text`, `add_image`, `add_shape`, `add_line`, `update_element`, `move_element`, `delete_element`, `set_z_order`, `set_alt_text`, `check_accessibility`
+- Elements: `add_text`, `set_text`, `add_image`, `add_shape`, `add_line`, `add_table`, `edit_table`, `add_video`, `update_element`, `move_element`, `delete_element`, `set_z_order`, `set_reading_order`, `set_alt_text`, `check_accessibility`
 - Code components: `create_component`, `update_component`, `list_components`, `get_component`, `insert_code_element`, `update_code_element_props`, `detach_component`, `validate_component`, `save_to_library`, `import_from_library`
 
 - Previews (off by default): `render_preview`, and `validate_component` with `run: true`

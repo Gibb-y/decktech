@@ -20,6 +20,49 @@ const themeIds = BUILT_IN_THEMES.map((t) => t.id) as [string, ...string[]];
 const UNTRUSTED_NOTE =
   'This deck came from a file and has code components. The server only reads their source and never runs it. Whoever opens an exported copy in DeckTech is asked to review the code first (trust prompt).';
 
+const openDeck = defineTool({
+  name: 'open_deck',
+  title: 'Open deck file',
+  description:
+    'Reads a .deck file from the workspace folder and opens it for editing. The file is verified completely (size limits, hashes, schema) and a rejected file is reported with the reason. A deck with code components is flagged: its code is untrusted and is never run by this server.',
+  input: z.object({
+    path: z.string().min(1).describe('Path of the .deck file, relative to the workspace folder.'),
+  }),
+  async run(workspace, { path }) {
+    const full = resolveInside(workspace.root, path);
+    let size: number;
+    try {
+      size = (await stat(full)).size;
+    } catch {
+      throw new ToolError(`The file "${path}" does not exist`);
+    }
+    if (size > DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes) {
+      throw new ToolError(
+        `The file is too large to open (limit ${DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes / 1024 / 1024} MiB)`,
+      );
+    }
+    const read = await readArchive(new Uint8Array(await readFile(full)));
+    if (!read.ok) throw new ToolError(`This file cannot be opened. ${read.error.message}`);
+    const { deck, assets, hasCode, migrated } = read.value;
+    const bytes = new Map([...assets].map(([id, a]) => [id, a.bytes]));
+    const added = workspace.add(deck, bytes);
+    return {
+      ...deckOutline(added.deck),
+      hasCode,
+      migrated,
+      ...(hasCode ? { note: UNTRUSTED_NOTE } : {}),
+    };
+  },
+});
+
+/** A second name for `open_deck`: the file opens as its own session, nothing is merged into another deck. */
+const importDeck = defineTool({
+  ...openDeck,
+  name: 'import_deck',
+  title: 'Import deck file',
+  description: `Same as open_deck (the file opens as its own deck session; nothing is merged into another deck). ${openDeck.description}`,
+});
+
 export const deckTools = [
   defineTool({
     name: 'create_deck',
@@ -42,40 +85,9 @@ export const deckTools = [
     },
   }),
 
-  defineTool({
-    name: 'open_deck',
-    title: 'Open deck file',
-    description:
-      'Reads a .deck file from the workspace folder and opens it for editing. The file is verified completely (size limits, hashes, schema) and a rejected file is reported with the reason. A deck with code components is flagged: its code is untrusted and is never run by this server.',
-    input: z.object({
-      path: z.string().min(1).describe('Path of the .deck file, relative to the workspace folder.'),
-    }),
-    async run(workspace, { path }) {
-      const full = resolveInside(workspace.root, path);
-      let size: number;
-      try {
-        size = (await stat(full)).size;
-      } catch {
-        throw new ToolError(`The file "${path}" does not exist`);
-      }
-      if (size > DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes) {
-        throw new ToolError(
-          `The file is too large to open (limit ${DEFAULT_ARCHIVE_LIMITS.maxArchiveBytes / 1024 / 1024} MiB)`,
-        );
-      }
-      const read = await readArchive(new Uint8Array(await readFile(full)));
-      if (!read.ok) throw new ToolError(`This file cannot be opened. ${read.error.message}`);
-      const { deck, assets, hasCode, migrated } = read.value;
-      const bytes = new Map([...assets].map(([id, a]) => [id, a.bytes]));
-      const added = workspace.add(deck, bytes);
-      return {
-        ...deckOutline(added.deck),
-        hasCode,
-        migrated,
-        ...(hasCode ? { note: UNTRUSTED_NOTE } : {}),
-      };
-    },
-  }),
+  openDeck,
+
+  importDeck,
 
   defineTool({
     name: 'list_decks',

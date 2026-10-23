@@ -16,11 +16,11 @@ You build slide decks with this server's tools. A deck is a document you edit st
 1. `describe_schema` with topic `layouts` (and `component-api` if you will write code).
 2. `create_deck` with a `title` (and `theme`: `light` or `dark`). It returns the `deckId` and the first slide (Blank layout).
 3. For each further slide: `add_slide` with a `layoutId` (`ly_title`, `ly_title-content`, `ly_two-column`, `ly_title-only`, `ly_blank`). Layouts with placeholders give you text elements that already hold **sample text** ("Title", "- First point"). Replace it with `set_text` (use `heading: true` for titles); do not leave sample text behind.
-4. Add content: `add_text`, `add_image`, `add_shape`, `add_line`, `insert_code_element`.
+4. Add content: `add_text`, `add_image`, `add_shape`, `add_line`, `add_table`, `add_video`, `insert_code_element`.
 5. `set_speaker_notes` per slide, `check_accessibility`, optionally `render_preview`.
 6. `export_deck` with a path ending in `.deck`, e.g. `talk.deck`. It refuses to overwrite unless `overwrite: true`.
 
-To change an existing file: `open_deck`, edit, `export_deck` with `overwrite: true`.
+To change an existing file: `open_deck` (or `import_deck`, the same), edit, `export_deck` with `overwrite: true`.
 
 Restructuring: `set_deck_metadata` (title, theme), `duplicate_slide`, `delete_slide`, `move_slide`, `set_layout` (switches a slide to another layout; placeholder content moves, nothing is deleted) and `delete_element`. Deleting is an undo step like everything else.
 
@@ -38,9 +38,15 @@ Restructuring: `set_deck_metadata` (title, theme), `duplicate_slide`, `delete_sl
 - `add_line` takes two points. Lines are decoration and invisible to screen readers.
 - `move_element` sets position and size; `update_element` sets other properties (`rotation`, `hidden`, `step`, `fontSize`, `align`, `fill`, ...). `set_z_order` moves an element `front` / `back` / `forward` / `backward`.
 
+## Tables and videos
+
+- `add_table` takes `rows` (a rectangle of text cells). The first row is a header row by default (`header: true`), which screen readers announce as column headers; pass `header: false` only when the first row is data. Keep tables small enough to read on a slide.
+- `edit_table` changes an existing table with a list of operations applied as one undo step (the `op` field: "set_cell", "set_cell_fill", "add_row", "remove_row", "add_column", "remove_column", "set_column_widths"). Indices start at 0; if one operation is refused, none is applied.
+- `add_video` reads an MP4 or WebM file from the workspace folder and embeds it. `label` is required and names the player for screen readers. `poster` is an optional picture. `autoplay` needs `muted: true` and only plays while presenting. Say in the notes what the video shows.
+
 ## Accessibility (a hard requirement)
 
-Run `check_accessibility` before exporting. It reports images without alt text, empty text elements and text whose colour has too little contrast (WCAG AA needs 4.5:1) against the slide background. `notChecked` lists what it could not judge (gradient or image backgrounds): look at those yourself. Also: one title per slide, reading order = element order, no information carried by colour alone.
+Run `check_accessibility` before exporting. It reports images without alt text, empty text elements and text whose colour has too little contrast (WCAG AA needs 4.5:1) against the slide background. `notChecked` lists what it could not judge (gradient or image backgrounds): look at those yourself. Also: one title per slide, reading order = element order (`set_reading_order` sets the whole order of a slide at once, first read to last), no information carried by colour alone.
 
 ## Code components
 
@@ -101,4 +107,4 @@ Errors are sentences meant for you. Common ones:
 
 ## Not available
 
-Tables and video elements (DeckTech draws them, but this server has no tools for them yet), sections, slide backgrounds and layout editing, importing a deck into another deck. Do not fake them with shapes if a code component or text would do better.
+Sections, slide backgrounds and layout editing, importing a deck into another deck. Do not fake them with shapes if a code component or text would do better.
