@@ -121,3 +121,25 @@ export class DetachComponent implements Command {
     return resultOf(deck, updateElements(withCopy, [element.id], (e) => ({ ...(e as CodeEl), componentId: copy.id })));
   }
 }
+
+/**
+ * Adds a definition to the deck without placing an element (the MCP server creates components
+ * before it uses them). An identical definition under the same id is a no-op; a different one is
+ * an error, use `SetComponentSource` / `SetComponentDef` to edit it. The definition must validate,
+ * so its `files` and `libs` have to be assets of the deck.
+ */
+export class AddComponent implements Command {
+  readonly name = 'AddComponent';
+
+  constructor(readonly component: ComponentDef) {}
+
+  do(deck: Deck): CommandResult {
+    const existing = deck.components.find((c) => c.id === this.component.id);
+    if (existing) {
+      if (!deepEqual(existing, this.component)) throw new CommandError(`Component "${this.component.id}" already exists with a different definition`);
+      return resultOf(deck, deck);
+    }
+    checkComponent(deck, this.component);
+    return resultOf(deck, { ...deck, components: [...deck.components, structuredClone(this.component)] });
+  }
+}

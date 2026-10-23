@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { createDeck, createElement, validateDeck, type CodeEl, type ComponentDef, type Deck, type PropSpec } from '../model';
 import { CommandError } from './command';
 import { AddCodeElement, SetComponentSource } from './commands';
-import { DetachComponent, SetCodeProps, SetComponentDef, componentUses } from './component-commands';
+import { AddComponent, DetachComponent, SetCodeProps, SetComponentDef, componentUses } from './component-commands';
 import { DeckStore } from './deck-store';
 
 function deepFreeze<T>(value: T): T {
@@ -214,5 +214,38 @@ describe('component commands through the store', () => {
     store.redo();
     store.redo();
     expect(store.deck()).toEqual(after);
+  });
+});
+
+describe('AddComponent', () => {
+  const { deck } = fixture();
+  const fresh: ComponentDef = { ...def, id: 'cp_new', name: 'New' };
+
+  it('appends the definition without touching slides', () => {
+    const next = new AddComponent(fresh).do(deck).deck;
+    expect(next.components.map((c) => c.id)).toEqual(['cp_1', 'cp_new']);
+    expect(next.slides).toBe(deck.slides);
+    expect(next.components[1]).not.toBe(fresh);
+    expect(validateDeck(next).ok).toBe(true);
+  });
+
+  it('is a no-op for an identical definition and refuses a different one under the same id', () => {
+    expect(new AddComponent(def).do(deck).deck).toBe(deck);
+    expect(() => new AddComponent({ ...def, js: 'x' }).do(deck)).toThrow(/already exists with a different definition/);
+  });
+
+  it('refuses a definition that does not validate, leaving the deck as it was', () => {
+    expect(() => new AddComponent({ ...fresh, files: ['f'.repeat(64)] }).do(deck)).toThrow(/Invalid component/);
+    expect(() => new AddComponent({ ...fresh, permissions: ['root' as never] }).do(deck)).toThrow(/Invalid component/);
+  });
+
+  it('can be undone through the store', () => {
+    TestBed.configureTestingModule({});
+    const store = TestBed.inject(DeckStore);
+    store.load(deck);
+    store.execute(new AddComponent(fresh));
+    expect(store.deck().components).toHaveLength(2);
+    store.undo();
+    expect(store.deck().components).toHaveLength(1);
   });
 });

@@ -39,6 +39,8 @@ import {
 /** Content-addressed asset ids (8.5): the lowercase hex SHA-256 digest. */
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const MAX_SECTION_NAME = 200;
+/** The validator caps short strings, among them the deck title, at this length. */
+const MAX_DECK_TITLE = 1_000;
 
 /** Options shared by commands that are issued repeatedly during a gesture. */
 export interface GestureOptions {
@@ -215,6 +217,19 @@ export class SetSlideLayout implements Command {
         return { ...s, layoutId: this.layoutId, ...(elements === s.elements ? {} : { elements: [...elements] }) };
       }),
     );
+  }
+}
+
+/** Renames the deck. The title is shown in the library and used for the file name of an export. */
+export class SetDeckTitle implements Command {
+  readonly name = 'SetDeckTitle';
+
+  constructor(readonly title: string) {}
+
+  do(deck: Deck): CommandResult {
+    const title = this.title.trim();
+    if (title.length === 0 || title.length > MAX_DECK_TITLE) throw new CommandError(`The deck title must be 1 to ${MAX_DECK_TITLE} characters`);
+    return resultOf(deck, title === deck.title ? deck : { ...deck, title });
   }
 }
 
