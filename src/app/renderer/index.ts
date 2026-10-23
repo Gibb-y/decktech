@@ -5,6 +5,8 @@ export * from './font-faces';
 export * from './image-element';
 export * from './line-element';
 export * from './shape-element';
+export * from './table-element';
+export * from './video-element';
 export * from './slide-renderer';
 export * from './text-blocks';
 export * from './text-element';

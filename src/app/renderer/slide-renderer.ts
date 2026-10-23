@@ -7,8 +7,10 @@ import { FontFaces } from './font-faces';
 import { ImageElement } from './image-element';
 import { LineElement } from './line-element';
 import { ShapeElement } from './shape-element';
+import { TableElement } from './table-element';
 import { TextElement } from './text-element';
 import { fillStyle, themeVars } from './theme';
+import { VideoElement } from './video-element';
 import { ALL_STEPS, isElementShown, type RenderMode } from './visibility';
 
 const DEFAULT_STAGE: Stage = { width: STAGE_WIDTH, height: STAGE_HEIGHT };
@@ -60,6 +62,12 @@ interface Item {
           @case ('line') {
             <app-line-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
           }
+          @case ('table') {
+            <app-table-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
+          }
+          @case ('video') {
+            <app-video-element [elements]="elementMap()" [elementId]="item.id" [theme]="theme()" [mode]="videoMode()" [class.ghost]="item.ghost" [attr.aria-hidden]="item.ghost ? 'true' : null" />
+          }
         }
       }
     </div>
@@ -83,7 +91,7 @@ interface Item {
       opacity: 0.35;
     }
   `,
-  imports: [TextElement, ImageElement, ShapeElement, LineElement, NgComponentOutlet],
+  imports: [TextElement, ImageElement, ShapeElement, LineElement, TableElement, VideoElement, NgComponentOutlet],
   host: {
     '[style.aspect-ratio]': 'stage().width + " / " + stage().height',
   },
@@ -123,6 +131,9 @@ export class SlideRenderer {
   protected readonly elementMap = computed<ReadonlyMap<string, Element>>(
     () => new Map(this.slide().elements.map((element) => [element.id, element])),
   );
+
+  /** Videos play only on the slide that is shown; a preloaded neighbour (distance > 0) is drawn like a thumbnail. */
+  protected readonly videoMode = computed<RenderMode>(() => (this.mode() === 'present' && this.distance() > 0 ? 'thumbnail' : this.mode()));
 
   protected readonly items = computed<Item[]>(() => {
     const mode = this.mode();
